@@ -1,0 +1,16 @@
+# Node
+node_modules/
+web/.next/
+web/.turbo/
+web/.env.local
+
+# Go
+**/bin/
+**/*.exe
+**/*.test
+coverage.out
+
+# Docker
+*.log
+*.tmp
+dist/
