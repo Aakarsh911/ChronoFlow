@@ -47,7 +47,7 @@ export default function IntegrationsGrid({ initialConnections }: Props) {
     const connected = isConnected(provider);
     // Special flow for Google Calendar: launch OAuth if connecting
     if (provider === 'gcal' && !connected) {
-      signIn('google', { callbackUrl: '/settings' });
+      signIn('google', { callbackUrl: '/settings', prompt: 'consent', access_type: 'offline' });
       return;
     }
     setPendingProvider(provider);

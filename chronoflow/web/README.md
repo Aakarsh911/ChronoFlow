@@ -64,3 +64,20 @@ Scopes requested (see `lib/auth.ts`):
 Ensure you enable the Google Calendar API in Google Cloud Console and add `http://localhost:3000/api/auth/callback/google` to authorized redirect URIs.
 
 After first Google sign-in a `IntegrationConnection` row for `gcal` is created automatically.
+
+## Calendar Architecture
+
+The `/calendar` page uses FullCalendar (timeGridWeek) with a unified event abstraction. Flow:
+
+1. Server component (`app/calendar/page.tsx`) loads initial events with `fetchGoogleEvents` (12h back, 7d forward).
+2. Client component (`CalendarClient`) renders FullCalendar and periodically refreshes via `/api/calendar/events`.
+3. `/api/calendar/events` aggregates provider events (currently Google only) and returns normalized `UnifiedEvent[]`.
+4. Provider adapters live under `lib/events/*` (e.g. `google.ts`). A future `teams.ts` will supply events for merge.
+
+UnifiedEvent fields: `id, provider, calendarId, title, start, end, allDay` plus optional `raw` metadata (not persisted yet).
+
+Future enhancements:
+- Merge multiple providers then sort/merge collisions.
+- Persist a local Event cache table for faster load & offline planning.
+- Add focus block + task overlays as separate event sources.
+- Color mapping per provider (gcal teal, teams indigo) and category badges.

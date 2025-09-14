@@ -8,6 +8,20 @@ import bcrypt from 'bcryptjs';
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },
+  // Custom logger to surface hidden errors causing generic ?error=Callback redirects
+  logger: {
+    error(code, metadata) {
+      console.error('[next-auth][error]', code, metadata);
+    },
+    warn(code) {
+      console.warn('[next-auth][warn]', code);
+    },
+    debug(code, metadata) {
+      if (process.env.NEXT_AUTH_DEBUG || process.env.NODE_ENV === 'development') {
+        console.debug('[next-auth][debug]', code, metadata);
+      }
+    }
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -40,41 +54,72 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.uid = (user as any).id || (user as any).uid;
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user && token?.uid) (session.user as any).id = token.uid;
-      return session;
-    },
-    async signIn({ user, account, profile }) {
-      // When a user signs in with Google, ensure an IntegrationConnection row exists for gcal
+    async jwt(ctx) {
       try {
-        if (account?.provider === 'google' && user?.id) {
-          // capture scopes for reference
-            const scopes = account.scope;
-            await prisma.integrationConnection.upsert({
-              where: {
-                // no unique on provider+user, emulate via find first then create
-                // We'll do manual logic instead of where
-                id: 'dummy' // placeholder will be ignored
-              },
-              update: {},
-              create: { userId: user.id, provider: 'gcal', status: 'connected', scopes: scopes || undefined }
-            }).catch(async () => {
-              // fallback: check existing then create if missing
-              const existing = await prisma.integrationConnection.findFirst({ where: { userId: user.id, provider: 'gcal' } });
-              if (!existing) {
-                await prisma.integrationConnection.create({ data: { userId: user.id, provider: 'gcal', status: 'connected', scopes: account?.scope || undefined } });
-              }
-            });
+        const { token, user, account } = ctx;
+        if (user) token.uid = (user as any).id || (user as any).uid;
+        if (account?.provider === 'google') {
+          token.gScope = account.scope;
         }
+        return token;
       } catch (e) {
-        console.error('signIn integration linkage error', e);
+        console.error('[callbacks.jwt] error', e);
+        throw e;
       }
-      return true;
-    }
+    },
+    async session(ctx) {
+      try {
+        const { session, token } = ctx;
+        if (session.user && token?.uid) (session.user as any).id = token.uid;
+        return session;
+      } catch (e) {
+        console.error('[callbacks.session] error', e);
+        throw e;
+      }
+    },
+    async signIn(params) {
+      const { user, account, profile } = params;
+      try {
+        if (account?.provider === 'google') {
+          console.log('[auth signIn:start]', {
+            userId: user?.id,
+            email: user?.email,
+            hasAccess: !!account.access_token,
+            hasRefresh: !!account.refresh_token,
+            expires_at: account.expires_at,
+            scope: account.scope,
+            profileEmail: (profile as any)?.email,
+            providerAccountId: account.providerAccountId,
+            type: account.type,
+          });
+          if (!account.access_token) {
+            console.error('[auth signIn] missing access_token in Google account object');
+            return false;
+          }
+        }
+        if (account?.provider === 'google' && user?.id) {
+          // Ensure User row actually exists (PrismaAdapter may not have committed yet when using JWT sessions)
+            const persistedUser = await prisma.user.findUnique({ where: { id: user.id } });
+            if (!persistedUser) {
+              console.warn('[auth signIn] user row not yet persisted; deferring IntegrationConnection creation');
+              return true; // allow sign-in; we'll create later on first calendar access
+            }
+            const existingConn = await prisma.integrationConnection.findFirst({ where: { userId: user.id, provider: 'gcal' } });
+            if (!existingConn) {
+              try {
+                await prisma.integrationConnection.create({ data: { userId: user.id, provider: 'gcal', status: 'connected', scopes: account.scope || undefined } });
+                console.log('[auth signIn] created IntegrationConnection for gcal');
+              } catch (icErr: any) {
+                console.error('[auth signIn] failed to create IntegrationConnection (will defer)', icErr?.message);
+              }
+            }
+        }
+        return true;
+      } catch (e: any) {
+        console.error('[auth signIn] error', { message: e.message, stack: e.stack, raw: e });
+        return '/login?error=Callback&reason=' + encodeURIComponent(e.message || 'unknown');
+      }
+    },
   },
   pages: { signIn: '/login' },
 };
