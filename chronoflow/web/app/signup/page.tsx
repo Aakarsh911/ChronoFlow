@@ -39,10 +39,10 @@ export default function SignupPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
-        <h1 className="text-3xl font-bold text-teal-600 mb-2 text-center">AI Time Manager</h1>
+        <h1 className="text-3xl font-bold text-teal-600 mb-2 text-center">ChronoFlow AI</h1>
         <p className="text-gray-500 mb-8 text-center">Intelligent productivity for modern teams</p>
-        <h2 className="text-2xl font-semibold mb-2 text-center">Create account</h2>
-        <p className="text-gray-500 mb-6 text-center">Get started with your AI Time Manager</p>
+        <h2 className="text-2xl font-semibold mb-2 text-center text-gray-800">Create account</h2>
+        <p className="text-gray-700 mb-6 text-center">Get started with your ChronoFlow AI account</p>
         <button
           disabled={!googleReady}
           onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
@@ -67,7 +67,7 @@ export default function SignupPage() {
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              className="w-full border px-10 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-200"
+              className="w-full border px-10 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 text-black"
               placeholder="Enter your full name"
               required
             />
@@ -80,7 +80,7 @@ export default function SignupPage() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full border px-10 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-200"
+              className="w-full border px-10 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 text-black"
               placeholder="Enter your email"
               required
             />
@@ -93,7 +93,7 @@ export default function SignupPage() {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full border px-10 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-200"
+              className="w-full border px-10 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-200 placeholder-gray-400 text-black"
               placeholder="Enter your password"
               required
             />

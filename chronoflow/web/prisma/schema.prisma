@@ -14,6 +14,8 @@ model User {
   emailVerified DateTime?
   image         String?
   passwordHash  String?
+  onboardingCompleted Boolean @default(false)
+  onboardingData      Json?
   accounts      Account[]
   sessions      Session[]
   createdAt     DateTime  @default(now())
