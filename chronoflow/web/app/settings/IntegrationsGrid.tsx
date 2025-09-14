@@ -1,7 +1,10 @@
 "use client";
 import { useState, useTransition } from "react";
+import { signIn } from 'next-auth/react';
 import { connectIntegration, disconnectIntegration } from "./_actions/integrations";
-import { Plug, PlugZap } from "lucide-react";
+import { PlugZap } from "lucide-react";
+import { FaGoogle, FaMicrosoft } from 'react-icons/fa';
+import { FiSlack, FiTrello } from 'react-icons/fi';
 
 export interface IntegrationRow {
   id: string;
@@ -42,6 +45,11 @@ export default function IntegrationsGrid({ initialConnections }: Props) {
   async function toggle(provider: string) {
     if (pendingProvider) return; // simple lock
     const connected = isConnected(provider);
+    // Special flow for Google Calendar: launch OAuth if connecting
+    if (provider === 'gcal' && !connected) {
+      signIn('google', { callbackUrl: '/settings' });
+      return;
+    }
     setPendingProvider(provider);
     // optimistic update
     setConnections(prev => {
@@ -95,7 +103,12 @@ export default function IntegrationsGrid({ initialConnections }: Props) {
             <div key={p.provider} className="relative rounded-lg border bg-white hover:border-teal-300 transition-colors shadow-sm flex flex-col p-5">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-md bg-gradient-to-br ${p.accent} flex items-center justify-center text-white`}> <Plug size={16} /> </div>
+                  <div className={`w-9 h-9 rounded-md bg-gradient-to-br ${p.accent} flex items-center justify-center text-white`}>{
+                    p.provider === 'gcal' ? <FaGoogle className="w-5 h-5" /> :
+                    p.provider === 'slack' ? <FiSlack className="w-5 h-5" /> :
+                    p.provider === 'jira' ? <FiTrello className="w-5 h-5" /> :
+                    p.provider === 'teams' ? <FaMicrosoft className="w-5 h-5" /> : null
+                  }</div>
                   <div>
                     <h3 className="font-medium text-gray-900">{p.label}</h3>
                     <p className="text-[11px] text-gray-500 leading-snug">{p.description}</p>
@@ -112,7 +125,7 @@ export default function IntegrationsGrid({ initialConnections }: Props) {
                   disabled={busy}
                   className={`text-xs font-medium px-3 py-1 rounded-md ${connected ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-teal-600 text-white hover:bg-teal-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {busy ? (connected ? 'Disconnecting...' : 'Connecting...') : connected ? 'Disconnect' : 'Connect'}
+                  {busy ? (connected ? 'Disconnecting...' : (p.provider === 'gcal' ? 'Redirecting...' : 'Connecting...')) : connected ? 'Disconnect' : 'Connect'}
                 </button>
               </div>
             </div>

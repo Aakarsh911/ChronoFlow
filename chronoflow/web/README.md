@@ -46,4 +46,21 @@ Provide in `.env.local`:
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-secret
 ```
-Restart `npm run dev`. Without these, Google button stays disabled to avoid `OAuthSignin` loops.
+
+### Google Calendar Integration
+
+Set the following environment variables in `.env.local` for Calendar sync:
+
+```
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_generated_secret
+```
+
+Scopes requested (see `lib/auth.ts`):
+`openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events.readonly`
+
+Ensure you enable the Google Calendar API in Google Cloud Console and add `http://localhost:3000/api/auth/callback/google` to authorized redirect URIs.
+
+After first Google sign-in a `IntegrationConnection` row for `gcal` is created automatically.
