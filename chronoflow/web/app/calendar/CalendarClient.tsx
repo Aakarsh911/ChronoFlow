@@ -5,6 +5,9 @@ import dynamic from 'next/dynamic';
 import interactionPlugin from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import { UnifiedEvent } from '../../lib/events/types';
+import { useCalendarRange } from './hooks/useCalendarRange';
+import { useEventCache } from './hooks/useEventCache';
+import { useCalendarMetas } from './hooks/useCalendarMetas';
 
 const FullCalendar = dynamic(() => import('@fullcalendar/react'), { ssr: false });
 
@@ -15,14 +18,34 @@ export default function CalendarClient({ initialEvents, initialNeedsReconnect = 
   const [loading, setLoading] = useState(false);
   const [needsReconnect, setNeedsReconnect] = useState(initialNeedsReconnect);
   const calendarApiRef = useRef<any>(null);
-  const [currentRange, setCurrentRange] = useState<{start: Date; end: Date} | null>(null);
-  const initialRangeSetRef = useRef(false);
-  const debounceTimerRef = useRef<any>(null);
-  const cacheRef = useRef<{ range: { start: Date; end: Date }; events: UnifiedEvent[] } | null>(null);
-  const [calendarMetas, setCalendarMetas] = useState<{
-    id: string; summary: string; color: string; enabled: boolean;
-  }[]>([]);
-  const palette = ['#0d9488','#6366f1','#dc2626','#d97706','#2563eb','#7c3aed','#059669','#db2777','#0891b2','#f59e0b'];
+  const { cacheRef, updateCache, getSubset } = useEventCache();
+  const { calendarMetas, buildMetas, toggle } = useCalendarMetas();
+  const [currentRangeInternal, setCurrentRangeInternal] = useState<{start: Date; end: Date} | null>(null);
+
+  const refresh = useCallback(async (rangeOverride?: { start: Date; end: Date }) => {
+    setLoading(true);
+    try {
+      const r = rangeOverride || currentRangeInternal;
+      const qs = r ? `?start=${encodeURIComponent(r.start.toISOString())}&end=${encodeURIComponent(r.end.toISOString())}` : '';
+      const url = '/api/calendar/events' + qs + (qs ? '&' : '?') + 'bufferWeeks=3';
+      const res = await fetch(url);
+      const json = await res.json();
+      setEvents(json.events || []);
+      setNeedsReconnect(!!json.meta?.needsReconnect);
+      updateCache(json.meta?.fetchedRange, json.events || []);
+      buildMetas(json.events || []);
+      if (process.env.NODE_ENV === 'development') {
+        const evs = json.events || [];
+        const allDay = evs.filter((e: any) => e.allDay).length;
+        console.log('[calendar debug] events fetched', evs.length, 'allDay', allDay, qs || '(no-range)');
+        if (evs.length) console.log('[calendar sample]', evs[0]);
+      }
+    } finally { setLoading(false); }
+  }, [currentRangeInternal, updateCache, buildMetas]);
+
+  const { currentRange, setCurrentRange, onDatesSet } = useCalendarRange(initialEvents.length, refresh);
+
+  useEffect(() => { setCurrentRangeInternal(currentRange); }, [currentRange]);
   // Attempt to capture calendar API after mount if ref assignment not available via props typings
   useEffect(() => {
     if (calendarApiRef.current) return;
@@ -34,58 +57,7 @@ export default function CalendarClient({ initialEvents, initialNeedsReconnect = 
     } catch {}
   }, []);
 
-  const buildRangeQuery = (range?: { start: Date; end: Date } | null) => {
-    const r = range || currentRange;
-    if (!r) return '';
-    return `?start=${encodeURIComponent(r.start.toISOString())}&end=${encodeURIComponent(r.end.toISOString())}`;
-  };
-
-  const refresh = useCallback(async (rangeOverride?: { start: Date; end: Date }, opts: { prefetch?: boolean } = {}) => {
-    setLoading(true);
-    try {
-      const qs = buildRangeQuery(rangeOverride || currentRange);
-      // Request with bufferWeeks=3 for ~7 week total window (current ±3 weeks)
-      const url = '/api/calendar/events' + qs + (qs ? '&' : '?') + 'bufferWeeks=3';
-      const res = await fetch(url);
-      const json = await res.json();
-      setEvents(json.events || []);
-      setNeedsReconnect(!!json.meta?.needsReconnect);
-      if (json.meta?.fetchedRange?.timeMin && json.meta?.fetchedRange?.timeMax) {
-        cacheRef.current = {
-          range: { start: new Date(json.meta.fetchedRange.timeMin), end: new Date(json.meta.fetchedRange.timeMax) },
-          events: json.events || []
-        };
-      }
-      // Build per-calendar metadata for toggles
-      const evs: UnifiedEvent[] = json.events || [];
-      setCalendarMetas(prev => {
-        const enabledLookup = new Map(prev.map(p => [p.id, p.enabled]));
-        const map = new Map<string, string>(); // id -> summary
-        evs.forEach(e => {
-          const id = e.calendarId || 'primary';
-          const summary = e.raw?.calendarSummary || id;
-          if (!map.has(id)) map.set(id, summary);
-        });
-        return Array.from(map.entries()).map(([id, summary]) => {
-          let hash = 0; for (let i=0;i<id.length;i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-          const color = palette[hash % palette.length];
-          return { id, summary, color, enabled: enabledLookup.has(id) ? !!enabledLookup.get(id) : true };
-        });
-      });
-      if (process.env.NODE_ENV === 'development') {
-        const evs = json.events || [];
-        const allDay = evs.filter((e: any) => e.allDay).length;
-        console.log('[calendar debug] events fetched', evs.length, 'allDay', allDay, qs || '(no-range)');
-        if (evs.length) console.log('[calendar sample]', evs[0]);
-      }
-    } finally { setLoading(false); }
-  }, [currentRange]);
-
-  useEffect(() => {
-    // periodic refresh every 2 minutes using current visible range
-    const id = setInterval(() => refresh(), 120000);
-    return () => clearInterval(id);
-  }, [refresh]);
+  useEffect(() => { const id = setInterval(() => refresh(), 120000); return () => clearInterval(id); }, [refresh]);
 
   useEffect(() => {
     if (!needsReconnect && initialEvents.length === 0 && currentRange) {
@@ -104,20 +76,8 @@ export default function CalendarClient({ initialEvents, initialNeedsReconnect = 
     // Update current range after navigation
   const newRange = { start: api.view.activeStart, end: api.view.activeEnd };
   setCurrentRange(newRange);
-  // Serve immediately from cache if inside cached window
-  if (cacheRef.current) {
-    const { range, events: cached } = cacheRef.current;
-    if (newRange.start >= range.start && newRange.end <= range.end) {
-      // Filter cached events to visible week range to reduce render cost
-      const subset = cached.filter(ev => {
-        const evStart = new Date(ev.start);
-        const evEnd = new Date(ev.end);
-        return evStart < newRange.end && evEnd > newRange.start;
-      });
-      setEvents(subset);
-    }
-  }
-  // Debounced fetch will still run via datesSet
+  const subset = getSubset(newRange);
+  if (subset) setEvents(subset);
     
     if (process.env.NODE_ENV === 'development') {
       console.log('[calendar nav]', dir, {
@@ -159,7 +119,7 @@ export default function CalendarClient({ initialEvents, initialNeedsReconnect = 
                   {calendarMetas.map(meta => (
                     <button
                       key={meta.id}
-                      onClick={() => setCalendarMetas(ms => ms.map(m => m.id === meta.id ? { ...m, enabled: !m.enabled } : m))}
+                      onClick={() => toggle(meta.id)}
                       className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] bg-white hover:bg-teal-50 transition-colors ${meta.enabled ? 'text-gray-800' : 'text-gray-400'} `}
                     >
                       <span className="inline-block w-2.5 h-2.5 rounded" style={{ background: meta.color, filter: meta.enabled ? 'none' : 'grayscale(80%) brightness(1.1)' }} />
@@ -170,12 +130,10 @@ export default function CalendarClient({ initialEvents, initialNeedsReconnect = 
               )}
             </div>
             <div className="flex-1 overflow-hidden relative">
-    <FullCalendar
-          ref={(ref : any) => {
-            if (ref) {
-                calendarApiRef.current = ref.getApi();
-            }
-          }}
+    { /* ref retained intentionally */ }
+    {FullCalendar && (
+      <FullCalendar
+          {...({ ref: (ref: any) => { if (ref) { calendarApiRef.current = ref.getApi(); } } } as any)}
           plugins={[timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
           height="100%"
@@ -197,31 +155,9 @@ export default function CalendarClient({ initialEvents, initialNeedsReconnect = 
           headerToolbar={false}
           dayHeaderFormat={{ weekday: 'short', day: 'numeric' }}
           slotLabelFormat={{ hour: 'numeric', minute: '2-digit', hour12: true }}
-          datesSet={(arg) => {
-            const newRange = { start: arg.start, end: arg.end };
-            setCurrentRange(newRange);
-            const first = !initialRangeSetRef.current;
-            if (first) {
-              initialRangeSetRef.current = true;
-              if (process.env.NODE_ENV === 'development') {
-                console.log('[datesSet initial]', { start: arg.start.toISOString(), end: arg.end.toISOString() });
-              }
-              // If there were no initial events, fetch now for this range
-              if (initialEvents.length === 0) {
-                refresh(newRange);
-              }
-            } else {
-              // Range changed via navigation or other trigger; debounce fetch
-              if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-              debounceTimerRef.current = setTimeout(() => {
-                refresh(newRange);
-              }, 250);
-            }
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[datesSet callback]', { start: arg.start.toISOString(), end: arg.end.toISOString(), viewType: arg.view.type });
-            }
-          }}
-        />
+          datesSet={onDatesSet as any}
+    />
+  )}
         {needsReconnect && (
           <div className="absolute inset-0 z-20 flex items-center justify-center text-sm text-gray-500 bg-white/60 backdrop-blur-[2px]">
             <div className="bg-white border rounded-md shadow-lg p-4 flex flex-col items-center gap-2">
