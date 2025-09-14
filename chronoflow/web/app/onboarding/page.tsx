@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiChevronRight, FiCalendar, FiSlack, FiTrello, FiUsers, FiShield } from "react-icons/fi";
 import { FaGoogle, FaMicrosoft } from "react-icons/fa";
@@ -31,6 +31,17 @@ export default function OnboardingWizard() {
     });
     router.push("/dashboard");
   }
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const res = await fetch('/api/onboarding');
+      if (!res.ok) return;
+      const json = await res.json();
+      if (active && json.onboardingCompleted) router.replace('/dashboard');
+    })();
+    return () => { active = false; };
+  }, [router]);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 to-blue-100 animate-fadein">

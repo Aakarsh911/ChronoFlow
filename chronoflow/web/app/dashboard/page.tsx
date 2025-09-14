@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "../../lib/auth";
 import { LogoutButton } from "../components/LogoutButton";
+import { getOnboardingStatusByEmail } from "../../lib/user";
 import { DashboardCard } from "../components/DashboardCard";
 import { ScheduleItem } from "../components/ScheduleItem";
 import { QuickAction } from "../components/QuickAction";
@@ -10,6 +11,8 @@ import { Clock, Users, TrendingUp, Plus, Calendar, Target } from "lucide-react";
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect('/login?from=/dashboard');
+  const needsOnboarding = !(await getOnboardingStatusByEmail(session.user?.email || null));
+  if (needsOnboarding) redirect('/onboarding');
   
   const userName = session.user?.name || "User";
   const firstName = userName.split(" ")[0];
