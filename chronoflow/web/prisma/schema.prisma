@@ -18,6 +18,7 @@ model User {
   onboardingData      Json?
   accounts      Account[]
   sessions      Session[]
+  integrationConnections IntegrationConnection[]
   createdAt     DateTime  @default(now())
 }
 
@@ -56,4 +57,18 @@ model VerificationToken {
   expires    DateTime
   createdAt  DateTime @default(now())
   @@unique([identifier, token])
+}
+
+// Integration connection records (calendar/task/chat providers)
+model IntegrationConnection {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  String   // e.g. gcal, slack, jira, teams
+  status    String   @default("connected") // connected|error|revoked|pending
+  scopes    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, provider])
 }
