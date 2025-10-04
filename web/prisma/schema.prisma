@@ -1,0 +1,20 @@
+// Prisma schema for Postgres
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String?
+  googleId      String   @unique
+  image         String?
+  createdAt     DateTime @default(now())
+  onboarding    Boolean  @default(false)
+}
