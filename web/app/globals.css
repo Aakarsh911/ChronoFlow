@@ -4,82 +4,83 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated to indigo-violet + aqua-teal palette with dark mode base */
-  --background: oklch(0.18 0.02 270); /* Deep indigo-violet background */
-  --foreground: oklch(0.95 0.01 270); /* Light foreground for dark mode */
-  --card: oklch(0.22 0.03 270); /* Slightly lighter card with glassmorphism */
-  --card-foreground: oklch(0.95 0.01 270);
-  --popover: oklch(0.22 0.03 270);
-  --popover-foreground: oklch(0.95 0.01 270);
-  --primary: oklch(0.65 0.18 280); /* Indigo-violet primary */
+  /* Light theme inspired by Stripe and Loom - vibrant and sophisticated */
+  --background: oklch(0.99 0.005 270); /* Pure white background */
+  --foreground: oklch(0.15 0.02 270); /* Dark text */
+  --card: oklch(0.98 0.005 270); /* Very light card background */
+  --card-foreground: oklch(0.15 0.02 270);
+  --popover: oklch(1 0 0); /* Pure white */
+  --popover-foreground: oklch(0.15 0.02 270);
+  --primary: oklch(0.55 0.2 250); /* Vibrant purple-blue */
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.68 0.15 195); /* Aqua-teal secondary */
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.28 0.02 270);
-  --muted-foreground: oklch(0.65 0.01 270);
-  --accent: oklch(0.72 0.16 190); /* Bright aqua for AI accents */
-  --accent-foreground: oklch(0.15 0.02 270);
-  --destructive: oklch(0.58 0.22 25);
+  --secondary: oklch(0.92 0.02 270); /* Light gray */
+  --secondary-foreground: oklch(0.25 0.02 270);
+  --muted: oklch(0.95 0.01 270); /* Very light muted */
+  --muted-foreground: oklch(0.45 0.01 270); /* Medium gray text */
+  --accent: oklch(0.6 0.25 180); /* Vibrant teal/cyan */
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.6 0.25 25); /* Vibrant red */
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.32 0.02 270);
-  --input: oklch(0.28 0.02 270);
-  --ring: oklch(0.72 0.16 190 / 0.5); /* Aqua glow for focus rings */
-  --chart-1: oklch(0.72 0.16 190); /* Aqua */
-  --chart-2: oklch(0.65 0.18 280); /* Indigo */
-  --chart-3: oklch(0.68 0.15 195); /* Teal */
-  --chart-4: oklch(0.75 0.2 310); /* Violet */
-  --chart-5: oklch(0.7 0.17 260); /* Purple */
-  --radius: 0.75rem; /* Slightly larger radius for modern feel */
-  --sidebar: oklch(0.2 0.03 270);
-  --sidebar-foreground: oklch(0.95 0.01 270);
-  --sidebar-primary: oklch(0.65 0.18 280);
+  --border: oklch(0.9 0.01 270); /* Light border */
+  --input: oklch(0.96 0.005 270); /* Light input background */
+  --ring: oklch(0.6 0.25 180 / 0.3); /* Teal focus ring */
+  --chart-1: oklch(0.6 0.25 180); /* Teal */
+  --chart-2: oklch(0.55 0.2 250); /* Purple-blue */
+  --chart-3: oklch(0.65 0.2 120); /* Green */
+  --chart-4: oklch(0.65 0.25 60); /* Orange */
+  --chart-5: oklch(0.65 0.2 300); /* Pink */
+  --radius: 0.75rem;
+  --sidebar: oklch(0.97 0.005 270); /* Light sidebar */
+  --sidebar-foreground: oklch(0.15 0.02 270);
+  --sidebar-primary: oklch(0.55 0.2 250);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.72 0.16 190);
-  --sidebar-accent-foreground: oklch(0.15 0.02 270);
-  --sidebar-border: oklch(0.32 0.02 270);
-  --sidebar-ring: oklch(0.72 0.16 190 / 0.5);
+  --sidebar-accent: oklch(0.6 0.25 180);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.92 0.01 270);
+  --sidebar-ring: oklch(0.6 0.25 180 / 0.3);
 
-  /* Added custom glow colors for AI elements */
-  --glow-aqua: oklch(0.72 0.16 190);
-  --glow-violet: oklch(0.65 0.18 280);
+  /* Vibrant accent colors for highlights and special elements */
+  --success: oklch(0.65 0.2 140); /* Vibrant green */
+  --warning: oklch(0.7 0.2 70); /* Vibrant yellow */
+  --info: oklch(0.6 0.2 220); /* Vibrant blue */
+  --gradient-1: linear-gradient(135deg, oklch(0.55 0.2 250) 0%, oklch(0.6 0.25 180) 100%);
+  --gradient-2: linear-gradient(135deg, oklch(0.6 0.25 180) 0%, oklch(0.65 0.2 120) 100%);
 }
 
 .dark {
-  /* Dark mode is now the default, keeping same values */
-  --background: oklch(0.18 0.02 270);
+  /* Dark mode option - keeping light as default */
+  --background: oklch(0.09 0.02 270);
   --foreground: oklch(0.95 0.01 270);
-  --card: oklch(0.22 0.03 270);
+  --card: oklch(0.12 0.02 270);
   --card-foreground: oklch(0.95 0.01 270);
-  --popover: oklch(0.22 0.03 270);
+  --popover: oklch(0.12 0.02 270);
   --popover-foreground: oklch(0.95 0.01 270);
-  --primary: oklch(0.65 0.18 280);
+  --primary: oklch(0.6 0.2 250);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.68 0.15 195);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.28 0.02 270);
+  --secondary: oklch(0.18 0.02 270);
+  --secondary-foreground: oklch(0.85 0.01 270);
+  --muted: oklch(0.15 0.01 270);
   --muted-foreground: oklch(0.65 0.01 270);
-  --accent: oklch(0.72 0.16 190);
-  --accent-foreground: oklch(0.15 0.02 270);
-  --destructive: oklch(0.58 0.22 25);
+  --accent: oklch(0.65 0.25 180);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.65 0.25 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.32 0.02 270);
-  --input: oklch(0.28 0.02 270);
-  --ring: oklch(0.72 0.16 190 / 0.5);
-  --chart-1: oklch(0.72 0.16 190);
-  --chart-2: oklch(0.65 0.18 280);
-  --chart-3: oklch(0.68 0.15 195);
-  --chart-4: oklch(0.75 0.2 310);
-  --chart-5: oklch(0.7 0.17 260);
-  --sidebar: oklch(0.2 0.03 270);
+  --border: oklch(0.2 0.02 270);
+  --input: oklch(0.15 0.02 270);
+  --ring: oklch(0.65 0.25 180 / 0.5);
+  --chart-1: oklch(0.65 0.25 180);
+  --chart-2: oklch(0.6 0.2 250);
+  --chart-3: oklch(0.7 0.2 120);
+  --chart-4: oklch(0.7 0.25 60);
+  --chart-5: oklch(0.7 0.2 300);
+  --sidebar: oklch(0.08 0.02 270);
   --sidebar-foreground: oklch(0.95 0.01 270);
-  --sidebar-primary: oklch(0.65 0.18 280);
+  --sidebar-primary: oklch(0.6 0.2 250);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.72 0.16 190);
-  --sidebar-accent-foreground: oklch(0.15 0.02 270);
-  --sidebar-border: oklch(0.32 0.02 270);
-  --sidebar-ring: oklch(0.72 0.16 190 / 0.5);
-  --glow-aqua: oklch(0.72 0.16 190);
-  --glow-violet: oklch(0.65 0.18 280);
+  --sidebar-accent: oklch(0.65 0.25 180);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.2 0.02 270);
+  --sidebar-ring: oklch(0.65 0.25 180 / 0.5);
 }
 
 @theme inline {
@@ -132,30 +133,51 @@
   }
 }
 
-/* Added glassmorphism and glow effects */
+/* Light theme sophisticated styling inspired by Stripe and Loom */
 @layer utilities {
   .glass-panel {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   }
 
-  .glow-aqua {
-    box-shadow: 0 0 20px rgba(114, 230, 230, 0.3), 0 0 40px rgba(114, 230, 230, 0.15);
+  .elevated-card {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease-in-out;
   }
 
-  .glow-violet {
-    box-shadow: 0 0 20px rgba(138, 99, 210, 0.3), 0 0 40px rgba(138, 99, 210, 0.15);
+  .elevated-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
   }
 
-  .glow-subtle-aqua {
-    box-shadow: 0 0 10px rgba(114, 230, 230, 0.2);
+  .gradient-primary {
+    background: linear-gradient(135deg, oklch(0.55 0.2 250) 0%, oklch(0.6 0.25 180) 100%);
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, oklch(0.6 0.25 180) 0%, oklch(0.65 0.2 120) 100%);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(102, 51, 238, 0.3);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+  }
+
+  .glow-subtle {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   }
 
   .ai-highlight {
     position: relative;
-    background: linear-gradient(135deg, rgba(114, 230, 230, 0.1) 0%, rgba(138, 99, 210, 0.1) 100%);
-    border: 1px solid rgba(114, 230, 230, 0.3);
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(102, 51, 238, 0.05) 100%);
+    border: 1px solid rgba(14, 165, 233, 0.2);
   }
 
   .ai-highlight::before {
@@ -164,10 +186,80 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(114, 230, 230, 0.5), rgba(138, 99, 210, 0.5));
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.3), rgba(102, 51, 238, 0.3));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
     pointer-events: none;
+  }
+
+  .sidebar-nav-item {
+    transition: all 0.15s ease-in-out;
+  }
+
+  .sidebar-nav-item:hover {
+    background: rgba(102, 51, 238, 0.08);
+    transform: translateX(2px);
+  }
+
+  .sidebar-nav-item.active {
+    background: rgba(102, 51, 238, 0.1);
+    color: oklch(0.55 0.2 250);
+    border-right: 2px solid oklch(0.55 0.2 250);
+  }
+
+  /* Custom scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  /* Apply custom scrollbar to all scrollable areas */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
 }
