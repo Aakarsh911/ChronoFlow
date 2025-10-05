@@ -62,6 +62,15 @@ const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
 
 const WORK_HOURS = { start: 0, end: 24 }
 
+// Cache structure for storing calendar data
+interface CalendarCache {
+  events: CalendarEvent[]
+  calendars: CalendarInfo[]
+  timestamp: number
+  weekStart: string
+  weekEnd: string
+}
+
 export function WeeklyCalendarView() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -71,6 +80,8 @@ export function WeeklyCalendarView() {
   const [error, setError] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const fetchingRef = useRef(false)
+  const cacheRef = useRef<Map<string, CalendarCache>>(new Map())
+  const preloadingRef = useRef<Set<string>>(new Set())
 
   // Debug loading state changes
   useEffect(() => {
@@ -85,94 +96,193 @@ export function WeeklyCalendarView() {
   // Only show work days (Monday to Friday)
   const workDays = useMemo(() => weekDays.slice(0, 5), [weekDays])
 
+  // Cache utility functions
+  const getCacheKey = useCallback((weekStart: Date, weekEnd: Date) => {
+    return `${format(weekStart, 'yyyy-MM-dd')}_${format(weekEnd, 'yyyy-MM-dd')}`
+  }, [])
+
+  const getCachedData = useCallback((weekStart: Date, weekEnd: Date) => {
+    const key = getCacheKey(weekStart, weekEnd)
+    const cached = cacheRef.current.get(key)
+    
+    if (cached) {
+      const isExpired = Date.now() - cached.timestamp > 5 * 60 * 1000 // 5 minutes expiry
+      if (!isExpired) {
+        return cached
+      } else {
+        cacheRef.current.delete(key)
+      }
+    }
+    
+    return null
+  }, [getCacheKey])
+
+  const setCachedData = useCallback((weekStart: Date, weekEnd: Date, events: CalendarEvent[], calendars: CalendarInfo[]) => {
+    const key = getCacheKey(weekStart, weekEnd)
+    
+    // Manage cache size - keep only the most recent 50 weeks
+    if (cacheRef.current.size >= 50) {
+      // Remove oldest entries
+      const entries = Array.from(cacheRef.current.entries())
+      entries.sort((a, b) => a[1].timestamp - b[1].timestamp)
+      
+      // Remove oldest 10 entries
+      for (let i = 0; i < 10 && i < entries.length; i++) {
+        cacheRef.current.delete(entries[i][0])
+      }
+    }
+    
+    cacheRef.current.set(key, {
+      events,
+      calendars,
+      timestamp: Date.now(),
+      weekStart: weekStart.toISOString(),
+      weekEnd: weekEnd.toISOString()
+    })
+  }, [getCacheKey])
+
   // Manual refresh function
   const refreshCalendarData = useCallback(() => {
     console.log('🔄 Manual calendar refresh triggered')
+    // Clear entire cache on refresh
+    cacheRef.current.clear()
+    preloadingRef.current.clear()
+    
     // Reset the ref to allow new fetch
     fetchingRef.current = false
-    // Reset loading state in case it's stuck
     setLoading(false)
     setError(null)
     
-    // Trigger a re-fetch by updating the current week (this will trigger the useEffect)
+    // Trigger a re-fetch by updating the current week
     setCurrentWeek(prev => new Date(prev.getTime()))
   }, [])
+
+  // Background fetch function for caching
+  const backgroundFetch = useCallback(async (weekStart: Date, weekEnd: Date) => {
+    const key = getCacheKey(weekStart, weekEnd)
+    
+    // Skip if already cached or currently fetching
+    if (getCachedData(weekStart, weekEnd) || preloadingRef.current.has(key)) {
+      return
+    }
+    
+    preloadingRef.current.add(key)
+    
+    try {
+      const response = await fetch(
+        `/api/calendar/google?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
+      )
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
+      const data = await response.json()
+      setCachedData(weekStart, weekEnd, data.events || [], data.calendars || [])
+      
+    } catch (err) {
+      console.error('❌ Background fetch failed for:', format(weekStart, 'MMM d'), err)
+    } finally {
+      preloadingRef.current.delete(key)
+    }
+  }, [getCacheKey, getCachedData, setCachedData])
+
+  // Aggressive pre-loading function for multiple weeks
+  const preloadMultipleWeeks = useCallback(async (centerWeek: Date, weeksAhead = 8, weeksBehind = 4) => {
+    const preloadPromises: Promise<void>[] = []
+    
+    // Pre-load weeks behind current week
+    for (let i = 1; i <= weeksBehind; i++) {
+      const targetWeek = subWeeks(centerWeek, i)
+      const weekStart = startOfWeek(targetWeek, { weekStartsOn: 1 })
+      const weekEnd = endOfWeek(targetWeek, { weekStartsOn: 1 })
+      preloadPromises.push(backgroundFetch(weekStart, weekEnd))
+    }
+    
+    // Pre-load weeks ahead of current week
+    for (let i = 1; i <= weeksAhead; i++) {
+      const targetWeek = addWeeks(centerWeek, i)
+      const weekStart = startOfWeek(targetWeek, { weekStartsOn: 1 })
+      const weekEnd = endOfWeek(targetWeek, { weekStartsOn: 1 })
+      preloadPromises.push(backgroundFetch(weekStart, weekEnd))
+    }
+    
+    // Execute all preloads with slight delays to avoid overwhelming the API
+    for (let i = 0; i < preloadPromises.length; i++) {
+      setTimeout(() => {
+        preloadPromises[i]
+      }, i * 100) // 100ms delay between each request
+    }
+  }, [backgroundFetch])
 
   useEffect(() => {
     let isCancelled = false
     
-    const fetchData = async () => {
-      // Prevent multiple simultaneous requests
-      if (fetchingRef.current) {
-        console.log('🚫 Calendar fetch blocked - request already in progress')
+    const loadWeekData = async () => {
+      console.log('� Loading week data for:', format(weekStart, 'MMM d'), '-', format(weekEnd, 'MMM d'))
+      
+      // First, check cache for instant loading
+      const cachedData = getCachedData(weekStart, weekEnd)
+      
+      if (cachedData) {
+        console.log('⚡ Using cached data for instant switch')
+        setEvents(cachedData.events)
+        setCalendars(cachedData.calendars)
+        setError(null)
+        
+        // Trigger aggressive pre-loading for smooth navigation
+        setTimeout(() => {
+          preloadMultipleWeeks(weekStart)
+        }, 100)
+        
         return
       }
       
-      console.log('📅 Starting calendar fetch...', {
-        weekStart: weekStart.toISOString(),
-        weekEnd: weekEnd.toISOString()
-      })
+      // No cache hit - show loading and fetch
+      if (fetchingRef.current) {
+        console.log('🚫 Fetch already in progress')
+        return
+      }
       
       fetchingRef.current = true
       setLoading(true)
       setError(null)
-      
-      // Set a timeout to prevent infinite loading
-      const timeout = setTimeout(() => {
-        if (fetchingRef.current) {
-          console.warn('⚠️ Calendar fetch timeout - forcing cleanup')
-          setLoading(false)
-          fetchingRef.current = false
-          if (!isCancelled) {
-            setError('Request timed out')
-          }
-        }
-      }, 30000) // 30 second timeout
       
       try {
         const response = await fetch(
           `/api/calendar/google?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
         )
         
-        console.log('📡 API Response status:', response.status)
-        
-        if (isCancelled) {
-          console.log('❌ Request cancelled during fetch')
-          return
-        }
+        if (isCancelled) return
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
-          console.error('❌ API Error:', errorData)
           throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch calendar data`)
         }
         
         const data = await response.json()
-        console.log('✅ Calendar data received:', {
-          calendarsCount: data.calendars?.length || 0,
-          eventsCount: data.events?.length || 0,
-          calendars: data.calendars,
-          events: data.events
-        })
         
         if (!isCancelled) {
-          setCalendars(data.calendars || [])
           setEvents(data.events || [])
+          setCalendars(data.calendars || [])
+          
+          // Cache the fetched data
+          setCachedData(weekStart, weekEnd, data.events || [], data.calendars || [])
           
           // Only set default calendar selection if no calendars are currently enabled
           setEnabledCalendars(prevEnabled => {
             if (prevEnabled.size === 0) {
-              // Enable primary calendar by default only on first load
-              const primaryCalendars = data.calendars?.filter((cal: CalendarInfo) => cal.primary) || []
-              return new Set(primaryCalendars.map((cal: CalendarInfo) => cal.id))
+              return new Set((data.calendars || []).map((cal: CalendarInfo) => cal.id))
             }
             // Preserve existing selection but ensure selected calendars still exist
             const availableCalendarIds = new Set(data.calendars?.map((cal: CalendarInfo) => cal.id) || [])
-            const validSelection = new Set([...prevEnabled].filter(id => availableCalendarIds.has(id)))
-            return validSelection
+            return new Set([...prevEnabled].filter(id => availableCalendarIds.has(id)))
           })
           
-          console.log('🎯 State updated with data')
+          // Start aggressive pre-loading after initial load
+          setTimeout(() => {
+            preloadMultipleWeeks(weekStart)
+          }, 500)
         }
         
       } catch (err) {
@@ -181,21 +291,28 @@ export function WeeklyCalendarView() {
           setError(err instanceof Error ? err.message : 'An error occurred')
         }
       } finally {
-        // Clear the timeout
-        clearTimeout(timeout)
-        // Always reset loading and fetchingRef, regardless of cancellation
-        console.log('🏁 Calendar fetch completed, cleaning up...')
         setLoading(false)
         fetchingRef.current = false
       }
     }
     
-    fetchData()
+    loadWeekData()
     
     return () => {
       isCancelled = true
     }
-  }, [weekStart, weekEnd])
+  }, [weekStart, weekEnd, getCachedData, setCachedData, backgroundFetch])
+
+  // Warm cache on component mount
+  useEffect(() => {
+    // Start aggressive caching 2 seconds after mount to let initial load complete
+    const timer = setTimeout(() => {
+      console.log('🔥 Warming cache with extended range...')
+      preloadMultipleWeeks(currentWeek, 12, 8) // 12 weeks ahead, 8 weeks behind
+    }, 2000)
+    
+    return () => clearTimeout(timer)
+  }, [preloadMultipleWeeks, currentWeek])
 
   // Update current time every minute
   useEffect(() => {
@@ -226,9 +343,39 @@ export function WeeklyCalendarView() {
     return () => clearTimeout(timer)
   }, [calendars, events]) // Re-scroll when data loads
 
-  const navigateWeek = (direction: "prev" | "next") => {
-    setCurrentWeek(prev => direction === "next" ? addWeeks(prev, 1) : subWeeks(prev, 1))
-  }
+  const navigateWeek = useCallback((direction: "prev" | "next") => {
+    const newWeek = direction === "next" ? addWeeks(currentWeek, 1) : subWeeks(currentWeek, 1)
+    
+    // Immediate UI update for instant response
+    setCurrentWeek(newWeek)
+    
+    // Maintain the buffer by pre-loading more weeks in the navigation direction
+    setTimeout(() => {
+      if (direction === "next") {
+        // Pre-load 6 more weeks ahead
+        for (let i = 6; i <= 10; i++) {
+          const futureWeek = addWeeks(newWeek, i)
+          const weekStart = startOfWeek(futureWeek, { weekStartsOn: 1 })
+          const weekEnd = endOfWeek(futureWeek, { weekStartsOn: 1 })
+          
+          setTimeout(() => {
+            backgroundFetch(weekStart, weekEnd)
+          }, (i - 6) * 150) // Stagger the requests
+        }
+      } else {
+        // Pre-load 6 more weeks behind
+        for (let i = 6; i <= 10; i++) {
+          const pastWeek = subWeeks(newWeek, i)
+          const weekStart = startOfWeek(pastWeek, { weekStartsOn: 1 })
+          const weekEnd = endOfWeek(pastWeek, { weekStartsOn: 1 })
+          
+          setTimeout(() => {
+            backgroundFetch(weekStart, weekEnd)
+          }, (i - 6) * 150) // Stagger the requests
+        }
+      }
+    }, 100)
+  }, [currentWeek, backgroundFetch])
 
   const toggleCalendar = (calendarId: string) => {
     setEnabledCalendars(prev => {
