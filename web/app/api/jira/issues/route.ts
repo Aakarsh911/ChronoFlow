@@ -35,22 +35,48 @@ async function refreshJiraToken(integration: any) {
   return { accessToken: tokens.access_token }
 }
 
-async function getCloudId(accessToken: string, integration: any) {
-  const existing = (integration?.data as any)?.cloudId
-  if (existing) return existing as string
+// Fetch Jira cloud/site details: cloudId and siteUrl (e.g., https://<site>.atlassian.net)
+async function getJiraSiteDetails(
+  accessToken: string,
+  integration: any,
+): Promise<{ cloudId: string; siteUrl: string } | null> {
+  const existing = integration?.data as any
+  if (existing?.cloudId && existing?.siteUrl) {
+    return { cloudId: existing.cloudId as string, siteUrl: existing.siteUrl as string }
+  }
+
+  // 1) Try accessible resources (preferred; includes site base URL)
   const r = await fetch("https://api.atlassian.com/oauth/token/accessible-resources", {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
   })
   if (!r.ok) return null
   const arr = await r.json()
-  const cloudId = Array.isArray(arr) && arr[0]?.id
-  if (cloudId) {
+  const first = Array.isArray(arr) ? arr.find((x: any) => x?.id && (x?.scopes?.includes?.("read:jira-work") || true)) : null
+  const cloudId: string | undefined = first?.id
+  // In Atlassian docs, `url` is the site base (e.g., https://example.atlassian.net)
+  let siteUrl: string | undefined = first?.url
+
+  // 2) If siteUrl missing, query serverInfo via API to discover baseUrl
+  if (!siteUrl && cloudId) {
+    const serverInfoRes = await fetch(
+      `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/serverInfo`,
+      { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } },
+    )
+    if (serverInfoRes.ok) {
+      const info = await serverInfoRes.json().catch(() => null as any)
+      siteUrl = info?.baseUrl
+    }
+  }
+
+  if (cloudId && siteUrl) {
     await prisma.integration.update({
       where: { userId_provider: { userId: integration.userId, provider: "JIRA" } },
-      data: { data: { ...(integration.data as any), cloudId } },
+      data: { data: { ...(integration.data as any), cloudId, siteUrl } },
     })
+    return { cloudId, siteUrl }
   }
-  return cloudId ?? null
+
+  return null
 }
 
 export async function GET() {
@@ -66,17 +92,17 @@ export async function GET() {
   if (!integration?.accessToken) return NextResponse.json({ issues: [] })
 
   let accessToken = integration.accessToken
-  let cloudId = await getCloudId(accessToken, integration)
-  if (!cloudId) {
+  let site = await getJiraSiteDetails(accessToken, integration)
+  if (!site) {
     // Try refresh token then retry cloudId
     const refreshed = await refreshJiraToken(integration)
     if (!refreshed) return NextResponse.json({ issues: [] })
     accessToken = refreshed.accessToken
-    cloudId = await getCloudId(accessToken, integration)
-    if (!cloudId) return NextResponse.json({ issues: [] })
+    site = await getJiraSiteDetails(accessToken, integration)
+    if (!site) return NextResponse.json({ issues: [] })
   }
 
-  const base = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3`
+  const base = `https://api.atlassian.com/ex/jira/${site.cloudId}/rest/api/3`
   const jql = encodeURIComponent("assignee = currentUser() AND resolution = Unresolved ORDER BY updated DESC")
   const url = `${base}/search/jql?jql=${jql}&maxResults=25&fields=summary,status,priority,assignee,duedate,project,timeoriginalestimate,timespent`
 
@@ -104,7 +130,8 @@ export async function GET() {
       timeOriginalEstimate: f.timeoriginalestimate || 0,
       timespent: f.timespent || 0,
       projectName: f.project?.name || null,
-      url: `https://id.atlassian.com/login?continue=https://api.atlassian.com/ex/jira/${cloudId}/browse/${it.key}`,
+  // Build a proper browse URL on the Jira site domain, not the API domain
+  url: `${site!.siteUrl}/browse/${it.key}`,
     }
   })
 
