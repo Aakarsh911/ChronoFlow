@@ -35,7 +35,8 @@ type UITask = {
   description: string
   source: "jira" | "slack" | "teams"
   sourceId: string
-  status: "todo" | "in-progress" | "done"
+  statusName: string
+  statusCategory: "todo" | "in-progress" | "done"
   priority: "low" | "medium" | "high"
   assignee: string | null
   estimatedTime: number
@@ -65,7 +66,7 @@ const statusConfig = {
 }
 
 export function TaskManagement() {
-  const [filter, setFilter] = useState("all")
+  const [filter, setFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [tasks, setTasks] = useState<UITask[]>([])
   const [loading, setLoading] = useState(false)
@@ -93,7 +94,7 @@ export function TaskManagement() {
           }
         } catch {}
 
-        const res = await fetch("/api/jira/issues", { cache: "no-store" })
+    const res = await fetch("/api/jira/issues", { cache: "no-store" })
         if (res.ok) {
           const data = await res.json()
           const items: UITask[] = (data.issues || []).map((it: any) => ({
@@ -102,7 +103,8 @@ export function TaskManagement() {
             description: it.summary,
             source: "jira",
             sourceId: it.key,
-            status: mapStatus(it.statusName),
+      statusName: it.statusName || "Unknown",
+      statusCategory: mapStatusCategory(it.statusName),
             priority: mapPriority(it.priorityName),
             assignee: it.assignee,
             estimatedTime: it.timeOriginalEstimate ? Math.round(it.timeOriginalEstimate / 60) : 0,
@@ -125,10 +127,10 @@ export function TaskManagement() {
     load()
   }, [])
 
-  function mapStatus(name?: string): UITask["status"] {
+  function mapStatusCategory(name?: string): UITask["statusCategory"] {
     const n = (name || "").toLowerCase()
-    if (n.includes("progress") || n.includes("doing")) return "in-progress"
-    if (n.includes("done") || n.includes("resolved") || n.includes("closed")) return "done"
+    if (n.includes("done") || n.includes("resolved") || n.includes("closed") || n.includes("complete")) return "done"
+    if (n.includes("progress") || n.includes("doing") || n.includes("review") || n.includes("qa")) return "in-progress"
     return "todo"
   }
 
@@ -143,16 +145,16 @@ export function TaskManagement() {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesFilter = filter === "all" || task.status === filter
+    const matchesFilter = filter === "all" || task.statusName === filter
   const matchesSource = sourceFilter === "all" || task.source === sourceFilter
   return matchesSearch && matchesFilter && matchesSource
   })
 
   const getTaskStats = () => {
     const total = tasks.length
-    const completed = tasks.filter((t) => t.status === "done").length
-    const inProgress = tasks.filter((t) => t.status === "in-progress").length
-    const todo = tasks.filter((t) => t.status === "todo").length
+    const completed = tasks.filter((t) => t.statusCategory === "done").length
+    const inProgress = tasks.filter((t) => t.statusCategory === "in-progress").length
+    const todo = tasks.filter((t) => t.statusCategory === "todo").length
     return { total, completed, inProgress, todo }
   }
 
@@ -169,6 +171,36 @@ export function TaskManagement() {
     // In a real app, this would update the task status
     console.log(`Toggle task ${taskId} status`)
   }
+
+  const STATUS_COLOR_CLASSES = [
+    "bg-gray-500/10 text-gray-700 border-gray-200",
+    "bg-sky-500/10 text-sky-700 border-sky-200",
+    "bg-amber-500/10 text-amber-700 border-amber-200",
+    "bg-emerald-500/10 text-emerald-700 border-emerald-200",
+    "bg-violet-500/10 text-violet-700 border-violet-200",
+    "bg-rose-500/10 text-rose-700 border-rose-200",
+    "bg-indigo-500/10 text-indigo-700 border-indigo-200",
+  ] as const
+
+  function getStatusBadgeClass(name: string) {
+    const n = (name || "").toLowerCase()
+    if (n.includes("done") || n.includes("resolved") || n.includes("closed")) {
+      return "bg-accent/10 text-accent border-accent/20"
+    }
+    if (n.includes("progress") || n.includes("review") || n.includes("qa")) {
+      return "bg-primary/10 text-primary border-primary/20"
+    }
+    let hash = 0
+    for (let i = 0; i < n.length; i++) hash = (hash * 31 + n.charCodeAt(i)) >>> 0
+    const idx = hash % STATUS_COLOR_CLASSES.length
+    return STATUS_COLOR_CLASSES[idx]
+  }
+
+  const uniqueStatuses = React.useMemo(() => {
+    const set = new Set<string>()
+    tasks.forEach((t) => set.add(t.statusName))
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [tasks])
 
   return (
     <div className="space-y-6">
@@ -278,9 +310,9 @@ export function TaskManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="todo">To Do</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
+                {uniqueStatuses.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -309,7 +341,7 @@ export function TaskManagement() {
                           className="p-0 h-auto"
                           onClick={() => toggleTaskStatus(task.id)}
                         >
-                          {task.status === "done" ? (
+                          {task.statusCategory === "done" ? (
                             <CheckCircle2 className="w-5 h-5 text-accent" />
                           ) : (
                             <Circle className="w-5 h-5 text-muted-foreground hover:text-primary" />
@@ -319,10 +351,10 @@ export function TaskManagement() {
                         <div className="flex-1 space-y-2">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1">
-                              <h3
+                <h3
                                 className={cn(
                                   "font-medium text-sm",
-                                  task.status === "done" && "line-through text-muted-foreground",
+                  task.statusCategory === "done" && "line-through text-muted-foreground",
                                 )}
                               >
                                 {task.title}
@@ -376,11 +408,8 @@ export function TaskManagement() {
                             >
                               {priorityConfig[task.priority as keyof typeof priorityConfig].label}
                             </Badge>
-                            <Badge
-                              variant="outline"
-                              className={cn("text-xs", statusConfig[task.status as keyof typeof statusConfig].color)}
-                            >
-                              {statusConfig[task.status as keyof typeof statusConfig].label}
+                            <Badge variant="outline" className={cn("text-xs", getStatusBadgeClass(task.statusName))}>
+                              {task.statusName}
                             </Badge>
                             <Badge variant="secondary" className="text-xs">
                               {task.project}
@@ -393,7 +422,7 @@ export function TaskManagement() {
                               {task.actualTime > 0 && <span>Actual: {formatTime(task.actualTime)}</span>}
                               {task.dueDate && <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>}
                             </div>
-                            {task.actualTime > 0 && task.estimatedTime > 0 && task.status !== "done" && (
+                            {task.actualTime > 0 && task.estimatedTime > 0 && task.statusCategory !== "done" && (
                               <div className="flex items-center gap-2">
                                 <Progress value={(task.actualTime / task.estimatedTime) * 100} className="w-20 h-2" />
                                 <span>{Math.round((task.actualTime / task.estimatedTime) * 100)}%</span>
