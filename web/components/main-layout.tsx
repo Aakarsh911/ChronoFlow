@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { 
   Calendar, 
   Clock, 
@@ -54,7 +54,7 @@ const navigationItems = [
     title: "Tasks",
     href: "/tasks",
     icon: Target,
-    badge: "3"
+    badge: null
   },
   {
     title: "Focus Time",
@@ -81,6 +81,31 @@ export function MainLayout({ children }: MainLayoutProps) {
   const user = session?.user
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [taskCount, setTaskCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    const controller = new AbortController()
+    const load = async () => {
+      try {
+        const res = await fetch("/api/jira/issues", { cache: "no-store", signal: controller.signal })
+        if (!res.ok) {
+          if (isMounted) setTaskCount(0)
+          return
+        }
+        const data = await res.json()
+        const count = Array.isArray(data?.issues) ? data.issues.length : 0
+        if (isMounted) setTaskCount(count)
+      } catch {
+        if (isMounted) setTaskCount(0)
+      }
+    }
+    load()
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,6 +133,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             {navigationItems.map((item) => {
               const isActive = pathname === item.href
               const Icon = item.icon
+              const dynamicBadge = item.href === "/tasks" ? (taskCount && taskCount > 0 ? String(taskCount) : null) : item.badge
               
               return (
                 <Link key={item.href} href={item.href}>
@@ -124,9 +150,9 @@ export function MainLayout({ children }: MainLayoutProps) {
                       <Icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
                       <span>{item.title}</span>
                     </div>
-                    {item.badge && (
+                    {dynamicBadge && (
                       <Badge variant="secondary" className="text-xs bg-accent/10 text-accent">
-                        {item.badge}
+                        {dynamicBadge}
                       </Badge>
                     )}
                   </div>
@@ -167,9 +193,11 @@ export function MainLayout({ children }: MainLayoutProps) {
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/settings" className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-destructive">
@@ -213,9 +241,11 @@ export function MainLayout({ children }: MainLayoutProps) {
               
               <NotificationDropdown />
 
-              <Button variant="ghost" size="sm">
-                <Settings className="w-4 h-4" />
-              </Button>
+              <Link href="/settings">
+                <Button variant="ghost" size="sm">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </Link>
             </div>
           </div>
         </header>

@@ -1,11 +1,12 @@
 
 import NextAuth from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -23,7 +24,7 @@ const handler = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    async redirect({ url, baseUrl }) {
+    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       // Allow only same-origin redirects for safety
       if (url.startsWith(baseUrl)) return url
       // If NextAuth provides a relative path, join it with baseUrl
@@ -31,7 +32,7 @@ const handler = NextAuth({
       // Fallback to homepage
       return baseUrl
     },
-    async signIn({ user, account, profile }) {
+  async signIn({ user, account }: any) {
       // Store user info in User table if not already present
       if (account?.provider === "google" && user.email) {
         await prisma.user.upsert({
@@ -56,18 +57,20 @@ const handler = NextAuth({
       }
       return true;
     },
-    async jwt({ token, account }) {
+  async jwt({ token, account }: any) {
       if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
       }
       return token
     },
-    async session({ session, token }) {
+  async session({ session, token }: any) {
       session.accessToken = token.accessToken as string
       return session
     },
   },
-});
+}
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

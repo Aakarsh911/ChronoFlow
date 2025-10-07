@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import {
   CheckCircle2,
   Circle,
@@ -15,100 +15,41 @@ import {
   Calendar,
   User,
   MoreHorizontal,
+  KanbanSquare,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
-// Mock data for tasks from different sources
-const mockTasks = [
-  {
-    id: 1,
-    title: "Fix authentication bug in login flow",
-    description: "Users are experiencing issues with OAuth login",
-    source: "jira",
-    sourceId: "AUTH-123",
-    status: "in-progress",
-    priority: "high",
-    assignee: "John Doe",
-    estimatedTime: 240, // minutes
-    actualTime: 120,
-    dueDate: "2024-01-16",
-    tags: ["bug", "authentication"],
-    project: "Auth System",
-  },
-  {
-    id: 2,
-    title: "Review PR for new dashboard components",
-    description: "Code review needed for dashboard refactor",
-    source: "slack",
-    sourceId: "msg-456",
-    status: "todo",
-    priority: "medium",
-    assignee: "John Doe",
-    estimatedTime: 60,
-    actualTime: 0,
-    dueDate: "2024-01-15",
-    tags: ["review", "frontend"],
-    project: "Dashboard",
-  },
-  {
-    id: 3,
-    title: "Update API documentation",
-    description: "Documentation needs to reflect recent API changes",
-    source: "teams",
-    sourceId: "teams-789",
-    status: "done",
-    priority: "low",
-    assignee: "John Doe",
-    estimatedTime: 90,
-    actualTime: 85,
-    dueDate: "2024-01-14",
-    tags: ["documentation", "api"],
-    project: "API",
-  },
-  {
-    id: 4,
-    title: "Implement user preferences feature",
-    description: "Allow users to customize their dashboard layout",
-    source: "jira",
-    sourceId: "FEAT-456",
-    status: "todo",
-    priority: "medium",
-    assignee: "John Doe",
-    estimatedTime: 480,
-    actualTime: 0,
-    dueDate: "2024-01-20",
-    tags: ["feature", "frontend"],
-    project: "User Experience",
-  },
-  {
-    id: 5,
-    title: "Database performance optimization",
-    description: "Optimize slow queries identified in monitoring",
-    source: "slack",
-    sourceId: "msg-101",
-    status: "in-progress",
-    priority: "high",
-    assignee: "John Doe",
-    estimatedTime: 360,
-    actualTime: 180,
-    dueDate: "2024-01-17",
-    tags: ["performance", "database"],
-    project: "Infrastructure",
-  },
-]
+// Data model for Jira issues normalized to our UI
+type UITask = {
+  id: string | number
+  title: string
+  description: string
+  source: "jira" | "slack" | "teams"
+  sourceId: string
+  status: "todo" | "in-progress" | "done"
+  priority: "low" | "medium" | "high"
+  assignee: string | null
+  estimatedTime: number
+  actualTime: number
+  dueDate: string | null
+  tags: string[]
+  project: string | null
+  url?: string
+}
 
-const sourceConfig = {
-  jira: { icon: "🟦", color: "bg-blue-500/10 text-blue-600 border-blue-200", name: "Jira" },
-  slack: { icon: "🟣", color: "bg-purple-500/10 text-purple-600 border-purple-200", name: "Slack" },
-  teams: { icon: "🔵", color: "bg-indigo-500/10 text-indigo-600 border-indigo-200", name: "Teams" },
+const sourceConfig: Record<UITask["source"], { icon: React.ElementType; color: string; name: string }> = {
+  jira: { icon: KanbanSquare, color: "bg-blue-500/10 text-blue-600 border-blue-200", name: "Jira" },
+  slack: { icon: MessageSquare, color: "bg-purple-500/10 text-purple-600 border-purple-200", name: "Slack" },
+  teams: { icon: Users, color: "bg-indigo-500/10 text-indigo-600 border-indigo-200", name: "Teams" },
 }
 
 const priorityConfig = {
@@ -126,26 +67,97 @@ const statusConfig = {
 export function TaskManagement() {
   const [filter, setFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedTab, setSelectedTab] = useState("all")
+  const [tasks, setTasks] = useState<UITask[]>([])
+  const [loading, setLoading] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<"all" | UITask["source"]>("all")
+  const [connections, setConnections] = useState<{ jira: boolean; slack: boolean; teams: boolean }>({
+    jira: false,
+    slack: false,
+    teams: false,
+  })
 
-  const filteredTasks = mockTasks.filter((task) => {
+  React.useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      try {
+        // Fetch connections
+        try {
+          const c = await fetch("/api/integrations", { cache: "no-store" })
+          if (c.ok) {
+            const map = await c.json()
+            setConnections({
+              jira: !!(map?.jira || map?.JIRA || map?.atlassian),
+              slack: !!(map?.slack || map?.SLACK),
+              teams: !!(map?.teams || map?.TEAMS || map?.microsoftTeams),
+            })
+          }
+        } catch {}
+
+        const res = await fetch("/api/jira/issues", { cache: "no-store" })
+        if (res.ok) {
+          const data = await res.json()
+          const items: UITask[] = (data.issues || []).map((it: any) => ({
+            id: it.id,
+            title: it.summary,
+            description: it.summary,
+            source: "jira",
+            sourceId: it.key,
+            status: mapStatus(it.statusName),
+            priority: mapPriority(it.priorityName),
+            assignee: it.assignee,
+            estimatedTime: it.timeOriginalEstimate ? Math.round(it.timeOriginalEstimate / 60) : 0,
+            actualTime: it.timespent ? Math.round(it.timespent / 60) : 0,
+            dueDate: it.dueDate,
+            tags: [],
+            project: it.projectName,
+            url: it.url,
+          }))
+          setTasks(items)
+        } else {
+          setTasks([])
+        }
+      } catch {
+        setTasks([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  function mapStatus(name?: string): UITask["status"] {
+    const n = (name || "").toLowerCase()
+    if (n.includes("progress") || n.includes("doing")) return "in-progress"
+    if (n.includes("done") || n.includes("resolved") || n.includes("closed")) return "done"
+    return "todo"
+  }
+
+  function mapPriority(name?: string): UITask["priority"] {
+    const n = (name || "").toLowerCase()
+    if (n.includes("high") || n.includes("blocker") || n.includes("critical")) return "high"
+    if (n.includes("low")) return "low"
+    return "medium"
+  }
+
+  const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesFilter = filter === "all" || task.status === filter
-    const matchesTab = selectedTab === "all" || task.source === selectedTab
-    return matchesSearch && matchesFilter && matchesTab
+  const matchesSource = sourceFilter === "all" || task.source === sourceFilter
+  return matchesSearch && matchesFilter && matchesSource
   })
 
   const getTaskStats = () => {
-    const total = mockTasks.length
-    const completed = mockTasks.filter((t) => t.status === "done").length
-    const inProgress = mockTasks.filter((t) => t.status === "in-progress").length
-    const todo = mockTasks.filter((t) => t.status === "todo").length
+    const total = tasks.length
+    const completed = tasks.filter((t) => t.status === "done").length
+    const inProgress = tasks.filter((t) => t.status === "in-progress").length
+    const todo = tasks.filter((t) => t.status === "todo").length
     return { total, completed, inProgress, todo }
   }
 
   const stats = getTaskStats()
+  const completionPct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
@@ -153,7 +165,7 @@ export function TaskManagement() {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
   }
 
-  const toggleTaskStatus = (taskId: number) => {
+  const toggleTaskStatus = (taskId: string | number) => {
     // In a real app, this would update the task status
     console.log(`Toggle task ${taskId} status`)
   }
@@ -209,13 +221,13 @@ export function TaskManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Completion Rate</p>
-                <p className="text-2xl font-bold">{Math.round((stats.completed / stats.total) * 100)}%</p>
+        <p className="text-2xl font-bold">{completionPct}%</p>
               </div>
               <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center">
                 <Zap className="w-4 h-4 text-secondary" />
               </div>
             </div>
-            <Progress value={(stats.completed / stats.total) * 100} className="mt-2" />
+      <Progress value={completionPct} className="mt-2" />
           </CardContent>
         </Card>
       </div>
@@ -226,7 +238,7 @@ export function TaskManagement() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Task Management</CardTitle>
-              <CardDescription>Manage tasks from Slack, Teams, and Jira with AI-powered estimates</CardDescription>
+              <CardDescription>Issues assigned to you from Jira</CardDescription>
             </div>
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
@@ -235,7 +247,7 @@ export function TaskManagement() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4 mb-6">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -247,6 +259,18 @@ export function TaskManagement() {
                 />
               </div>
             </div>
+            <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as any)}>
+              <SelectTrigger className="w-[200px]">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                <SelectItem value="jira">Jira</SelectItem>
+                <SelectItem value="slack">Slack</SelectItem>
+                <SelectItem value="teams">Teams</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={filter} onValueChange={setFilter}>
               <SelectTrigger className="w-[180px]">
                 <Filter className="w-4 h-4 mr-2" />
@@ -261,18 +285,21 @@ export function TaskManagement() {
             </Select>
           </div>
 
-          {/* Source Tabs */}
-          <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="all">All Sources</TabsTrigger>
-              <TabsTrigger value="jira">Jira</TabsTrigger>
-              <TabsTrigger value="slack">Slack</TabsTrigger>
-              <TabsTrigger value="teams">Teams</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={selectedTab} className="mt-6">
-              <div className="space-y-4">
-                {filteredTasks.map((task) => (
+          {/* Task List */}
+          <div className="mt-2 space-y-4">
+            {sourceFilter !== "all" && !connections[sourceFilter] && (
+              <div className="text-center py-10 border rounded-lg bg-muted/30">
+                <p className="font-medium">{sourceConfig[sourceFilter as UITask["source"]].name} not connected</p>
+                <p className="text-sm text-muted-foreground mt-1">Connect it in Settings to see tasks here.</p>
+                <div className="mt-3">
+                  <Link href="/settings" className="text-primary text-sm underline">Go to Settings</Link>
+                </div>
+              </div>
+            )}
+                {loading && (
+                  <div className="text-center py-8 text-muted-foreground">Loading issues…</div>
+                )}
+            {!loading && filteredTasks.map((task) => (
                   <Card key={task.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-4">
@@ -309,10 +336,14 @@ export function TaskManagement() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  <ExternalLink className="w-4 h-4 mr-2" />
-                                  Open in {sourceConfig[task.source as keyof typeof sourceConfig].name}
-                                </DropdownMenuItem>
+                                {task.url && (
+                                  <DropdownMenuItem asChild>
+                                    <a href={task.url} target="_blank" rel="noreferrer" className="flex items-center">
+                                      <ExternalLink className="w-4 h-4 mr-2" />
+                                      Open in {sourceConfig[task.source as keyof typeof sourceConfig].name}
+                                    </a>
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem>
                                   <Calendar className="w-4 h-4 mr-2" />
                                   Schedule Focus Time
@@ -330,7 +361,11 @@ export function TaskManagement() {
                               variant="outline"
                               className={cn("text-xs", sourceConfig[task.source as keyof typeof sourceConfig].color)}
                             >
-                              {sourceConfig[task.source as keyof typeof sourceConfig].icon} {task.sourceId}
+                              {(() => {
+                                const Icon = sourceConfig[task.source as keyof typeof sourceConfig].icon
+                                return <Icon className="w-3 h-3 mr-1" />
+                              })()}
+                              {task.sourceId}
                             </Badge>
                             <Badge
                               variant="outline"
@@ -356,9 +391,9 @@ export function TaskManagement() {
                             <div className="flex items-center gap-4">
                               <span>Est: {formatTime(task.estimatedTime)}</span>
                               {task.actualTime > 0 && <span>Actual: {formatTime(task.actualTime)}</span>}
-                              <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                              {task.dueDate && <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>}
                             </div>
-                            {task.actualTime > 0 && task.status !== "done" && (
+                            {task.actualTime > 0 && task.estimatedTime > 0 && task.status !== "done" && (
                               <div className="flex items-center gap-2">
                                 <Progress value={(task.actualTime / task.estimatedTime) * 100} className="w-20 h-2" />
                                 <span>{Math.round((task.actualTime / task.estimatedTime) * 100)}%</span>
@@ -379,16 +414,14 @@ export function TaskManagement() {
                   </Card>
                 ))}
 
-                {filteredTasks.length === 0 && (
+  {!loading && filteredTasks.length === 0 && sourceFilter === "all" && (
                   <div className="text-center py-12 text-muted-foreground">
                     <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No tasks found matching your criteria</p>
-                    <p className="text-sm mt-1">Try adjusting your search or filters</p>
+          <p>No Jira issues found</p>
+          <p className="text-sm mt-1">Check your filters or connection in Settings</p>
                   </div>
                 )}
-              </div>
-            </TabsContent>
-          </Tabs>
+          </div>
         </CardContent>
       </Card>
 
