@@ -364,7 +364,7 @@ export function WeeklyCalendarView() {
       if (calendarGrid) {
         // Scroll to current hour (minus 2 hours for context)
         const targetHour = Math.max(0, currentHour - 2)
-        const scrollTop = targetHour * 40 // 40px per hour
+        const scrollTop = targetHour * 60 // 60px per hour
         calendarGrid.scrollTop = scrollTop
       }
     }
@@ -476,7 +476,7 @@ export function WeeklyCalendarView() {
   }
 
   const getEventPosition = (event: CalendarEvent) => {
-    if (!event.start.dateTime) return { top: 0, height: 40 }
+    if (!event.start.dateTime) return { top: 0, height: 60 }
     
     // Parse the datetime strings - Google Calendar API returns RFC3339 format with timezone
     const start = new Date(event.start.dateTime)
@@ -487,8 +487,8 @@ export function WeeklyCalendarView() {
     const duration = endMinutes - startMinutes
     
     return {
-      top: (startMinutes / 60) * 40, // 40px per hour, starting from 0:00 (no offset)
-      height: Math.max((duration / 60) * 40, 20), // Minimum 20px height
+      top: (startMinutes / 60) * 60, // 60px per hour, starting from 0:00 (no offset)
+      height: Math.max((duration / 60) * 60, 30), // Minimum 30px height
     }
   }
 
@@ -499,7 +499,7 @@ export function WeeklyCalendarView() {
   const getCurrentTimePosition = () => {
     const now = currentTime
     const minutes = now.getHours() * 60 + now.getMinutes()
-    return (minutes / 60) * 40 // 40px per hour
+    return (minutes / 60) * 60 // 60px per hour
   }
 
   const filteredEvents = events.filter(event => enabledCalendars.has(event.calendarId))
@@ -679,11 +679,11 @@ export function WeeklyCalendarView() {
         <CardContent className="p-0">
           {/* Day headers */}
           <div
-            className="grid grid-cols-6 border-b"
-            style={{ width: `calc(100% - ${scrollbarWidth}px)`}}
+            className="grid border-b"
+            style={{ gridTemplateColumns: `50px repeat(5, 1fr)`, width: `calc(100% - ${scrollbarWidth}px)`}}
           >
             {/* Time column header */}
-            <div className="p-4 border-r">
+            <div className="p-2 border-r flex items-center justify-center">
               <div className="text-xs font-medium text-muted-foreground">Time</div>
             </div>
             
@@ -711,12 +711,12 @@ export function WeeklyCalendarView() {
 
           {/* All-day row */}
           <div
-            className="grid grid-cols-6 border-b bg-muted/10"
-            style={{ width: `calc(100% - ${scrollbarWidth}px)` }}
+            className="grid border-b bg-muted/10"
+            style={{ gridTemplateColumns: `50px repeat(5, 1fr)`, width: `calc(100% - ${scrollbarWidth}px)` }}
           >
             {/* All-day label */}
-            <div className="p-2 border-r flex items-center justify-center">
-              <span className="text-xs text-muted-foreground font-medium">All day</span>
+            <div className="p-1 border-r flex items-center justify-center">
+              <span className="text-[10px] text-muted-foreground font-medium">All day</span>
             </div>
             
             {/* All-day events (5 cells) */}
@@ -726,7 +726,7 @@ export function WeeklyCalendarView() {
                 <div 
                   key={`allday-${day.toISOString()}`}
                   className={cn(
-                    "border-r last:border-r-0 p-1 min-h-[60px] space-y-1",
+                    "border-r last:border-r-0 p-1 min-h-[60px] space-y-1 overflow-hidden",
                     isToday(day) && "bg-primary/5"
                   )}
                 >
@@ -735,7 +735,7 @@ export function WeeklyCalendarView() {
                     return (
                       <div
                         key={`allday-${event.id}`}
-                        className="text-xs p-1 rounded border-l-4 bg-background shadow-sm hover:shadow-md transition-shadow cursor-pointer truncate"
+                        className="text-xs p-1 rounded border-l-4 bg-background shadow-sm hover:shadow-md transition-shadow cursor-pointer truncate whitespace-nowrap overflow-hidden text-ellipsis"
                         style={{ borderLeftColor: calendarColor }}
                         title={event.summary}
                       >
@@ -756,10 +756,10 @@ export function WeeklyCalendarView() {
               {Array.from({ length: 24 }, (_, i) => {
                 const hour = i
                 return (
-                  <div key={hour} className="grid grid-cols-6 border-b last:border-b-0" style={{ height: '40px' }}>
+                  <div key={hour} className="grid border-b last:border-b-0 relative" style={{ gridTemplateColumns: '50px repeat(5, 1fr)', height: '60px' }}>
                     {/* Time label */}
-                    <div className="border-r flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground font-medium">
+                    <div className="border-r relative z-40">
+                      <span className="absolute -top-2 right-1 text-[10px] text-muted-foreground font-normal bg-background px-1">
                         {hour.toString().padStart(2, '0')}:00
                       </span>
                     </div>
@@ -792,8 +792,8 @@ export function WeeklyCalendarView() {
                       key={`${event.id}-${eventIndex}`}
                       className="absolute z-10 mx-1"
                       style={{
-                        left: `${((dayIndex + 1) * (100 / 6))}%`,
-                        width: `${(100 / 6) - 0.5}%`,
+                        left: `calc(50px + ${dayIndex * 20}%)`,
+                        width: `calc(20% - 2px)`,
                         top: `${position.top}px`, // Direct positioning within time grid
                         height: `${position.height}px`,
                       }}
@@ -832,29 +832,36 @@ export function WeeklyCalendarView() {
             })}
 
               {/* Current time indicator - only show on today */}
-              {workDays.map((day, dayIndex) => {
-                if (!isToday(day)) return null
+              {(() => {
+                const todayIndex = workDays.findIndex(day => isToday(day))
+                if (todayIndex === -1) return null
                 
                 const currentTimeTop = getCurrentTimePosition()
                 
                 return (
                   <div
-                    key={`current-time-${day.toISOString()}`}
-                    className="absolute z-30 pointer-events-none"
+                    key="current-time-indicator"
+                    className="absolute z-30 pointer-events-none flex items-center"
                     style={{
-                      left: `${((dayIndex + 1) * (100 / 6))}%`,
-                      width: `${(100 / 6)}%`,
+                      left: '50px',
+                      right: '0',
                       top: `${currentTimeTop}px`,
                     }}
                   >
-                    {/* Red circle indicator */}
-                    <div className="absolute -left-1.5 -top-1.5 w-3 h-3 bg-red-500 rounded-full border-2 border-background shadow-sm" />
+                    {/* Spacer divs for days before today */}
+                    <div style={{ width: `${todayIndex * 20}%` }} />
                     
-                    {/* Red line */}
-                    <div className="h-0.5 bg-red-500 shadow-sm" />
+                    {/* Today's indicator */}
+                    <div className="relative flex items-center" style={{ width: '20%' }}>
+                      {/* Red circle indicator at the left edge */}
+                      <div className="absolute -left-1.5 w-3 h-3 bg-red-500 rounded-full border-2 border-background shadow-sm" style={{ top: '-6px' }} />
+                      
+                      {/* Red line */}
+                      <div className="h-0.5 bg-red-500 shadow-sm w-full" />
+                    </div>
                   </div>
                 )
-              })}
+              })()}
             </div>
           </div>
         </CardContent>
