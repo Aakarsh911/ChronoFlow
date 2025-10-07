@@ -17,6 +17,9 @@ import {
   MoreHorizontal,
   KanbanSquare,
   Users,
+  ListChecks,
+  ListTodo,
+  TrendingUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -76,6 +79,7 @@ export function TaskManagement() {
     slack: false,
     teams: false,
   })
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
 
   React.useEffect(() => {
     const load = async () => {
@@ -158,8 +162,26 @@ export function TaskManagement() {
     return { total, completed, inProgress, todo }
   }
 
-  const stats = getTaskStats()
-  const completionPct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
+  const stats = React.useMemo(() => {
+    const total = tasks.length
+    let completed = 0
+    let inProgress = 0
+    let todo = 0
+    for (const t of tasks) {
+      const key = String(t.id)
+      const isChecked = !!checked[key]
+      if (isChecked || t.statusCategory === "done") {
+        completed++
+      } else if (t.statusCategory === "in-progress") {
+        inProgress++
+      } else {
+        todo++
+      }
+    }
+    return { total, completed, inProgress, todo }
+  }, [tasks, checked])
+  const openCount = stats.todo + stats.inProgress
+  const completionPct = React.useMemo(() => (stats.total ? Math.round((stats.completed / stats.total) * 100) : 0), [stats])
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
@@ -168,8 +190,8 @@ export function TaskManagement() {
   }
 
   const toggleTaskStatus = (taskId: string | number) => {
-    // In a real app, this would update the task status
-    console.log(`Toggle task ${taskId} status`)
+    const key = String(taskId)
+    setChecked((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   const STATUS_COLOR_CLASSES = [
@@ -205,62 +227,70 @@ export function TaskManagement() {
   return (
     <div className="space-y-6">
       {/* Task Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        {/* Total */}
+        <Card className="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <CardContent className="px-4 py-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Tasks</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold mt-1">{stats.total}</p>
               </div>
-              <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
-                <Circle className="w-4 h-4" />
+              <div className="h-9 w-9 rounded-lg bg-slate-50 ring-1 ring-slate-100 flex items-center justify-center">
+                <ListTodo className="w-4 h-4 text-slate-600" />
               </div>
             </div>
           </CardContent>
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-slate-200 to-slate-200" />
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        {/* Open */}
+        <Card className="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <CardContent className="px-4 py-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">In Progress</p>
-                <p className="text-2xl font-bold text-primary">{stats.inProgress}</p>
+                <p className="text-sm font-medium text-muted-foreground">Open</p>
+                <p className="text-2xl font-bold mt-1 text-sky-600">{openCount}</p>
               </div>
-              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Clock className="w-4 h-4 text-primary" />
+              <div className="h-9 w-9 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
+                <ListChecks className="w-4 h-4 text-sky-600" />
               </div>
             </div>
           </CardContent>
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-sky-200 to-sky-100" />
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        {/* Completed */}
+        <Card className="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <CardContent className="px-4 py-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold text-accent">{stats.completed}</p>
+                <p className="text-2xl font-bold mt-1 text-emerald-600">{stats.completed}</p>
               </div>
-              <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 text-accent" />
+              <div className="h-9 w-9 rounded-lg bg-emerald-50 ring-1 ring-emerald-100 flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
             </div>
           </CardContent>
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-200 to-emerald-100" />
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        {/* Completion */}
+        <Card className="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <CardContent className="px-4 py-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Completion Rate</p>
-        <p className="text-2xl font-bold">{completionPct}%</p>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-muted-foreground">Completion</p>
+                <p className="text-2xl font-bold mt-1">{completionPct}%</p>
+                <Progress value={completionPct} className="mt-3 h-1.5" />
               </div>
-              <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center">
-                <Zap className="w-4 h-4 text-secondary" />
+              <div className="h-9 w-9 rounded-lg bg-amber-50 ring-1 ring-amber-100 flex items-center justify-center ml-4">
+                <TrendingUp className="w-4 h-4 text-amber-600" />
               </div>
             </div>
-      <Progress value={completionPct} className="mt-2" />
           </CardContent>
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-amber-200 to-amber-100" />
         </Card>
       </div>
 
@@ -270,7 +300,7 @@ export function TaskManagement() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Task Management</CardTitle>
-              <CardDescription>Issues assigned to you from Jira</CardDescription>
+              <CardDescription>Tasks for the day</CardDescription>
             </div>
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
@@ -331,22 +361,28 @@ export function TaskManagement() {
                 {loading && (
                   <div className="text-center py-8 text-muted-foreground">Loading issues…</div>
                 )}
-            {!loading && filteredTasks.map((task) => (
-                  <Card key={task.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="p-0 h-auto"
+            {!loading && filteredTasks.map((task) => {
+              const key = String(task.id)
+              const isChecked = checked[key] || task.statusCategory === "done"
+              return (
+              <Card key={task.id} className="hover:shadow-sm transition-shadow">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-3">
+                        <button
+                          aria-pressed={isChecked}
+                          aria-label={isChecked ? "Mark as not done" : "Mark as done"}
                           onClick={() => toggleTaskStatus(task.id)}
+                          className={cn(
+                            "h-7 w-7 inline-flex items-center justify-center transition-colors",
+                            "hover:text-primary"
+                          )}
                         >
-                          {task.statusCategory === "done" ? (
+                          {isChecked ? (
                             <CheckCircle2 className="w-5 h-5 text-accent" />
                           ) : (
-                            <Circle className="w-5 h-5 text-muted-foreground hover:text-primary" />
+                            <Circle className="w-5 h-5 text-muted-foreground" />
                           )}
-                        </Button>
+                        </button>
 
                         <div className="flex-1 space-y-2">
                           <div className="flex items-start justify-between">
@@ -354,7 +390,7 @@ export function TaskManagement() {
                 <h3
                                 className={cn(
                                   "font-medium text-sm",
-                  task.statusCategory === "done" && "line-through text-muted-foreground",
+                  isChecked && "line-through text-muted-foreground",
                                 )}
                               >
                                 {task.title}
@@ -397,7 +433,9 @@ export function TaskManagement() {
                                 const Icon = sourceConfig[task.source as keyof typeof sourceConfig].icon
                                 return <Icon className="w-3 h-3 mr-1" />
                               })()}
-                              {task.sourceId}
+                              <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent font-semibold">
+                                {task.sourceId}
+                              </span>
                             </Badge>
                             <Badge
                               variant="outline"
@@ -441,7 +479,7 @@ export function TaskManagement() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                )})}
 
   {!loading && filteredTasks.length === 0 && sourceFilter === "all" && (
                   <div className="text-center py-12 text-muted-foreground">
