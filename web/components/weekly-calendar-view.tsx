@@ -82,6 +82,37 @@ export function WeeklyCalendarView() {
   const fetchingRef = useRef(false)
   const cacheRef = useRef<Map<string, CalendarCache>>(new Map())
   const preloadingRef = useRef<Set<string>>(new Set())
+  const [scrollbarWidth, setScrollbarWidth] = useState(0)
+
+  useEffect(() => {
+    const el = document.getElementById('calendar-grid')
+    if (!el) return
+
+    const update = () => {
+      const hasVScroll = el.scrollHeight > el.clientHeight
+      const sbw = hasVScroll ? (el.offsetWidth - el.clientWidth) : 0
+      setScrollbarWidth(sbw > 0 ? sbw : 0)
+    }
+
+    // initial + next tick (after layout)
+    update()
+    requestAnimationFrame(update)
+
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+
+    const mo = new MutationObserver(update)
+    mo.observe(el, { childList: true, subtree: true })
+
+    window.addEventListener('resize', update)
+
+    return () => {
+      ro.disconnect()
+      mo.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [events, calendars]) // rerun when data changes
+
 
   // Debug loading state changes
   useEffect(() => {
@@ -181,7 +212,7 @@ export function WeeklyCalendarView() {
       setCachedData(weekStart, weekEnd, data.events || [], data.calendars || [])
       
     } catch (err) {
-      console.error('❌ Background fetch failed for:', format(weekStart, 'MMM d'), err)
+      console.error('Background fetch failed for:', format(weekStart, 'MMM d'), err)
     } finally {
       preloadingRef.current.delete(key)
     }
@@ -219,7 +250,7 @@ export function WeeklyCalendarView() {
     let isCancelled = false
     
     const loadWeekData = async () => {
-      console.log('� Loading week data for:', format(weekStart, 'MMM d'), '-', format(weekEnd, 'MMM d'))
+      console.log('Loading week data for:', format(weekStart, 'MMM d'), '-', format(weekEnd, 'MMM d'))
       
       // First, check cache for instant loading
       const cachedData = getCachedData(weekStart, weekEnd)
@@ -240,7 +271,7 @@ export function WeeklyCalendarView() {
       
       // No cache hit - show loading and fetch
       if (fetchingRef.current) {
-        console.log('🚫 Fetch already in progress')
+        console.log('Fetch already in progress')
         return
       }
       
@@ -286,7 +317,7 @@ export function WeeklyCalendarView() {
         }
         
       } catch (err) {
-        console.error('💥 Calendar fetch error:', err)
+        console.error('Calendar fetch error:', err)
         if (!isCancelled) {
           setError(err instanceof Error ? err.message : 'An error occurred')
         }
@@ -465,6 +496,12 @@ export function WeeklyCalendarView() {
     return getCalendarColorFromId(calendarId, calendars)
   }
 
+  const getCurrentTimePosition = () => {
+    const now = currentTime
+    const minutes = now.getHours() * 60 + now.getMinutes()
+    return (minutes / 60) * 40 // 40px per hour
+  }
+
   const filteredEvents = events.filter(event => enabledCalendars.has(event.calendarId))
   const enabledCalendarsList = calendars.filter(cal => enabledCalendars.has(cal.id))
 
@@ -638,15 +675,19 @@ export function WeeklyCalendarView() {
       </div>
 
       {/* Weekly Calendar Grid */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden pt-0">
         <CardContent className="p-0">
-          <div className="grid grid-cols-6 border-b">
+          {/* Day headers */}
+          <div
+            className="grid grid-cols-6 border-b"
+            style={{ width: `calc(100% - ${scrollbarWidth}px)`}}
+          >
             {/* Time column header */}
-            <div className="p-4 border-r bg-muted/30">
+            <div className="p-4 border-r">
               <div className="text-xs font-medium text-muted-foreground">Time</div>
             </div>
             
-            {/* Day headers */}
+            {/* Day headers (5 cells) */}
             {workDays.map((day) => (
               <div 
                 key={day.toISOString()} 
@@ -668,14 +709,17 @@ export function WeeklyCalendarView() {
             ))}
           </div>
 
-          {/* All-day events section */}
-          <div className="grid grid-cols-6 border-b bg-muted/10">
+          {/* All-day row */}
+          <div
+            className="grid grid-cols-6 border-b bg-muted/10"
+            style={{ width: `calc(100% - ${scrollbarWidth}px)` }}
+          >
             {/* All-day label */}
-            <div className="p-2 border-r bg-muted/30 flex items-center justify-center">
+            <div className="p-2 border-r flex items-center justify-center">
               <span className="text-xs text-muted-foreground font-medium">All day</span>
             </div>
             
-            {/* All-day events for each day */}
+            {/* All-day events (5 cells) */}
             {workDays.map((day) => {
               const allDayEvents = getAllDayEventsForDay(day)
               return (
@@ -714,7 +758,7 @@ export function WeeklyCalendarView() {
                 return (
                   <div key={hour} className="grid grid-cols-6 border-b last:border-b-0" style={{ height: '40px' }}>
                     {/* Time label */}
-                    <div className="border-r bg-muted/30 flex items-center justify-center">
+                    <div className="border-r flex items-center justify-center">
                       <span className="text-xs text-muted-foreground font-medium">
                         {hour.toString().padStart(2, '0')}:00
                       </span>
@@ -786,6 +830,31 @@ export function WeeklyCalendarView() {
                 )
               })
             })}
+
+              {/* Current time indicator - only show on today */}
+              {workDays.map((day, dayIndex) => {
+                if (!isToday(day)) return null
+                
+                const currentTimeTop = getCurrentTimePosition()
+                
+                return (
+                  <div
+                    key={`current-time-${day.toISOString()}`}
+                    className="absolute z-30 pointer-events-none"
+                    style={{
+                      left: `${((dayIndex + 1) * (100 / 6))}%`,
+                      width: `${(100 / 6)}%`,
+                      top: `${currentTimeTop}px`,
+                    }}
+                  >
+                    {/* Red circle indicator */}
+                    <div className="absolute -left-1.5 -top-1.5 w-3 h-3 bg-red-500 rounded-full border-2 border-background shadow-sm" />
+                    
+                    {/* Red line */}
+                    <div className="h-0.5 bg-red-500 shadow-sm" />
+                  </div>
+                )
+              })}
             </div>
           </div>
         </CardContent>
