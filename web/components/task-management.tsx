@@ -104,7 +104,7 @@ export function TaskManagement() {
           const items: UITask[] = (data.issues || []).map((it: any) => ({
             id: it.id,
             title: it.summary,
-            description: it.summary,
+            description: it.description || "",
             source: "jira",
             sourceId: it.key,
       statusName: it.statusName || "Unknown",
@@ -373,20 +373,21 @@ export function TaskManagement() {
                           aria-label={isChecked ? "Mark as not done" : "Mark as done"}
                           onClick={() => toggleTaskStatus(task.id)}
                           className={cn(
-                            "h-7 w-7 inline-flex items-center justify-center transition-colors",
-                            "hover:text-primary"
+                            "h-7 w-7 inline-flex items-center justify-center rounded-md transition-all",
+                            "hover:bg-primary/10 hover:scale-110",
+                            "active:scale-95"
                           )}
                         >
                           {isChecked ? (
-                            <CheckCircle2 className="w-5 h-5 text-accent" />
+                            <CheckCircle2 className="w-5 h-5 text-accent transition-colors" />
                           ) : (
-                            <Circle className="w-5 h-5 text-muted-foreground" />
+                            <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
                           )}
                         </button>
 
                         <div className="flex-1 space-y-2">
                           <div className="flex items-start justify-between">
-                            <div className="space-y-1">
+                            <div className="space-y-1 flex-1 pr-2">
                 <h3
                                 className={cn(
                                   "font-medium text-sm",
@@ -395,7 +396,11 @@ export function TaskManagement() {
                               >
                                 {task.title}
                               </h3>
-                              <p className="text-xs text-muted-foreground">{task.description}</p>
+                              {task.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                  {task.description}
+                                </p>
+                              )}
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

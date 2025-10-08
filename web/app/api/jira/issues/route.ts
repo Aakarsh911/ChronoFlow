@@ -5,6 +5,35 @@ import { PrismaClient } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
+// Helper function to extract plain text from Jira's Atlassian Document Format (ADF)
+function extractTextFromADF(adf: any): string {
+  if (!adf) return ""
+  let text = ""
+  
+  function traverse(node: any) {
+    if (!node) return
+    
+    // If node has text content, add it
+    if (node.text) {
+      text += node.text
+    }
+    
+    // If node has content array, traverse children
+    if (Array.isArray(node.content)) {
+      node.content.forEach((child: any) => {
+        traverse(child)
+        // Add space after paragraphs and other block elements
+        if (child.type === "paragraph" || child.type === "heading") {
+          text += " "
+        }
+      })
+    }
+  }
+  
+  traverse(adf)
+  return text.trim()
+}
+
 async function refreshJiraToken(integration: any) {
   const clientId = process.env.JIRA_CLIENT_ID
   const clientSecret = process.env.JIRA_CLIENT_SECRET
@@ -104,7 +133,7 @@ export async function GET() {
 
   const base = `https://api.atlassian.com/ex/jira/${site.cloudId}/rest/api/3`
   const jql = encodeURIComponent("assignee = currentUser() AND resolution = Unresolved ORDER BY updated DESC")
-  const url = `${base}/search/jql?jql=${jql}&maxResults=25&fields=summary,status,priority,assignee,duedate,project,timeoriginalestimate,timespent`
+  const url = `${base}/search/jql?jql=${jql}&maxResults=25&fields=summary,description,status,priority,assignee,duedate,project,timeoriginalestimate,timespent`
 
   let resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } })
   if (resp.status === 401 || resp.status === 403) {
@@ -119,10 +148,16 @@ export async function GET() {
 
   const issues = (data.issues || []).map((it: any) => {
     const f = it.fields || {}
+    // Extract plain text from Jira's Atlassian Document Format (ADF) description
+    let descriptionText = ""
+    if (f.description?.content) {
+      descriptionText = extractTextFromADF(f.description)
+    }
     return {
       id: it.id,
       key: it.key,
       summary: f.summary,
+      description: descriptionText,
       statusName: f.status?.name,
       priorityName: f.priority?.name,
       assignee: f.assignee?.displayName || null,
