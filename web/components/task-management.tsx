@@ -227,70 +227,87 @@ export function TaskManagement() {
   return (
     <div className="space-y-6">
       {/* Task Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total */}
-        <Card className="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <CardContent className="px-4 py-3">
+        <Card className="elevated-card border-0 relative overflow-hidden">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold mt-1">{stats.total}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Tasks</p>
+                <p className="text-2xl font-bold text-foreground mt-2">{stats.total}</p>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-slate-50 ring-1 ring-slate-100 flex items-center justify-center">
-                <ListTodo className="w-4 h-4 text-slate-600" />
+              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                <ListTodo className="w-6 h-6 text-slate-600" />
               </div>
             </div>
+            <div className="mt-4">
+              <Badge className="bg-slate-100 text-slate-700 border-slate-200">
+                All Tasks
+              </Badge>
+            </div>
           </CardContent>
-          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-slate-200 to-slate-200" />
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-slate-300 to-slate-200" />
         </Card>
 
         {/* Open */}
-        <Card className="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <CardContent className="px-4 py-3">
+        <Card className="elevated-card border-0 relative overflow-hidden">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Open</p>
-                <p className="text-2xl font-bold mt-1 text-sky-600">{openCount}</p>
+                <p className="text-sm font-medium text-muted-foreground">Open Tasks</p>
+                <p className="text-2xl font-bold text-foreground mt-2">{openCount}</p>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-sky-50 ring-1 ring-sky-100 flex items-center justify-center">
-                <ListChecks className="w-4 h-4 text-sky-600" />
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <ListChecks className="w-6 h-6 text-blue-600" />
               </div>
             </div>
+            <div className="mt-4">
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                To Do
+              </Badge>
+            </div>
           </CardContent>
-          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-sky-200 to-sky-100" />
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-blue-400 to-blue-300" />
         </Card>
 
         {/* Completed */}
-        <Card className="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <CardContent className="px-4 py-3">
+        <Card className="elevated-card border-0 relative overflow-hidden">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold mt-1 text-emerald-600">{stats.completed}</p>
+                <p className="text-2xl font-bold text-foreground mt-2">{stats.completed}</p>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-emerald-50 ring-1 ring-emerald-100 flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
               </div>
             </div>
+            <div className="mt-4">
+              <Badge className="bg-green-100 text-green-700 border-green-200">
+                Done
+              </Badge>
+            </div>
           </CardContent>
-          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-200 to-emerald-100" />
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-green-400 to-green-300" />
         </Card>
 
         {/* Completion */}
-        <Card className="relative overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <CardContent className="px-4 py-3">
+        <Card className="elevated-card border-0 relative overflow-hidden">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <div className="flex-1">
+              <div>
                 <p className="text-sm font-medium text-muted-foreground">Completion</p>
-                <p className="text-2xl font-bold mt-1">{completionPct}%</p>
-                <Progress value={completionPct} className="mt-3 h-1.5" />
+                <p className="text-2xl font-bold text-foreground mt-2">{completionPct}%</p>
               </div>
-              <div className="h-9 w-9 rounded-lg bg-amber-50 ring-1 ring-amber-100 flex items-center justify-center ml-4">
-                <TrendingUp className="w-4 h-4 text-amber-600" />
+              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-amber-600" />
               </div>
             </div>
+            <div className="mt-4 py-2">
+              <Progress value={completionPct} className="h-2" />
+            </div>
           </CardContent>
-          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-amber-200 to-amber-100" />
+          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 to-amber-300" />
         </Card>
       </div>
 
