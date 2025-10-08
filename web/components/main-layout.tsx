@@ -88,13 +88,13 @@ export function MainLayout({ children }: MainLayoutProps) {
     const controller = new AbortController()
     const load = async () => {
       try {
-        const res = await fetch("/api/jira/issues", { cache: "no-store", signal: controller.signal })
+        const res = await fetch("/api/tasks", { cache: "no-store", signal: controller.signal })
         if (!res.ok) {
           if (isMounted) setTaskCount(0)
           return
         }
         const data = await res.json()
-        const count = Array.isArray(data?.issues) ? data.issues.length : 0
+        const count = Array.isArray(data) ? data.filter((t: any) => t.status !== "Done").length : 0
         if (isMounted) setTaskCount(count)
       } catch {
         if (isMounted) setTaskCount(0)
