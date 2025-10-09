@@ -76,13 +76,14 @@ export function WeeklyCalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [calendars, setCalendars] = useState<CalendarInfo[]>([])
   const [enabledCalendars, setEnabledCalendars] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Start with true for initial load
   const [error, setError] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const fetchingRef = useRef(false)
   const cacheRef = useRef<Map<string, CalendarCache>>(new Map())
   const preloadingRef = useRef<Set<string>>(new Set())
   const [scrollbarWidth, setScrollbarWidth] = useState(0)
+  const hasLoadedRef = useRef(false) // Track if we've ever loaded data
 
   useEffect(() => {
     const el = document.getElementById('calendar-grid')
@@ -114,20 +115,13 @@ export function WeeklyCalendarView() {
   }, [events, calendars]) // rerun when data changes
 
 
-  // Debug loading state changes
-  useEffect(() => {
-    console.log('🔄 Loading state changed:', loading)
-  }, [loading])
 
-  // Memoize the week dates to prevent unnecessary recalculations
+
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek])
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek])
   const weekDays = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd])
-  
-  // Only show work days (Monday to Friday)
   const workDays = useMemo(() => weekDays.slice(0, 5), [weekDays])
 
-  // Cache utility functions
   const getCacheKey = useCallback((weekStart: Date, weekEnd: Date) => {
     return `${format(weekStart, 'yyyy-MM-dd')}_${format(weekEnd, 'yyyy-MM-dd')}`
   }, [])
@@ -151,13 +145,10 @@ export function WeeklyCalendarView() {
   const setCachedData = useCallback((weekStart: Date, weekEnd: Date, events: CalendarEvent[], calendars: CalendarInfo[]) => {
     const key = getCacheKey(weekStart, weekEnd)
     
-    // Manage cache size - keep only the most recent 50 weeks
     if (cacheRef.current.size >= 50) {
-      // Remove oldest entries
       const entries = Array.from(cacheRef.current.entries())
       entries.sort((a, b) => a[1].timestamp - b[1].timestamp)
       
-      // Remove oldest 10 entries
       for (let i = 0; i < 10 && i < entries.length; i++) {
         cacheRef.current.delete(entries[i][0])
       }
@@ -172,27 +163,19 @@ export function WeeklyCalendarView() {
     })
   }, [getCacheKey])
 
-  // Manual refresh function
   const refreshCalendarData = useCallback(() => {
-    console.log('🔄 Manual calendar refresh triggered')
-    // Clear entire cache on refresh
     cacheRef.current.clear()
     preloadingRef.current.clear()
-    
-    // Reset the ref to allow new fetch
     fetchingRef.current = false
-    setLoading(false)
+    hasLoadedRef.current = false
+    setLoading(true)
     setError(null)
-    
-    // Trigger a re-fetch by updating the current week
     setCurrentWeek(prev => new Date(prev.getTime()))
   }, [])
 
-  // Background fetch function for caching
   const backgroundFetch = useCallback(async (weekStart: Date, weekEnd: Date) => {
     const key = getCacheKey(weekStart, weekEnd)
     
-    // Skip if already cached or currently fetching
     if (getCachedData(weekStart, weekEnd) || preloadingRef.current.has(key)) {
       return
     }
@@ -218,11 +201,9 @@ export function WeeklyCalendarView() {
     }
   }, [getCacheKey, getCachedData, setCachedData])
 
-  // Aggressive pre-loading function for multiple weeks
   const preloadMultipleWeeks = useCallback(async (centerWeek: Date, weeksAhead = 8, weeksBehind = 4) => {
     const preloadPromises: Promise<void>[] = []
     
-    // Pre-load weeks behind current week
     for (let i = 1; i <= weeksBehind; i++) {
       const targetWeek = subWeeks(centerWeek, i)
       const weekStart = startOfWeek(targetWeek, { weekStartsOn: 1 })
@@ -230,7 +211,6 @@ export function WeeklyCalendarView() {
       preloadPromises.push(backgroundFetch(weekStart, weekEnd))
     }
     
-    // Pre-load weeks ahead of current week
     for (let i = 1; i <= weeksAhead; i++) {
       const targetWeek = addWeeks(centerWeek, i)
       const weekStart = startOfWeek(targetWeek, { weekStartsOn: 1 })
@@ -238,11 +218,10 @@ export function WeeklyCalendarView() {
       preloadPromises.push(backgroundFetch(weekStart, weekEnd))
     }
     
-    // Execute all preloads with slight delays to avoid overwhelming the API
     for (let i = 0; i < preloadPromises.length; i++) {
       setTimeout(() => {
         preloadPromises[i]
-      }, i * 100) // 100ms delay between each request
+      }, i * 100)
     }
   }, [backgroundFetch])
 
@@ -250,18 +229,15 @@ export function WeeklyCalendarView() {
     let isCancelled = false
     
     const loadWeekData = async () => {
-      console.log('Loading week data for:', format(weekStart, 'MMM d'), '-', format(weekEnd, 'MMM d'))
-      
-      // First, check cache for instant loading
       const cachedData = getCachedData(weekStart, weekEnd)
       
       if (cachedData) {
-        console.log('⚡ Using cached data for instant switch')
         setEvents(cachedData.events)
         setCalendars(cachedData.calendars)
         setError(null)
+        setLoading(false)
+        hasLoadedRef.current = true
         
-        // Trigger aggressive pre-loading for smooth navigation
         setTimeout(() => {
           preloadMultipleWeeks(weekStart)
         }, 100)
@@ -269,9 +245,7 @@ export function WeeklyCalendarView() {
         return
       }
       
-      // No cache hit - show loading and fetch
       if (fetchingRef.current) {
-        console.log('Fetch already in progress')
         return
       }
       
@@ -284,8 +258,6 @@ export function WeeklyCalendarView() {
           `/api/calendar/google?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
         )
         
-        if (isCancelled) return
-        
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
           throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch calendar data`)
@@ -293,24 +265,24 @@ export function WeeklyCalendarView() {
         
         const data = await response.json()
         
+        setEvents(data.events || [])
+        setCalendars(data.calendars || [])
+        
+        setCachedData(weekStart, weekEnd, data.events || [], data.calendars || [])
+        
+        setEnabledCalendars(prevEnabled => {
+          if (prevEnabled.size === 0) {
+            return new Set((data.calendars || []).map((cal: CalendarInfo) => cal.id))
+          }
+          const availableCalendarIds = new Set(data.calendars?.map((cal: CalendarInfo) => cal.id) || [])
+          return new Set([...prevEnabled].filter(id => availableCalendarIds.has(id)))
+        })
+        
+        hasLoadedRef.current = true
+        setLoading(false)
+        fetchingRef.current = false
+        
         if (!isCancelled) {
-          setEvents(data.events || [])
-          setCalendars(data.calendars || [])
-          
-          // Cache the fetched data
-          setCachedData(weekStart, weekEnd, data.events || [], data.calendars || [])
-          
-          // Only set default calendar selection if no calendars are currently enabled
-          setEnabledCalendars(prevEnabled => {
-            if (prevEnabled.size === 0) {
-              return new Set((data.calendars || []).map((cal: CalendarInfo) => cal.id))
-            }
-            // Preserve existing selection but ensure selected calendars still exist
-            const availableCalendarIds = new Set(data.calendars?.map((cal: CalendarInfo) => cal.id) || [])
-            return new Set([...prevEnabled].filter(id => availableCalendarIds.has(id)))
-          })
-          
-          // Start aggressive pre-loading after initial load
           setTimeout(() => {
             preloadMultipleWeeks(weekStart)
           }, 500)
@@ -320,10 +292,10 @@ export function WeeklyCalendarView() {
         console.error('Calendar fetch error:', err)
         if (!isCancelled) {
           setError(err instanceof Error ? err.message : 'An error occurred')
+          hasLoadedRef.current = true
+          setLoading(false)
+          fetchingRef.current = false
         }
-      } finally {
-        setLoading(false)
-        fetchingRef.current = false
       }
     }
     
@@ -332,20 +304,16 @@ export function WeeklyCalendarView() {
     return () => {
       isCancelled = true
     }
-  }, [weekStart, weekEnd, getCachedData, setCachedData, backgroundFetch])
+  }, [weekStart, weekEnd, getCachedData, setCachedData, preloadMultipleWeeks])
 
-  // Warm cache on component mount
   useEffect(() => {
-    // Start aggressive caching 2 seconds after mount to let initial load complete
     const timer = setTimeout(() => {
-      console.log('🔥 Warming cache with extended range...')
-      preloadMultipleWeeks(currentWeek, 12, 8) // 12 weeks ahead, 8 weeks behind
+      preloadMultipleWeeks(currentWeek, 12, 8)
     }, 2000)
     
     return () => clearTimeout(timer)
   }, [preloadMultipleWeeks, currentWeek])
 
-  // Update current time every minute
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
@@ -354,7 +322,6 @@ export function WeeklyCalendarView() {
     return () => clearInterval(timer)
   }, [])
 
-  // Scroll to current time when calendar loads
   useEffect(() => {
     const scrollToCurrentTime = () => {
       const now = new Date()
@@ -362,28 +329,23 @@ export function WeeklyCalendarView() {
       const calendarGrid = document.getElementById('calendar-grid')
       
       if (calendarGrid) {
-        // Scroll to current hour (minus 2 hours for context)
         const targetHour = Math.max(0, currentHour - 2)
-        const scrollTop = targetHour * 60 // 60px per hour
+        const scrollTop = targetHour * 60
         calendarGrid.scrollTop = scrollTop
       }
     }
 
-    // Small delay to ensure DOM is ready
     const timer = setTimeout(scrollToCurrentTime, 500)
     return () => clearTimeout(timer)
-  }, [calendars, events]) // Re-scroll when data loads
+  }, [calendars, events])
 
   const navigateWeek = useCallback((direction: "prev" | "next") => {
     const newWeek = direction === "next" ? addWeeks(currentWeek, 1) : subWeeks(currentWeek, 1)
     
-    // Immediate UI update for instant response
     setCurrentWeek(newWeek)
     
-    // Maintain the buffer by pre-loading more weeks in the navigation direction
     setTimeout(() => {
       if (direction === "next") {
-        // Pre-load 6 more weeks ahead
         for (let i = 6; i <= 10; i++) {
           const futureWeek = addWeeks(newWeek, i)
           const weekStart = startOfWeek(futureWeek, { weekStartsOn: 1 })
@@ -391,10 +353,9 @@ export function WeeklyCalendarView() {
           
           setTimeout(() => {
             backgroundFetch(weekStart, weekEnd)
-          }, (i - 6) * 150) // Stagger the requests
+          }, (i - 6) * 150)
         }
       } else {
-        // Pre-load 6 more weeks behind
         for (let i = 6; i <= 10; i++) {
           const pastWeek = subWeeks(newWeek, i)
           const weekStart = startOfWeek(pastWeek, { weekStartsOn: 1 })
@@ -402,7 +363,7 @@ export function WeeklyCalendarView() {
           
           setTimeout(() => {
             backgroundFetch(weekStart, weekEnd)
-          }, (i - 6) * 150) // Stagger the requests
+          }, (i - 6) * 150)
         }
       }
     }, 100)
@@ -438,7 +399,6 @@ export function WeeklyCalendarView() {
     return events.filter(event => {
       if (!enabledCalendars.has(event.calendarId)) return false
       
-      // All-day events have only a date, not dateTime
       if (event.start.date && !event.start.dateTime) {
         const eventDate = new Date(event.start.date + 'T00:00:00')
         return isSameDay(eventDate, day)
@@ -452,7 +412,6 @@ export function WeeklyCalendarView() {
     return events.filter(event => {
       if (!enabledCalendars.has(event.calendarId)) return false
       
-      // Only include events with specific times (not all-day)
       if (event.start.dateTime) {
         const eventDate = new Date(event.start.dateTime)
         return isSameDay(eventDate, day)
@@ -478,7 +437,6 @@ export function WeeklyCalendarView() {
   const getEventPosition = (event: CalendarEvent) => {
     if (!event.start.dateTime) return { top: 0, height: 60 }
     
-    // Parse the datetime strings - Google Calendar API returns RFC3339 format with timezone
     const start = new Date(event.start.dateTime)
     const end = event.end.dateTime ? new Date(event.end.dateTime) : start
     
@@ -487,8 +445,8 @@ export function WeeklyCalendarView() {
     const duration = endMinutes - startMinutes
     
     return {
-      top: (startMinutes / 60) * 60, // 60px per hour, starting from 0:00 (no offset)
-      height: Math.max((duration / 60) * 60, 30), // Minimum 30px height
+      top: (startMinutes / 60) * 60,
+      height: Math.max((duration / 60) * 60, 30),
     }
   }
 
@@ -499,13 +457,13 @@ export function WeeklyCalendarView() {
   const getCurrentTimePosition = () => {
     const now = currentTime
     const minutes = now.getHours() * 60 + now.getMinutes()
-    return (minutes / 60) * 60 // 60px per hour
+    return (minutes / 60) * 60
   }
 
   const filteredEvents = events.filter(event => enabledCalendars.has(event.calendarId))
   const enabledCalendarsList = calendars.filter(cal => enabledCalendars.has(cal.id))
 
-  if (loading) {
+  if (loading && !hasLoadedRef.current) {
     return <CalendarLoadingSkeleton />
   }
 
@@ -529,7 +487,7 @@ export function WeeklyCalendarView() {
     )
   }
 
-  if (calendars.length === 0) {
+  if (hasLoadedRef.current && calendars.length === 0) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-8">
