@@ -184,7 +184,7 @@ export function WeeklyCalendarView() {
     
     try {
       const response = await fetch(
-        `/api/calendar/google?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
+        `/api/calendar?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
       )
       
       if (!response.ok) {
