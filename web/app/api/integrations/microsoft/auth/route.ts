@@ -13,6 +13,9 @@ export async function GET() {
     "Calendars.Read",
     "Calendars.Read.Shared",
     "OnlineMeetings.Read",
+    "Mail.Read",
+    "Mail.Send",
+    "MailboxSettings.Read",
   ].join(" "))
 
   if (!clientId || !redirectUri) {
