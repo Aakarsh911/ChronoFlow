@@ -58,8 +58,8 @@ const navigationItems = [
     badge: null
   },
   {
-    title: "Outlook",
-    href: "/outlook",
+    title: "Mail",
+    href: "/mail",
     icon: Mail,
     badge: null
   },

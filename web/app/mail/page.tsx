@@ -1,12 +1,12 @@
 import { ProtectedRoute } from "@/components/protected-route"
-import OutlookDashboard from "@/components/outlook-dashboard"
+import UnifiedMailDashboard from "@/components/unified-mail-dashboard"
 import { MainLayout } from "@/components/main-layout"
 
-export default function OutlookPage() {
+export default function MailPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <OutlookDashboard />
+        <UnifiedMailDashboard />
       </MainLayout>
     </ProtectedRoute>
   )

@@ -9,8 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 // Global event emitter for SSE connections
 // In production, use Redis pub/sub or similar
 const eventEmitter = global as any;
-if (!eventEmitter.sseClients) {
-  eventEmitter.sseClients = new Map();
+if (!eventEmitter.mailClients) {
+  eventEmitter.mailClients = new Map();
 }
 
 export async function POST(request: NextRequest) {
@@ -55,14 +55,15 @@ export async function POST(request: NextRequest) {
 
       // Extract user info from subscription (you'd normally look this up in DB)
       // For now, broadcast to all connected SSE clients
-      const sseClients = eventEmitter.sseClients;
+      const mailClients = eventEmitter.mailClients;
       
       // Notify all connected clients to refresh via delta query
-      for (const [clientId, client] of sseClients.entries()) {
+      for (const [clientId, client] of mailClients.entries()) {
         try {
           client.controller.enqueue(
             `data: ${JSON.stringify({
-              type: 'email-change',
+              type: 'new-email',
+              provider: 'outlook',
               changeType,
               subscriptionId,
               timestamp: new Date().toISOString(),
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
           );
         } catch (error) {
           console.error('Failed to send SSE to client:', clientId, error);
-          sseClients.delete(clientId);
+          mailClients.delete(clientId);
         }
       }
     }
@@ -90,6 +91,6 @@ export async function GET() {
   return NextResponse.json({ 
     status: 'ok',
     endpoint: 'Microsoft Graph Webhook Handler',
-    connectedClients: eventEmitter.sseClients?.size || 0,
+    connectedClients: eventEmitter.mailClients?.size || 0,
   });
 }
