@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Fragment } from "react"
 import {
   Users,
   Calendar,
@@ -346,8 +346,8 @@ export function TeamScheduling() {
                 ))}
 
                 {timeSlots.map((time) => (
-                  <>
-                    <div key={time} className="p-2 text-xs text-muted-foreground text-right">
+                  <Fragment key={time}>
+                    <div className="p-2 text-xs text-muted-foreground text-right">
                       {time}
                     </div>
                     {weekDays.map((day) => {
@@ -367,7 +367,7 @@ export function TeamScheduling() {
                         </div>
                       )
                     })}
-                  </>
+                  </Fragment>
                 ))}
               </div>
             </div>

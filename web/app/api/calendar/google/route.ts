@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { google } from 'googleapis'
+import type { Credentials } from 'google-auth-library'
 import { PrismaClient, Provider } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -52,21 +53,29 @@ export async function GET(request: NextRequest) {
     })
 
     // Handle token refresh if needed
-  oauth2Client.on('tokens', async (tokens: { access_token?: string; refresh_token?: string; expiry_date?: number }) => {
-      try {
-        if (tokens.access_token) {
-          await prisma.integration.update({
-            where: { id: googleIntegration.id },
-            data: {
-              accessToken: tokens.access_token,
-              refreshToken: tokens.refresh_token || googleIntegration.refreshToken,
-              expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : googleIntegration.expiresAt,
-            },
-          })
+    oauth2Client.on('tokens', (tokens: Credentials) => {
+      // Listener type expects a void-returning handler; run async work in a fire-and-forget IIFE
+      void (async () => {
+        try {
+          const access = tokens.access_token ?? undefined
+          const refresh = tokens.refresh_token ?? undefined
+          const expiry = tokens.expiry_date ?? undefined
+
+          // Only update if we received any new token info
+          if (access || refresh || expiry) {
+            await prisma.integration.update({
+              where: { id: googleIntegration.id },
+              data: {
+                accessToken: access ?? googleIntegration.accessToken,
+                refreshToken: refresh ?? googleIntegration.refreshToken,
+                expiresAt: expiry ? new Date(expiry) : googleIntegration.expiresAt,
+              },
+            })
+          }
+        } catch (e) {
+          console.error('Failed to persist refreshed Google tokens', e)
         }
-      } catch (e) {
-        console.error('Failed to persist refreshed Google tokens', e)
-      }
+      })()
     })
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
