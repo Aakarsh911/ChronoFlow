@@ -1,0 +1,133 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { PrismaClient, Provider } from '@prisma/client'
+import { google } from 'googleapis'
+
+const prisma = new PrismaClient()
+
+/**
+ * Fetch Gmail emails for today
+ * Uses Gmail API to get inbox messages
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get user and Google integration from database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        integrations: {
+          where: { provider: Provider.GOOGLE },
+        },
+      },
+    })
+
+    if (!user || !user.integrations.length) {
+      return NextResponse.json({ error: 'Google account not connected' }, { status: 401 })
+    }
+
+    const integration = user.integrations[0]
+    
+    // Check if token is expired and refresh if needed
+    if (integration.expiresAt && integration.expiresAt < new Date()) {
+      // TODO: Implement token refresh
+      return NextResponse.json({ error: 'Access token expired. Please reconnect your Google account.' }, { status: 401 })
+    }
+
+    const accessToken = integration.accessToken
+    if (!accessToken) {
+      return NextResponse.json({ error: 'No access token' }, { status: 401 })
+    }
+
+    // Initialize Gmail API
+    const oauth2Client = new google.auth.OAuth2()
+    oauth2Client.setCredentials({ access_token: accessToken })
+    
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+
+    // Get today's date for filtering
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todaySeconds = Math.floor(today.getTime() / 1000)
+
+    // List messages from today
+    const listResponse = await gmail.users.messages.list({
+      userId: 'me',
+      q: `in:inbox after:${todaySeconds}`,
+      maxResults: 50,
+    })
+
+    const messages = listResponse.data.messages || []
+
+    // Get profile to get historyId
+    const profile = await gmail.users.getProfile({ userId: 'me' })
+    const historyId = profile.data.historyId
+
+    // Fetch full message details for each message
+    const emails = await Promise.all(
+      messages.map(async (message) => {
+        try {
+          const msg = await gmail.users.messages.get({
+            userId: 'me',
+            id: message.id!,
+            format: 'full',
+          })
+
+          const headers = msg.data.payload?.headers || []
+          const subject = headers.find(h => h.name === 'Subject')?.value || '(No subject)'
+          const from = headers.find(h => h.name === 'From')?.value || 'Unknown'
+          const date = headers.find(h => h.name === 'Date')?.value || new Date().toISOString()
+          
+          // Extract email address from "Name <email>" format
+          const emailMatch = from.match(/<(.+?)>/)
+          const fromEmail = emailMatch ? emailMatch[1] : from
+          const fromName = from.replace(/<.+?>/, '').trim() || fromEmail
+
+          return {
+            id: msg.data.id!,
+            threadId: msg.data.threadId!,
+            snippet: msg.data.snippet || '',
+            subject,
+            from: {
+              name: fromName,
+              address: fromEmail,
+            },
+            receivedDateTime: new Date(date).toISOString(),
+            bodyPreview: msg.data.snippet || '',
+            isRead: !msg.data.labelIds?.includes('UNREAD'),
+            hasAttachments: msg.data.payload?.parts?.some(part => part.filename) || false,
+            isStarred: msg.data.labelIds?.includes('STARRED') || false,
+            labels: msg.data.labelIds || [],
+            provider: 'gmail' as const,
+          }
+        } catch (err) {
+          console.error('Error fetching message:', err)
+          return null
+        }
+      })
+    )
+
+    const validEmails = emails.filter(e => e !== null)
+
+    return NextResponse.json({
+      emails: validEmails,
+      historyId: historyId || null,
+    })
+
+  } catch (error) {
+    console.error('Gmail API error:', error)
+    return NextResponse.json(
+      { 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
+      { status: 500 }
+    )
+  }
+}
