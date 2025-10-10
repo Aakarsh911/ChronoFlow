@@ -9,11 +9,15 @@ const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   try {
-  const session = await getServerSession(authOptions)
+    console.log('🟢 Google Calendar API - Start')
+    const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
+      console.log('🟢 Google Calendar API - No session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('🟢 Google Calendar API - Session found:', session.user.email)
 
     // Get user + Google integration from database
     const user = await prisma.user.findUnique({
@@ -25,12 +29,29 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    if (!user?.googleId) {
-      return NextResponse.json({ error: 'Google account not connected' }, { status: 400 })
+    console.log('🟢 Google Calendar API - User found:', { 
+      userId: user?.id, 
+      hasIntegrations: user?.integrations?.length || 0 
+    })
+
+    if (!user) {
+      console.log('🟢 Google Calendar API - User not found in DB')
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     const googleIntegration = user.integrations[0]
+    if (!googleIntegration) {
+      console.log('🟢 Google Calendar API - No Google integration found')
+      return NextResponse.json({ error: 'Google account not connected' }, { status: 400 })
+    }
+
+    console.log('🟢 Google Calendar API - Integration found:', { 
+      hasAccessToken: !!googleIntegration.accessToken,
+      hasRefreshToken: !!googleIntegration.refreshToken 
+    })
+
     if (!googleIntegration?.accessToken) {
+      console.log('🟢 Google Calendar API - No access token')
       return NextResponse.json({ error: 'Google Calendar access not granted. Please sign in again.' }, { status: 400 })
     }
 
@@ -140,7 +161,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error fetching Google Calendar data:', error)
+    console.error('🟢 Google Calendar API - Error:', error)
     
     // If it's an auth error, provide helpful message
     if (error instanceof Error && error.message.includes('invalid_grant')) {
@@ -149,6 +170,9 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
     
-    return NextResponse.json({ error: 'Failed to fetch calendar data' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to fetch calendar data',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

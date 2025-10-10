@@ -487,7 +487,7 @@ export function WeeklyCalendarView() {
     )
   }
 
-  if (hasLoadedRef.current && calendars.length === 0) {
+  if (hasLoadedRef.current && calendars.length === 0 && !loading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-8">
@@ -497,12 +497,17 @@ export function WeeklyCalendarView() {
             </div>
             <h3 className="font-semibold mb-2">No Calendar Connected</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Connect your Google Calendar to view your events here.
+              Connect your Google or Microsoft Calendar to view your events here.
             </p>
-            <Button onClick={refreshCalendarData} variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Connect Calendar
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={refreshCalendarData} variant="outline" size="sm">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+              <Button onClick={() => window.location.href = '/settings'} variant="default" size="sm">
+                Go to Settings
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

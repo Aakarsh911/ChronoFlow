@@ -113,11 +113,15 @@ async function refreshMicrosoftToken(refreshToken: string): Promise<{ accessToke
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔵 Microsoft Calendar API - Start')
     const session = await getServerSession()
     
     if (!session?.user?.email) {
+      console.log('🔵 Microsoft Calendar API - No session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('🔵 Microsoft Calendar API - Session found:', session.user.email)
 
     // Get user from database
     const user = await prisma.user.findUnique({
@@ -127,15 +131,28 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    console.log('🔵 Microsoft Calendar API - User found:', { 
+      userId: user?.id, 
+      hasIntegrations: user?.integrations?.length || 0 
+    })
+
     if (!user) {
+      console.log('🔵 Microsoft Calendar API - User not found in DB')
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-  const microsoftIntegration = user.integrations.find((i: any) => i.provider === Provider.MICROSOFT)
+    const microsoftIntegration = user.integrations.find((i: any) => i.provider === Provider.MICROSOFT)
 
     if (!microsoftIntegration) {
+      console.log('🔵 Microsoft Calendar API - No Microsoft integration found')
       return NextResponse.json({ error: 'Microsoft account not connected' }, { status: 400 })
     }
+
+    console.log('🔵 Microsoft Calendar API - Integration found:', { 
+      hasAccessToken: !!microsoftIntegration.accessToken,
+      hasRefreshToken: !!microsoftIntegration.refreshToken,
+      expiresAt: microsoftIntegration.expiresAt
+    })
 
     let accessToken = microsoftIntegration.accessToken
 
