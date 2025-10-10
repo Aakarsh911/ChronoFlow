@@ -1,28 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { google } from 'googleapis'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Provider } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession()
+  const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user from database
+    // Get user + Google integration from database
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+      where: { email: session.user.email },
+      include: {
+        integrations: {
+          where: { provider: Provider.GOOGLE },
+        },
+      },
     })
 
     if (!user?.googleId) {
       return NextResponse.json({ error: 'Google account not connected' }, { status: 400 })
     }
 
-    if (!user.accessToken) {
+    const googleIntegration = user.integrations[0]
+    if (!googleIntegration?.accessToken) {
       return NextResponse.json({ error: 'Google Calendar access not granted. Please sign in again.' }, { status: 400 })
     }
 
@@ -40,20 +47,25 @@ export async function GET(request: NextRequest) {
 
     // Set credentials using stored tokens
     oauth2Client.setCredentials({
-      access_token: user.accessToken,
-      refresh_token: user.refreshToken,
+      access_token: googleIntegration.accessToken || undefined,
+      refresh_token: googleIntegration.refreshToken || undefined,
     })
 
     // Handle token refresh if needed
-    oauth2Client.on('tokens', async (tokens) => {
-      if (tokens.access_token) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token || user.refreshToken,
-          },
-        })
+  oauth2Client.on('tokens', async (tokens: { access_token?: string; refresh_token?: string; expiry_date?: number }) => {
+      try {
+        if (tokens.access_token) {
+          await prisma.integration.update({
+            where: { id: googleIntegration.id },
+            data: {
+              accessToken: tokens.access_token,
+              refreshToken: tokens.refresh_token || googleIntegration.refreshToken,
+              expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : googleIntegration.expiresAt,
+            },
+          })
+        }
+      } catch (e) {
+        console.error('Failed to persist refreshed Google tokens', e)
       }
     })
 
@@ -78,7 +90,7 @@ export async function GET(request: NextRequest) {
             maxResults: 250,
           })
 
-          const events = eventsResponse.data.items?.map(event => ({
+          const events = eventsResponse.data.items?.map((event: any) => ({
             id: event.id,
             summary: event.summary,
             description: event.description,
@@ -104,7 +116,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      calendars: calendars.map(cal => ({
+  calendars: calendars.map((cal: any) => ({
         id: cal.id,
         summary: cal.summary,
         description: cal.description,

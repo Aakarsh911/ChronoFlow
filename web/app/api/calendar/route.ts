@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession()
+  const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -14,8 +15,9 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') || new Date().toISOString()
     const endDate = searchParams.get('endDate') || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-    // Build the base URL
-    const baseUrl = request.url.split('/api/calendar')[0]
+  // Build the base URL robustly (handles both absolute and proxied paths)
+  const { origin } = new URL(request.url)
+  const baseUrl = origin
 
     // Fetch from both sources in parallel
     const [googleResponse, microsoftResponse] = await Promise.allSettled([
@@ -52,8 +54,14 @@ export async function GET(request: NextRequest) {
         })))
       }
     } else if (googleResponse.status === 'fulfilled') {
-      const errorData = await googleResponse.value.json()
-      errors.push({ source: 'google', error: errorData.error })
+      let errorMsg = googleResponse.value.statusText
+      try {
+        const text = await googleResponse.value.text()
+        errorMsg = JSON.parse(text).error ?? errorMsg
+      } catch {
+        // response was HTML or not JSON
+      }
+      errors.push({ source: 'google', error: errorMsg })
     } else {
       errors.push({ source: 'google', error: 'Failed to fetch Google Calendar' })
     }
@@ -75,8 +83,14 @@ export async function GET(request: NextRequest) {
         })))
       }
     } else if (microsoftResponse.status === 'fulfilled') {
-      const errorData = await microsoftResponse.value.json()
-      errors.push({ source: 'microsoft', error: errorData.error })
+      let errorMsg = microsoftResponse.value.statusText
+      try {
+        const text = await microsoftResponse.value.text()
+        errorMsg = JSON.parse(text).error ?? errorMsg
+      } catch {
+        // response was HTML or not JSON
+      }
+      errors.push({ source: 'microsoft', error: errorMsg })
     } else {
       errors.push({ source: 'microsoft', error: 'Failed to fetch Microsoft Calendar' })
     }

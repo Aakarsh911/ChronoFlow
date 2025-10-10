@@ -310,7 +310,7 @@ export function CalendarView() {
                       <div className="space-y-1">
                         {dayEvents.slice(0, 2).map((event) => (
                           <div
-                            key={event.id}
+                            key={`monthcell-${event.source}-${event.id}-${event.start.dateTime || event.start.date || ''}`}
                             className={cn(
                               "text-xs p-1 rounded border text-center truncate",
                               getSourceColor(event.source),
@@ -347,7 +347,7 @@ export function CalendarView() {
               {getDayEvents(getDate(selectedDate)).map((event) => {
                 const duration = calculateDuration(event)
                 return (
-                  <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+                  <div key={`selected-${event.source}-${event.id}-${event.start.dateTime || event.start.date || ''}`} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
                     <div
                       className={cn(
                         "w-3 h-3 rounded-full",

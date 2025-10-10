@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { Client } from '@microsoft/microsoft-graph-client'
-import { PrismaClient } from '@prisma/client'
-import 'isomorphic-fetch'
+import { PrismaClient, Provider } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -124,9 +123,7 @@ export async function GET(request: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
-        integrations: {
-          where: { provider: 'MICROSOFT' },
-        },
+        integrations: { where: { provider: Provider.MICROSOFT } },
       },
     })
 
@@ -134,7 +131,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const microsoftIntegration = user.integrations.find((i: any) => i.provider === 'MICROSOFT')
+  const microsoftIntegration = user.integrations.find((i: any) => i.provider === Provider.MICROSOFT)
 
     if (!microsoftIntegration) {
       return NextResponse.json({ error: 'Microsoft account not connected' }, { status: 400 })

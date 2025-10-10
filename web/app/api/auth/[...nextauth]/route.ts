@@ -3,7 +3,7 @@ import NextAuth from "next-auth";
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Provider } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -46,23 +46,45 @@ export const authOptions: NextAuthOptions = {
   async signIn({ user, account }: any) {
       // Store user info in User table if not already present
       if (account?.provider === "google" && user.email) {
-        await prisma.user.upsert({
+        const savedUser = await prisma.user.upsert({
           where: { email: user.email },
           update: {
             name: user.name,
             image: user.image,
             googleId: account.providerAccountId,
-            accessToken: account.access_token,
-            refreshToken: account.refresh_token,
           },
           create: {
             email: user.email,
             name: user.name,
             image: user.image,
             googleId: account.providerAccountId,
+            onboarding: false,
+          },
+        });
+
+        // Store Google tokens in Integration table
+        await prisma.integration.upsert({
+          where: {
+            userId_provider: {
+              userId: savedUser.id,
+              provider: Provider.GOOGLE,
+            },
+          },
+          update: {
             accessToken: account.access_token,
             refreshToken: account.refresh_token,
-            onboarding: false,
+            expiresAt: account.expires_at ? new Date(account.expires_at * 1000) : null,
+            scope: account.scope,
+            accountId: account.providerAccountId,
+          },
+          create: {
+            userId: savedUser.id,
+            provider: Provider.GOOGLE,
+            accessToken: account.access_token,
+            refreshToken: account.refresh_token,
+            expiresAt: account.expires_at ? new Date(account.expires_at * 1000) : null,
+            scope: account.scope,
+            accountId: account.providerAccountId,
           },
         });
       }
@@ -104,7 +126,7 @@ export const authOptions: NextAuthOptions = {
           where: {
             userId_provider: {
               userId: userId,
-              provider: "MICROSOFT",
+              provider: Provider.MICROSOFT,
             },
           },
           update: {
@@ -115,7 +137,7 @@ export const authOptions: NextAuthOptions = {
           },
           create: {
             userId: userId,
-            provider: "MICROSOFT",
+            provider: Provider.MICROSOFT,
             accessToken: account.access_token,
             refreshToken: account.refresh_token,
             expiresAt: account.expires_at ? new Date(account.expires_at * 1000) : null,

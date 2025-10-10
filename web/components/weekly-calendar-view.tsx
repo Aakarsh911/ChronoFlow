@@ -692,7 +692,7 @@ export function WeeklyCalendarView() {
                     const calendarColor = getCalendarColor(event.calendarId)
                     return (
                       <div
-                        key={`allday-${event.id}`}
+                        key={`allday-${event.calendarId}-${event.id}-${event.start.date || event.start.dateTime || ''}`}
                         className="text-xs p-1 rounded border-l-4 bg-background shadow-sm hover:shadow-md transition-shadow cursor-pointer truncate whitespace-nowrap overflow-hidden text-ellipsis"
                         style={{ borderLeftColor: calendarColor }}
                         title={event.summary}
@@ -747,7 +747,7 @@ export function WeeklyCalendarView() {
                   
                   return (
                     <div
-                      key={`${event.id}-${eventIndex}`}
+                      key={`timed-${event.calendarId}-${event.id}-${event.start.dateTime || event.start.date || ''}`}
                       className="absolute z-10"
                       style={{
                         left: `calc(50px + ${dayIndex} * (100% - 50px) / 5)`,
@@ -857,7 +857,7 @@ export function WeeklyCalendarView() {
                   const calendarColor = getCalendarColor(event.calendarId)
                   
                   return (
-                    <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20">
+                    <div key={`today-${event.calendarId}-${event.id}-${event.start.dateTime || event.start.date || ''}`} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20">
                       <div 
                         className="w-1 h-12 rounded-full flex-shrink-0"
                         style={{ backgroundColor: calendarColor }}
