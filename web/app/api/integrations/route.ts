@@ -25,6 +25,11 @@ export async function GET() {
 
   // Consider Google connected if user has googleId
   map.GOOGLE = !!user.googleId
+  
+  // TEAMS is an alias for MICROSOFT in the UI
+  if (map.MICROSOFT) {
+    map.TEAMS = true
+  }
 
   return NextResponse.json(map)
 }

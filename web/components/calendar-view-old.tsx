@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { format, parseISO, isSameDay, startOfMonth, endOfMonth, getDate } from "date-fns"
+import { format, parseISO, isSameDay, startOfMonth, endOfMonth } from "date-fns"
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 const MONTHS = [
@@ -74,39 +74,6 @@ export function CalendarView() {
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
 
-  // Fetch calendar events
-  useEffect(() => {
-    fetchCalendarEvents()
-  }, [currentDate])
-
-  const fetchCalendarEvents = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const start = startOfMonth(currentDate)
-      const end = endOfMonth(currentDate)
-      
-      const response = await fetch(
-        `/api/calendar?startDate=${start.toISOString()}&endDate=${end.toISOString()}`
-      )
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch calendar events')
-      }
-      
-      const data = await response.json()
-      setEvents(data.events || [])
-      setStats(data.stats || null)
-      setLastSync(new Date())
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-      console.error('Error fetching calendar events:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const navigateMonth = (direction: "prev" | "next") => {
     setCurrentDate((prev) => {
       const newDate = new Date(prev)
@@ -116,43 +83,30 @@ export function CalendarView() {
   }
 
   const getDayEvents = (day: number) => {
-    const date = new Date(year, month, day)
-    return events.filter((event) => {
-      const eventDate = parseISO(event.start.dateTime || event.start.date || '')
-      return isSameDay(eventDate, date)
-    })
+    return mockEvents.filter((event) => event.date === day)
   }
 
-  const formatEventTime = (event: CalendarEvent) => {
-    if (!event.start.dateTime) return 'All day'
-    try {
-      const date = parseISO(event.start.dateTime)
-      return format(date, 'h:mm a')
-    } catch {
-      return ''
-    }
-  }
-
-  const calculateDuration = (event: CalendarEvent) => {
-    if (!event.start.dateTime || !event.end.dateTime) return null
-    try {
-      const start = parseISO(event.start.dateTime)
-      const end = parseISO(event.end.dateTime)
-      const diffMs = end.getTime() - start.getTime()
-      return Math.round(diffMs / 60000) // Convert to minutes
-    } catch {
-      return null
-    }
-  }
-
-  const getSourceColor = (source: string) => {
-    switch (source) {
-      case "google":
+  const getEventTypeColor = (type: string) => {
+    switch (type) {
+      case "meeting":
+        return "bg-chart-4/20 border-chart-4/40 text-chart-4"
+      case "focus":
         return "bg-primary/20 border-primary/40 text-primary"
-      case "microsoft":
-        return "bg-accent/20 border-accent/40 text-accent"
       default:
         return "bg-muted border-border text-muted-foreground"
+    }
+  }
+
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case "google":
+        return "🟢"
+      case "outlook":
+        return "🔵"
+      case "ai":
+        return "🤖"
+      default:
+        return "📅"
     }
   }
 
@@ -164,18 +118,15 @@ export function CalendarView() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  stats?.google.connected ? "bg-primary" : "bg-muted-foreground"
-                )}></div>
+                <div className="w-2 h-2 bg-primary rounded-full"></div>
                 <span className="font-medium text-sm">Google Calendar</span>
               </div>
-              <Badge variant={stats?.google.connected ? "secondary" : "outline"} className="text-xs">
-                {stats?.google.connected ? "Connected" : "Disconnected"}
+              <Badge variant="secondary" className="text-xs">
+                Connected
               </Badge>
             </div>
             <div className="mt-2 text-xs text-muted-foreground">
-              {stats?.google.events || 0} events • Synced {format(lastSync, 'p')}
+              {integrationStatus.google.events} events • Synced {integrationStatus.google.lastSync}
             </div>
           </CardContent>
         </Card>
@@ -184,18 +135,15 @@ export function CalendarView() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  stats?.microsoft.connected ? "bg-accent" : "bg-muted-foreground"
-                )}></div>
-                <span className="font-medium text-sm">Microsoft/Outlook</span>
+                <div className="w-2 h-2 bg-accent rounded-full"></div>
+                <span className="font-medium text-sm">Outlook</span>
               </div>
-              <Badge variant={stats?.microsoft.connected ? "secondary" : "outline"} className="text-xs">
-                {stats?.microsoft.connected ? "Connected" : "Disconnected"}
+              <Badge variant="secondary" className="text-xs">
+                Connected
               </Badge>
             </div>
             <div className="mt-2 text-xs text-muted-foreground">
-              {stats?.microsoft.events || 0} events • Synced {format(lastSync, 'p')}
+              {integrationStatus.outlook.events} events • Synced {integrationStatus.outlook.lastSync}
             </div>
           </CardContent>
         </Card>
@@ -205,44 +153,38 @@ export function CalendarView() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                <span className="font-medium text-sm">Teams Meetings</span>
+                <span className="font-medium text-sm">Slack Tasks</span>
               </div>
               <Badge variant="secondary" className="text-xs">
-                Via Outlook
+                Connected
               </Badge>
             </div>
             <div className="mt-2 text-xs text-muted-foreground">
-              Integrated via Microsoft Calendar
+              {integrationStatus.slack.tasks} tasks • Synced {integrationStatus.slack.lastSync}
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-muted-foreground/20">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Sync</span>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+                <span className="font-medium text-sm">Jira</span>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                Setup Required
+              </Badge>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={fetchCalendarEvents}
-              disabled={loading}
-              className="text-xs"
-            >
-              {loading ? "Syncing..." : "Refresh"}
-            </Button>
+            <div className="mt-2 text-xs text-muted-foreground">
+              Not connected •{" "}
+              <Button variant="link" className="p-0 h-auto text-xs">
+                Connect now
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {error && (
-        <Card className="border-destructive/50 bg-destructive/10">
-          <CardContent className="p-4">
-            <p className="text-sm text-destructive">{error}</p>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar Grid */}
@@ -255,7 +197,7 @@ export function CalendarView() {
                     <Calendar className="w-5 h-5" />
                     {MONTHS[month]} {year}
                   </CardTitle>
-                  <CardDescription>Your integrated calendar from Google and Microsoft</CardDescription>
+                  <CardDescription>Your integrated calendar with AI-optimized focus blocks</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => navigateMonth("prev")}>
@@ -290,9 +232,8 @@ export function CalendarView() {
                 {Array.from({ length: daysInMonth }, (_, i) => {
                   const day = i + 1
                   const dayEvents = getDayEvents(day)
-                  const dayDate = new Date(year, month, day)
-                  const isSelected = isSameDay(dayDate, selectedDate)
-                  const isToday = isSameDay(dayDate, new Date())
+                  const isSelected = day === selectedDate
+                  const isToday = day === 15 // Mock today as 15th
 
                   return (
                     <div
@@ -302,7 +243,7 @@ export function CalendarView() {
                         isSelected && "bg-primary/10 border-primary/30",
                         isToday && "bg-accent/10 border-accent/30",
                       )}
-                      onClick={() => setSelectedDate(dayDate)}
+                      onClick={() => setSelectedDate(day)}
                     >
                       <div className={cn("text-sm font-medium mb-1", isToday && "text-accent font-semibold")}>
                         {day}
@@ -313,10 +254,10 @@ export function CalendarView() {
                             key={event.id}
                             className={cn(
                               "text-xs p-1 rounded border text-center truncate",
-                              getSourceColor(event.source),
+                              getEventTypeColor(event.type),
                             )}
                           >
-                            {event.sourceIcon} {event.summary}
+                            {getSourceIcon(event.source)} {event.title}
                           </div>
                         ))}
                         {dayEvents.length > 2 && (
@@ -337,51 +278,37 @@ export function CalendarView() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">
-                {format(selectedDate, 'MMMM d, yyyy')}
+                {MONTHS[month]} {selectedDate}, {year}
               </CardTitle>
-              <CardDescription>
-                {getDayEvents(getDate(selectedDate)).length} events scheduled
-              </CardDescription>
+              <CardDescription>{getDayEvents(selectedDate).length} events scheduled</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {getDayEvents(getDate(selectedDate)).map((event) => {
-                const duration = calculateDuration(event)
-                return (
-                  <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
-                    <div
-                      className={cn(
-                        "w-3 h-3 rounded-full",
-                        event.source === "google" ? "bg-primary" : "bg-accent"
-                      )}
-                    ></div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-sm">{event.summary}</h4>
-                        <span className="text-xs text-muted-foreground">
-                          {formatEventTime(event)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {duration && (
-                          <Badge variant="outline" className="text-xs">
-                            {duration}min
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="text-xs capitalize">
-                          {event.source}
-                        </Badge>
-                        {event.location && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            📍 {event.location}
-                          </span>
-                        )}
-                      </div>
+              {getDayEvents(selectedDate).map((event) => (
+                <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+                  <div
+                    className={cn("w-3 h-3 rounded-full", event.type === "meeting" ? "bg-chart-4" : "bg-primary")}
+                  ></div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm">{event.title}</h4>
+                      <span className="text-xs text-muted-foreground">{event.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs">
+                        {event.duration}min
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {event.type === "meeting" ? "Meeting" : "Focus Block"}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {getSourceIcon(event.source)} {event.source}
+                      </span>
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              ))}
 
-              {getDayEvents(getDate(selectedDate)).length === 0 && (
+              {getDayEvents(selectedDate).length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No events scheduled for this day</p>
@@ -449,10 +376,6 @@ export function CalendarView() {
               <Button variant="outline" className="w-full justify-start gap-3 bg-transparent">
                 <ExternalLink className="w-4 h-4" />
                 Open Google Calendar
-              </Button>
-              <Button variant="outline" className="w-full justify-start gap-3 bg-transparent">
-                <ExternalLink className="w-4 h-4" />
-                Open Outlook Calendar
               </Button>
             </CardContent>
           </Card>

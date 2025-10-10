@@ -255,7 +255,7 @@ export function WeeklyCalendarView() {
       
       try {
         const response = await fetch(
-          `/api/calendar/google?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
+          `/api/calendar?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
         )
         
         if (!response.ok) {
@@ -748,16 +748,16 @@ export function WeeklyCalendarView() {
                   return (
                     <div
                       key={`${event.id}-${eventIndex}`}
-                      className="absolute z-10 mx-1"
+                      className="absolute z-10"
                       style={{
-                        left: `calc(50px + ${dayIndex * 20}%)`,
-                        width: `calc(20% - 2px)`,
+                        left: `calc(50px + ${dayIndex} * (100% - 50px) / 5)`,
+                        width: `calc((100% - 50px) / 5)`,
                         top: `${position.top}px`, // Direct positioning within time grid
                         height: `${position.height}px`,
                       }}
                     >
                     <div
-                      className="h-full rounded-md border-l-4 bg-background shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer p-2 overflow-hidden hover:scale-[1.02] hover:z-20 relative"
+                      className="h-full rounded-md border-l-4 bg-background shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer p-1.5 overflow-hidden hover:scale-[1.02] hover:z-20 relative mx-0.5"
                       style={{ borderLeftColor: calendarColor }}
                     >
                       <div className="text-xs font-medium line-clamp-2 mb-1">

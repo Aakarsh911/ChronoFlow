@@ -2,6 +2,7 @@
 import NextAuth from "next-auth";
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import AzureADProvider from "next-auth/providers/azure-ad";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -16,6 +17,16 @@ export const authOptions: NextAuthOptions = {
           scope: 'openid email profile https://www.googleapis.com/auth/calendar.readonly',
           access_type: 'offline',
           prompt: 'consent',
+        },
+      },
+    }),
+    AzureADProvider({
+      clientId: process.env.AZURE_AD_CLIENT_ID!,
+      clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
+      tenantId: process.env.AZURE_AD_TENANT_ID || "common",
+      authorization: {
+        params: {
+          scope: 'openid email profile offline_access User.Read Calendars.Read Calendars.Read.Shared',
         },
       },
     }),
@@ -52,6 +63,63 @@ export const authOptions: NextAuthOptions = {
             accessToken: account.access_token,
             refreshToken: account.refresh_token,
             onboarding: false,
+          },
+        });
+      }
+      
+      // Store Microsoft account info
+      if (account?.provider === "azure-ad" && user.email) {
+        // First, find or create the user
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email },
+        });
+
+        if (existingUser) {
+          // Update existing user with Microsoft info if needed
+          await prisma.user.update({
+            where: { email: user.email },
+            data: {
+              name: user.name || existingUser.name,
+              image: user.image || existingUser.image,
+            },
+          });
+        } else {
+          // Create new user
+          await prisma.user.create({
+            data: {
+              email: user.email,
+              name: user.name,
+              image: user.image,
+              onboarding: false,
+            },
+          });
+        }
+
+        // Store Microsoft tokens in Integration table
+        const userId = existingUser?.id || (await prisma.user.findUnique({
+          where: { email: user.email },
+        }))!.id;
+
+        await prisma.integration.upsert({
+          where: {
+            userId_provider: {
+              userId: userId,
+              provider: "MICROSOFT",
+            },
+          },
+          update: {
+            accessToken: account.access_token,
+            refreshToken: account.refresh_token,
+            expiresAt: account.expires_at ? new Date(account.expires_at * 1000) : null,
+            scope: account.scope,
+          },
+          create: {
+            userId: userId,
+            provider: "MICROSOFT",
+            accessToken: account.access_token,
+            refreshToken: account.refresh_token,
+            expiresAt: account.expires_at ? new Date(account.expires_at * 1000) : null,
+            scope: account.scope,
           },
         });
       }

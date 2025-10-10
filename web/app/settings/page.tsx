@@ -36,23 +36,29 @@ export default function SettingsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [integrations, setIntegrations] = useState<Record<Service, boolean>>({
+  const [integrations, setIntegrations] = useState<Record<string, boolean>>({
     GOOGLE: false,
     JIRA: false,
     SLACK: false,
     TEAMS: false,
+    MICROSOFT: false,
   })
 
   useEffect(() => {
-    // Show simple alert on Jira connect/disconnect
+    // Show simple alert on connection/disconnection
     const connected = searchParams?.get("connected")
     const error = searchParams?.get("error")
     if (connected === "jira") {
-      // lightweight feedback; replace with toast if desired
       console.info("Jira connected")
+      router.replace("/settings")
+    } else if (connected === "microsoft") {
+      console.info("Microsoft Teams connected")
       router.replace("/settings")
     } else if (error?.startsWith("jira")) {
       console.warn("Jira connect error:", error)
+      router.replace("/settings")
+    } else if (error?.startsWith("microsoft")) {
+      console.warn("Microsoft connect error:", error)
       router.replace("/settings")
     }
 
@@ -92,7 +98,7 @@ export default function SettingsPage() {
     },
     {
       provider: "TEAMS",
-      connected: Boolean(integrations.TEAMS),
+      connected: Boolean(integrations.MICROSOFT),
       label: "Microsoft Teams",
       description: "Update presence and see meetings",
     },
@@ -102,12 +108,22 @@ export default function SettingsPage() {
     window.location.href = "/api/integrations/jira/auth"
   }
 
+  const connectMicrosoft = () => {
+    window.location.href = "/api/integrations/microsoft/auth"
+  }
+
   const disconnect = async (provider: Service) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/integrations/${provider.toLowerCase()}/disconnect`, { method: "POST" })
+      const endpoint = provider === "TEAMS" ? "microsoft" : provider.toLowerCase()
+      const res = await fetch(`/api/integrations/${endpoint}/disconnect`, { method: "POST" })
       if (res.ok) {
-        setIntegrations((prev) => ({ ...prev, [provider]: false }))
+        // Update integrations state - for TEAMS, clear MICROSOFT
+        if (provider === "TEAMS") {
+          setIntegrations((prev) => ({ ...prev, MICROSOFT: false, TEAMS: false }))
+        } else {
+          setIntegrations((prev) => ({ ...prev, [provider]: false }))
+        }
       }
     } finally {
       setLoading(false)
@@ -182,6 +198,12 @@ export default function SettingsPage() {
                     <Button variant="outline" disabled={true}>
                       {s.connected ? "Connected via Google Sign-In" : "Sign in with Google from Login"}
                     </Button>
+                  ) : s.provider === "TEAMS" ? (
+                    s.connected ? (
+                      <Button variant="outline" disabled={loading} onClick={() => disconnect("TEAMS")}>Disable</Button>
+                    ) : (
+                      <Button className="gradient-primary text-white" onClick={connectMicrosoft}>Connect</Button>
+                    )
                   ) : (
                     <Button variant="outline" disabled>
                       Coming soon
