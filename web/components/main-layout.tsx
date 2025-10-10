@@ -15,7 +15,8 @@ import {
   X,
   Home,
   Plus,
-  ChevronRight
+  ChevronRight,
+  Mail
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -54,6 +55,12 @@ const navigationItems = [
     title: "Tasks",
     href: "/tasks",
     icon: Target,
+    badge: null
+  },
+  {
+    title: "Outlook",
+    href: "/outlook",
+    icon: Mail,
     badge: null
   },
   {
