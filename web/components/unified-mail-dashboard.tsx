@@ -83,7 +83,7 @@ export default function UnifiedMailDashboard() {
         ? `/api/gmail/emails/sync?historyId=${gmailHistoryId}`
         : '/api/gmail/emails'
       
-      const response = await fetch(url)
+      const response = await fetch(url, { cache: "no-store" })
       if (!response.ok) {
         if (response.status === 401) {
           console.log('Gmail not connected')
@@ -123,7 +123,7 @@ export default function UnifiedMailDashboard() {
         ? `/api/outlook/emails/delta?deltaLink=${encodeURIComponent(outlookDeltaLink)}`
         : '/api/outlook/emails/delta'
       
-      const response = await fetch(url)
+      const response = await fetch(url, { cache: "no-store" })
       if (!response.ok) {
         if (response.status === 401) {
           console.log('Outlook not connected')

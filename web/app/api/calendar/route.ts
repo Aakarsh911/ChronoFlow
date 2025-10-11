@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { google } from 'googleapis'
 import { Client } from '@microsoft/microsoft-graph-client'
 import { PrismaClient } from '@prisma/client'
+import { cache, cacheKeys, cacheTTL } from '@/lib/redis'
 
 const prisma = new PrismaClient()
 
@@ -31,6 +32,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate') || new Date().toISOString()
     const endDate = searchParams.get('endDate') || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    const forceRefresh = searchParams.get('forceRefresh') === 'true'
+
+    console.log(`📅 Calendar API called - forceRefresh: ${forceRefresh}`)
 
     // Get user with integrations
     const user = await prisma.user.findUnique({
@@ -42,6 +46,24 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Check cache first (unless force refresh is requested)
+    const cacheKey = cacheKeys.calendar(user.id, startDate, endDate)
+    
+    if (forceRefresh) {
+      // Invalidate cache when force refresh is requested
+      await cache.del(cacheKey)
+      console.log('✓ Cache invalidated due to forceRefresh')
+    } else {
+      const cachedData = await cache.get(cacheKey)
+      if (cachedData) {
+        console.log('✓ Returning cached calendar data')
+        return NextResponse.json({
+          ...cachedData,
+          cached: true,
+        })
+      }
     }
 
     const googleIntegration = user.integrations.find((i: any) => i.provider === 'GOOGLE')
@@ -283,7 +305,7 @@ export async function GET(request: NextRequest) {
       return aStart - bStart
     })
 
-    return NextResponse.json({
+    const responseData = {
       events: allEvents,
       calendars: allCalendars,
       errors: errors.length > 0 ? errors : undefined,
@@ -299,7 +321,19 @@ export async function GET(request: NextRequest) {
           connected: !errors.find(e => e.source === 'microsoft'),
         },
       },
-    })
+      cached: false,
+      forceRefreshed: forceRefresh,
+    }
+
+    // Cache the response (only if not a force refresh)
+    if (!forceRefresh) {
+      await cache.set(cacheKey, responseData, cacheTTL.calendar)
+      console.log('✓ Cached calendar data')
+    } else {
+      console.log('⚡ Fresh data returned (force refresh)')
+    }
+
+    return NextResponse.json(responseData)
 
   } catch (error) {
     console.error('Error fetching calendar data:', error)

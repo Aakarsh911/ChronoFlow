@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "../auth/[...nextauth]/route"
 import { PrismaClient } from "@prisma/client"
+import { cache, cacheKeys, cacheTTL } from "@/lib/redis"
 
 const prisma = new PrismaClient()
 
@@ -11,6 +12,14 @@ export async function GET() {
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  // Check cache first
+  const cacheKey = cacheKeys.integrations(user.id)
+  const cachedData = await cache.get(cacheKey)
+  if (cachedData) {
+    console.log('✓ Returning cached integrations')
+    return NextResponse.json(cachedData)
+  }
 
   let ints: any[] = []
   try {
@@ -30,6 +39,10 @@ export async function GET() {
   if (map.MICROSOFT) {
     map.TEAMS = true
   }
+
+  // Cache the result
+  await cache.set(cacheKey, map, cacheTTL.integrations)
+  console.log('✓ Cached integrations')
 
   return NextResponse.json(map)
 }

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { deleteCachePattern } from '@/lib/redis';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Microsoft Graph Webhook Endpoint
@@ -12,6 +14,8 @@ const eventEmitter = global as any;
 if (!eventEmitter.mailClients) {
   eventEmitter.mailClients = new Map();
 }
+
+const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,6 +56,22 @@ export async function POST(request: NextRequest) {
         resource,
         subscriptionId,
       });
+
+      // Invalidate email cache for all users (or look up specific user from subscription)
+      try {
+        // In production, you'd look up which user this subscription belongs to
+        // For now, invalidate cache for all outlook emails
+        const integrations = await prisma.integration.findMany({
+          where: { provider: 'MICROSOFT' },
+        });
+        
+        for (const integration of integrations) {
+          await deleteCachePattern(`emails:${integration.userId}:*`);
+        }
+        console.log(`Invalidated email cache for ${integrations.length} users`);
+      } catch (error) {
+        console.error('Error invalidating cache:', error);
+      }
 
       // Extract user info from subscription (you'd normally look this up in DB)
       // For now, broadcast to all connected SSE clients

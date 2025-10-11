@@ -58,19 +58,22 @@ export default function GmailDashboard() {
   }, [])
 
   // Fetch emails using Gmail API
-  const fetchEmails = useCallback(async (useHistory = false) => {
+  const fetchEmails = useCallback(async (useHistory = false, forceRefresh = false) => {
     try {
       const url = useHistory && historyId 
         ? `/api/gmail/emails/sync?historyId=${historyId}`
-        : '/api/gmail/emails'
+        : `/api/gmail/emails${forceRefresh ? '?forceRefresh=true' : ''}`
       
-      const response = await fetch(url)
+      console.log(`📧 Fetching Gmail - useHistory: ${useHistory}, forceRefresh: ${forceRefresh}`)
+      
+      const response = await fetch(url, { cache: "no-store" })
       
       if (!response.ok) {
         throw new Error('Failed to fetch emails')
       }
 
       const data = await response.json()
+      console.log(`📧 Gmail data received - cached: ${data.cached}, forceRefreshed: ${data.forceRefreshed}, emails: ${data.emails?.length || 0}`)
       
       if (useHistory && historyId) {
         // This is a history update - merge with existing emails
@@ -222,8 +225,9 @@ export default function GmailDashboard() {
 
   // Manual refresh
   const handleRefresh = useCallback(() => {
+    console.log('🔄 Manual Gmail refresh triggered')
     setLoading(true)
-    fetchEmails(true)
+    fetchEmails(false, true) // Don't use history, force refresh from API
   }, [fetchEmails])
 
   const formatDate = (dateString: string) => {

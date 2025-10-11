@@ -79,7 +79,7 @@ export function CalendarView() {
     fetchCalendarEvents()
   }, [currentDate])
 
-  const fetchCalendarEvents = async () => {
+  const fetchCalendarEvents = async (forceRefresh = false) => {
     try {
       setLoading(true)
       setError(null)
@@ -87,8 +87,11 @@ export function CalendarView() {
       const start = startOfMonth(currentDate)
       const end = endOfMonth(currentDate)
       
+      console.log(`📅 Fetching calendar - forceRefresh: ${forceRefresh}`)
+      
       const response = await fetch(
-        `/api/calendar?startDate=${start.toISOString()}&endDate=${end.toISOString()}`
+        `/api/calendar?startDate=${start.toISOString()}&endDate=${end.toISOString()}&forceRefresh=${forceRefresh}`,
+        { cache: "no-store" }
       )
       
       if (!response.ok) {
@@ -96,6 +99,8 @@ export function CalendarView() {
       }
       
       const data = await response.json()
+      console.log(`📅 Calendar data received - cached: ${data.cached}, forceRefreshed: ${data.forceRefreshed}`)
+      
       setEvents(data.events || [])
       setStats(data.stats || null)
       setLastSync(new Date())
@@ -226,7 +231,7 @@ export function CalendarView() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={fetchCalendarEvents}
+              onClick={() => fetchCalendarEvents(true)}
               disabled={loading}
               className="text-xs"
             >

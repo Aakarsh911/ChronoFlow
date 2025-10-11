@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { PrismaClient } from "@prisma/client"
+import { getCache, setCache, cacheKeys, cacheTTL } from "@/lib/redis"
 
 const prisma = new PrismaClient()
 
@@ -115,6 +116,14 @@ export async function GET() {
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  const cacheKey = cacheKeys.jiraIssues(user.id)
+
+  // Check cache first
+  const cachedIssues = await getCache(cacheKey)
+  if (cachedIssues) {
+    return NextResponse.json(cachedIssues)
+  }
+
   const integration = await prisma.integration.findUnique({
     where: { userId_provider: { userId: user.id, provider: "JIRA" } },
   })
@@ -170,5 +179,10 @@ export async function GET() {
     }
   })
 
-  return NextResponse.json({ issues })
+  const result = { issues }
+
+  // Cache for 10 minutes
+  await setCache(cacheKey, result, cacheTTL.jiraIssues)
+
+  return NextResponse.json(result)
 }

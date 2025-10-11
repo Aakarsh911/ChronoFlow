@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { PrismaClient } from "@prisma/client"
+import { deleteCache, deleteCachePattern } from "@/lib/redis"
 
 const prisma = new PrismaClient()
 
@@ -162,6 +163,11 @@ export async function POST() {
       },
     },
   })
+
+  // Invalidate tasks and jira cache after sync
+  await deleteCache(`tasks:${user.id}`)
+  await deleteCache(`jira:issues:${user.id}`)
+  console.log('✓ Invalidated tasks and jira cache after sync')
 
   return NextResponse.json({ 
     message: `Synced ${upsertedCount} tasks from Jira.${deletedCount.count > 0 ? ` Removed ${deletedCount.count} tasks no longer assigned to you.` : ''}` 

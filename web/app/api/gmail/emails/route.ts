@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { PrismaClient, Provider } from '@prisma/client'
 import { google } from 'googleapis'
+import { cache, cacheKeys, cacheTTL } from '@/lib/redis'
 
 const prisma = new PrismaClient()
 
@@ -32,6 +33,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Google account not connected' }, { status: 401 })
     }
 
+    // Check cache first
+    const todayStr = new Date().toISOString().split('T')[0]
+    const cacheKey = cacheKeys.emails(user.id, todayStr)
+    const { searchParams } = new URL(request.url)
+    const forceRefresh = searchParams.get('forceRefresh') === 'true'
+    
+    console.log(`📧 Gmail emails API - forceRefresh: ${forceRefresh}`)
+    
+    if (forceRefresh) {
+      // Invalidate cache when force refresh is requested
+      await cache.del(cacheKey)
+      console.log('✓ Gmail cache invalidated due to forceRefresh')
+    } else {
+      const cachedData = await cache.get(cacheKey)
+      if (cachedData) {
+        console.log('✓ Returning cached Gmail emails')
+        return NextResponse.json({
+          ...cachedData,
+          cached: true,
+        })
+      }
+    }
+
     const integration = user.integrations[0]
     
     // Check if token is expired and refresh if needed
@@ -52,9 +76,9 @@ export async function GET(request: NextRequest) {
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
 
     // Get today's date for filtering
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todaySeconds = Math.floor(today.getTime() / 1000)
+    const todayDate = new Date()
+    todayDate.setHours(0, 0, 0, 0)
+    const todaySeconds = Math.floor(todayDate.getTime() / 1000)
 
     // List messages from today
     const listResponse = await gmail.users.messages.list({
@@ -115,9 +139,23 @@ export async function GET(request: NextRequest) {
 
     const validEmails = emails.filter(e => e !== null)
 
-    return NextResponse.json({
+    const responseData = {
       emails: validEmails,
       historyId: historyId || null,
+    }
+
+    // Cache the response (only if not a force refresh)
+    if (!forceRefresh) {
+      await cache.set(cacheKey, responseData, cacheTTL.emails)
+      console.log('✓ Cached Gmail emails')
+    } else {
+      console.log('⚡ Fresh Gmail data returned (force refresh)')
+    }
+
+    return NextResponse.json({
+      ...responseData,
+      cached: false,
+      forceRefreshed: forceRefresh,
     })
 
   } catch (error) {

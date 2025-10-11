@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { deleteCachePattern } from '@/lib/redis';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Gmail Push Notifications Endpoint
@@ -7,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 const eventEmitter = global as any;
+const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +37,17 @@ export async function POST(request: NextRequest) {
 
     // Extract user email from notification
     const emailAddress = notification.emailAddress;
+
+    // Invalidate email cache for this user
+    try {
+      const user = await prisma.user.findUnique({ where: { email: emailAddress } });
+      if (user) {
+        await deleteCachePattern(`emails:${user.id}:*`);
+        console.log(`Invalidated email cache for user: ${user.id}`);
+      }
+    } catch (error) {
+      console.error('Error invalidating cache:', error);
+    }
 
     // Broadcast to all connected SSE clients for this user
     if (eventEmitter.mailClients) {

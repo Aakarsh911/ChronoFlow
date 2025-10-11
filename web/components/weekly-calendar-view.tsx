@@ -163,20 +163,68 @@ export function WeeklyCalendarView() {
     })
   }, [getCacheKey])
 
-  const refreshCalendarData = useCallback(() => {
+  const refreshCalendarData = useCallback(async () => {
+    console.log('🔄 Manual refresh triggered')
+    
+    // Clear local caches
     cacheRef.current.clear()
     preloadingRef.current.clear()
     fetchingRef.current = false
-    hasLoadedRef.current = false
+    
     setLoading(true)
     setError(null)
-    setCurrentWeek(prev => new Date(prev.getTime()))
-  }, [])
+    
+    try {
+      // Force refresh from API
+      const response = await fetch(
+        `/api/calendar?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}&forceRefresh=true`,
+        { cache: "no-store" }
+      )
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch calendar data`)
+      }
+      
+      const data = await response.json()
+      console.log(`✅ Refresh complete - cached: ${data.cached}, forceRefreshed: ${data.forceRefreshed}`)
+      
+      setEvents(data.events || [])
+      setCalendars(data.calendars || [])
+      
+      // Update local cache with fresh data
+      setCachedData(weekStart, weekEnd, data.events || [], data.calendars || [])
+      
+      setEnabledCalendars(prevEnabled => {
+        if (prevEnabled.size === 0) {
+          return new Set((data.calendars || []).map((cal: CalendarInfo) => cal.id))
+        }
+        const availableCalendarIds = new Set(data.calendars?.map((cal: CalendarInfo) => cal.id) || [])
+        return new Set([...prevEnabled].filter(id => availableCalendarIds.has(id)))
+      })
+      
+      // Preload adjacent weeks after successful refresh (optional, don't add to deps)
+      setTimeout(() => {
+        // Will call preloadMultipleWeeks if defined, else skip
+        try {
+          preloadMultipleWeeks(weekStart)
+        } catch (e) {
+          // Ignore if not yet defined
+        }
+      }, 500)
+      
+    } catch (err) {
+      console.error('Calendar refresh error:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }, [weekStart, weekEnd, setCachedData])
 
-  const backgroundFetch = useCallback(async (weekStart: Date, weekEnd: Date) => {
+  const backgroundFetch = useCallback(async (weekStart: Date, weekEnd: Date, forceRefresh = false) => {
     const key = getCacheKey(weekStart, weekEnd)
     
-    if (getCachedData(weekStart, weekEnd) || preloadingRef.current.has(key)) {
+    if (!forceRefresh && (getCachedData(weekStart, weekEnd) || preloadingRef.current.has(key))) {
       return
     }
     
@@ -184,7 +232,8 @@ export function WeeklyCalendarView() {
     
     try {
       const response = await fetch(
-        `/api/calendar?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
+        `/api/calendar?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}&forceRefresh=${forceRefresh}`,
+        { cache: "no-store" }
       )
       
       if (!response.ok) {
@@ -192,6 +241,7 @@ export function WeeklyCalendarView() {
       }
       
       const data = await response.json()
+      console.log(`📅 Background fetch - cached: ${data.cached}, forceRefreshed: ${data.forceRefreshed}`)
       setCachedData(weekStart, weekEnd, data.events || [], data.calendars || [])
       
     } catch (err) {
@@ -255,7 +305,8 @@ export function WeeklyCalendarView() {
       
       try {
         const response = await fetch(
-          `/api/calendar?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`
+          `/api/calendar?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`,
+          { cache: "no-store" }
         )
         
         if (!response.ok) {
@@ -264,6 +315,7 @@ export function WeeklyCalendarView() {
         }
         
         const data = await response.json()
+        console.log(`📅 Main fetch - cached: ${data.cached}, forceRefreshed: ${data.forceRefreshed}`)
         
         setEvents(data.events || [])
         setCalendars(data.calendars || [])
