@@ -134,6 +134,7 @@ export const authOptions: NextAuthOptions = {
             refreshToken: account.refresh_token,
             expiresAt: account.expires_at ? new Date(account.expires_at * 1000) : null,
             scope: account.scope,
+            accountId: account.providerAccountId,
           },
           create: {
             userId: userId,
@@ -142,8 +143,16 @@ export const authOptions: NextAuthOptions = {
             refreshToken: account.refresh_token,
             expiresAt: account.expires_at ? new Date(account.expires_at * 1000) : null,
             scope: account.scope,
+            accountId: account.providerAccountId,
           },
         });
+
+        // Log the connected Microsoft account ID for observability
+        try {
+          console.log(
+            `✓ Microsoft account connected: user=${user.email} accountId=${account.providerAccountId}`
+          )
+        } catch {}
       }
       return true;
     },

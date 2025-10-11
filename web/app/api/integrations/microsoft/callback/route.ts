@@ -58,6 +58,23 @@ export async function GET(req: NextRequest) {
 
     const expiresAt: Date | null = tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : null
 
+    // Fetch the AAD account ID from Microsoft Graph (/me)
+    let accountId: string | null = null
+    try {
+      const meRes = await fetch('https://graph.microsoft.com/v1.0/me', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      })
+      if (meRes.ok) {
+        const me = await meRes.json()
+        accountId = me?.id ?? null
+      } else {
+        const t = await meRes.text().catch(() => '')
+        console.warn('Microsoft Graph /me failed:', meRes.status, t)
+      }
+    } catch (e) {
+      console.warn('Microsoft Graph /me error', e)
+    }
+
     // Use delegate if available; otherwise fallback to raw SQL upsert
     const hasDelegate = (prisma as any).integration && typeof (prisma as any).integration.upsert === "function"
     if (hasDelegate) {
@@ -68,6 +85,7 @@ export async function GET(req: NextRequest) {
           refreshToken: tokens.refresh_token,
           scope: tokens.scope,
           expiresAt,
+          accountId: accountId,
           data: tokens,
         },
         create: {
@@ -78,6 +96,7 @@ export async function GET(req: NextRequest) {
           refreshToken: tokens.refresh_token,
           scope: tokens.scope,
           expiresAt,
+          accountId: accountId,
           data: tokens,
         },
       })
@@ -91,6 +110,7 @@ export async function GET(req: NextRequest) {
            "refreshToken"=EXCLUDED."refreshToken",
            "scope"=EXCLUDED."scope",
            "expiresAt"=EXCLUDED."expiresAt",
+           "accountId"=EXCLUDED."accountId",
            "data"=EXCLUDED."data",
            "updatedAt"=NOW()`,
         randomUUID(),
@@ -100,10 +120,15 @@ export async function GET(req: NextRequest) {
         tokens.refresh_token ?? null,
         tokens.scope ?? null,
         expiresAt,
-        null,
+        accountId,
         JSON.stringify(tokens),
       )
     }
+
+    // Log for observability when connecting from Settings
+    try {
+      console.log(`✓ Microsoft connected via Settings: user=${email} accountId=${accountId ?? 'null'}`)
+    } catch {}
 
     return NextResponse.redirect(new URL("/settings?connected=microsoft", req.url))
   } catch (e) {
