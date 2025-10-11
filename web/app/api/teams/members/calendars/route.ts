@@ -246,6 +246,7 @@ export async function POST(req: NextRequest) {
             timezone: userTimezone,
             availability: availability,
             eventsCount: events.length,
+            events: events, // Include events for heat map calculation
           })
           
           console.log(`✓ Fetched ${events.length} events for ${memberName} (${userTimezone})`)

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Users, RefreshCw, Calendar, Clock, MapPin } from "lucide-react"
+import { Users, RefreshCw, Calendar, Clock, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -27,6 +27,14 @@ type Availability = {
   nextBusyAt?: string | null
 }
 
+type CalendarEvent = {
+  subject: string
+  start: { dateTime: string; timeZone: string }
+  end: { dateTime: string; timeZone: string }
+  isAllDay: boolean
+  showAs: string
+}
+
 type MemberCalendar = {
   memberId: string
   userName?: string
@@ -35,6 +43,7 @@ type MemberCalendar = {
   error?: string
   availability?: Availability
   eventsCount?: number
+  events?: CalendarEvent[]
 }
 
 export function TeamScheduling() {
@@ -44,12 +53,10 @@ export function TeamScheduling() {
   const [loadingCalendars, setLoadingCalendars] = useState(false)
   const [memberCalendars, setMemberCalendars] = useState<MemberCalendar[]>([])
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set())
-  const [findingBestTime, setFindingBestTime] = useState(false)
-  const [bestTimes, setBestTimes] = useState<any[]>([])
-  const [meetingDuration, setMeetingDuration] = useState<number>(60)
-  const [selectedDate, setSelectedDate] = useState<string>('any')
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0) // 0 = current week, 1 = next week, etc.
   const [userTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone)
 
+  // Fetch team members
   useEffect(() => {
     let mounted = true
     setLoadingTeams(true)
@@ -63,11 +70,6 @@ export function TeamScheduling() {
         const members = data?.members || []
         setMsTeamsMembers(members)
         setTeamsError(null)
-        
-        // Auto-fetch calendars after loading members
-        if (members.length > 0) {
-          fetchMemberCalendarsInternal(members)
-        }
       })
       .catch((err) => {
         if (!mounted) return
@@ -85,17 +87,52 @@ export function TeamScheduling() {
     return () => { mounted = false }
   }, [])
 
-  const fetchMemberCalendarsInternal = async (members: TeamsMember[]) => {
-    if (members.length === 0) return
+  // Get week dates based on offset
+  const getWeekDates = () => {
+    const dates: Date[] = []
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay() + 1 + (currentWeekOffset * 7)) // Monday
+    
+    for (let i = 0; i < 5; i++) { // Mon-Fri
+      const date = new Date(startOfWeek)
+      date.setDate(startOfWeek.getDate() + i)
+      dates.push(date)
+    }
+    return dates
+  }
+
+  // Fetch calendars for specific week
+  const fetchMemberCalendarsForWeek = async (weekOffset: number) => {
+    if (msTeamsMembers.length === 0) return
 
     setLoadingCalendars(true)
     try {
-      const response = await fetch('/api/teams/members/calendars', {
+      const today = new Date()
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(today.getDate() - today.getDay() + 1 + (weekOffset * 7)) // Monday
+      
+      const weekDates: Date[] = []
+      for (let i = 0; i < 5; i++) {
+        const date = new Date(startOfWeek)
+        date.setDate(startOfWeek.getDate() + i)
+        weekDates.push(date)
+      }
+
+      const startDate = weekDates[0]
+      const endDate = new Date(weekDates[4])
+      endDate.setHours(23, 59, 59, 999)
+
+      const params = new URLSearchParams()
+      params.append('startDate', startDate.toISOString())
+      params.append('endDate', endDate.toISOString())
+
+      const response = await fetch(`/api/teams/members/calendars?${params.toString()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ members }),
+        body: JSON.stringify({ members: msTeamsMembers }),
       })
 
       if (!response.ok) {
@@ -104,21 +141,27 @@ export function TeamScheduling() {
 
       const data = await response.json()
       setMemberCalendars(data.memberCalendars || [])
-      console.log('Member Calendars:', data.memberCalendars)
+      console.log('Member Calendars for week:', data.memberCalendars)
     } catch (error: any) {
       console.error('Error fetching member calendars:', error)
-      alert('Failed to fetch member calendars: ' + error.message)
     } finally {
       setLoadingCalendars(false)
     }
   }
+
+  // Auto-fetch calendars when members are loaded
+  useEffect(() => {
+    if (msTeamsMembers.length > 0) {
+      fetchMemberCalendarsForWeek(currentWeekOffset)
+    }
+  }, [msTeamsMembers.length])
 
   const fetchMemberCalendars = async () => {
     if (msTeamsMembers.length === 0) {
       alert('No team members found. Please wait for members to load.')
       return
     }
-    await fetchMemberCalendarsInternal(msTeamsMembers)
+    await fetchMemberCalendarsForWeek(currentWeekOffset)
   }
 
   const toggleMemberSelection = (memberId: string) => {
@@ -133,87 +176,96 @@ export function TeamScheduling() {
     })
   }
 
-  const findBestMeetingTime = async () => {
-    if (selectedMembers.size < 2) {
-      alert('Please select at least 2 team members to find meeting times.')
-      return
-    }
-
-    setFindingBestTime(true)
-    setBestTimes([])
-    
-    try {
-      const selectedMemberData = msTeamsMembers.filter(m => selectedMembers.has(m.id))
-      
-      const params = new URLSearchParams()
-      params.append('duration', meetingDuration.toString())
-      if (selectedDate && selectedDate !== 'any') {
-        params.append('date', selectedDate)
-      } else {
-        params.append('days', '14')
-      }
-      
-      const response = await fetch(`/api/teams/members/freebusy?${params.toString()}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ members: selectedMemberData }),
-      })
-
-      if (!response.ok) {
-        throw new Error(await response.text())
-      }
-
-      const data = await response.json()
-      setBestTimes(data.bestTimes || [])
-      console.log('Best Times:', data)
-      
-      if (data.bestTimes.length === 0) {
-        alert(data.note || 'No common free time found. Try a different date or duration.')
-      }
-    } catch (error: any) {
-      console.error('Error finding best times:', error)
-      alert('Failed to find best meeting times: ' + error.message)
-    } finally {
-      setFindingBestTime(false)
+  // Navigate weeks
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentWeekOffset(prev => direction === 'next' ? prev + 1 : prev - 1)
+    // Refetch calendars for the new week
+    if (msTeamsMembers.length > 0) {
+      fetchMemberCalendarsForWeek(currentWeekOffset + (direction === 'next' ? 1 : -1))
     }
   }
 
-  // Generate date options for next 14 days
-  const getDateOptions = () => {
-    const options = [{ value: 'any', label: 'Any day (next 14 days)' }]
-    const today = new Date()
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today)
-      date.setDate(date.getDate() + i)
-      // Format as YYYY-MM-DD in local timezone
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      const dateStr = `${year}-${month}-${day}`
-      
-      const label = date.toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
-      })
-      options.push({ value: dateStr, label: i === 0 ? `Today (${label})` : label })
+  // Format date for display
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    })
+  }
+
+  // Calculate availability for a specific time slot
+  const getAvailabilityAtTime = (date: Date, hour: number): { available: number; total: number } => {
+    const targetMembers = selectedMembers.size > 0 
+      ? memberCalendars.filter(cal => selectedMembers.has(cal.memberId))
+      : memberCalendars
+
+    if (targetMembers.length === 0) {
+      return { available: 0, total: 0 }
     }
-    return options
+
+    // Create time slot boundaries
+    const slotStart = new Date(date)
+    slotStart.setHours(hour, 0, 0, 0)
+    const slotEnd = new Date(slotStart)
+    slotEnd.setHours(hour + 1, 0, 0, 0)
+
+    let availableCount = 0
+
+    targetMembers.forEach(memberCal => {
+      if (memberCal.error || !memberCal.events) {
+        return // Skip members without calendar access
+      }
+
+      // Check if member is free during this hour
+      const isBusy = memberCal.events.some(event => {
+        const eventStart = new Date(event.start.dateTime + 'Z') // Ensure UTC
+        const eventEnd = new Date(event.end.dateTime + 'Z')
+        
+        // Check if event overlaps with our time slot
+        return (eventStart < slotEnd && eventEnd > slotStart) && 
+               (event.showAs === 'busy' || event.showAs === 'oof' || event.showAs === 'tentative')
+      })
+
+      if (!isBusy) {
+        availableCount++
+      }
+    })
+
+    return { available: availableCount, total: targetMembers.length }
+  }
+
+  // Get color based on availability percentage
+  const getAvailabilityColor = (available: number, total: number) => {
+    if (total === 0) return 'bg-gray-200'
+    const percentage = available / total
+    if (percentage >= 0.8) return 'bg-green-500'
+    if (percentage >= 0.5) return 'bg-yellow-500'
+    if (percentage >= 0.2) return 'bg-orange-500'
+    return 'bg-red-500'
   }
 
   // Format timezone to show abbreviation (e.g., "PST" from "Pacific Standard Time")
   const formatTimezone = (timezone: string) => {
     if (!timezone) return ''
     // Try to extract abbreviation from timezone name
-    // "Pacific Standard Time" -> "PST"
     const words = timezone.split(' ')
     if (words.length > 1) {
       return words.map(w => w[0]).join('')
     }
     return timezone
   }
+
+  // Get week label
+  const getWeekLabel = () => {
+    if (currentWeekOffset === 0) return 'This Week'
+    if (currentWeekOffset === 1) return 'Next Week'
+    if (currentWeekOffset === -1) return 'Last Week'
+    return `${Math.abs(currentWeekOffset)} weeks ${currentWeekOffset > 0 ? 'ahead' : 'ago'}`
+  }
+
+  // Time slots for the day (9 AM to 5 PM in user's timezone)
+  const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17]
 
   return (
     <div className="space-y-6">
@@ -264,75 +316,27 @@ export function TeamScheduling() {
                     <span className="font-medium">{userTimezone}</span>
                   </div>
 
-                  {/* Meeting Duration Picker */}
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                      Meeting Duration
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[30, 60, 90, 120].map((duration) => (
-                        <button
-                          key={duration}
-                          onClick={() => setMeetingDuration(duration)}
-                          className={cn(
-                            "px-2 py-1.5 text-xs rounded-md border transition-all",
-                            meetingDuration === duration
-                              ? "bg-blue-600 text-white border-blue-600 font-medium"
-                              : "bg-white border-gray-200 hover:border-blue-300"
-                          )}
-                        >
-                          {duration}min
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Date Picker */}
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                      Preferred Date
-                    </label>
-                    <Select value={selectedDate} onValueChange={setSelectedDate}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Any day (next 14 days)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getDateOptions().map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <div className="flex items-center gap-2">
                     <Button 
-                      onClick={findBestMeetingTime} 
-                      disabled={selectedMembers.size < 2 || findingBestTime}
+                      onClick={fetchMemberCalendars} 
+                      disabled={loadingCalendars}
                       size="sm"
                       className="flex-1 gap-1"
-                      variant={selectedMembers.size >= 2 ? "default" : "outline"}
+                      variant="outline"
                     >
-                      <Calendar className="w-4 h-4" />
-                      {findingBestTime ? 'Finding Times...' : 'Find Best Time'}
+                      <RefreshCw className={cn("w-4 h-4", loadingCalendars && "animate-spin")} />
+                      {loadingCalendars ? 'Refreshing...' : 'Refresh Calendars'}
                     </Button>
                     {selectedMembers.size > 0 && (
                       <Button 
-                        onClick={() => {
-                          setSelectedMembers(new Set())
-                          setBestTimes([])
-                        }} 
+                        onClick={() => setSelectedMembers(new Set())} 
                         size="sm"
                         variant="ghost"
                       >
-                        Clear
+                        Clear Selection
                       </Button>
                     )}
                   </div>
-                  {selectedMembers.size === 1 && (
-                    <p className="text-xs text-amber-600">Select at least one more member</p>
-                  )}
                 </div>
               )}
 
@@ -446,138 +450,140 @@ export function TeamScheduling() {
           </Card>
         </div>
 
-        {/* Right Panel - Meeting Scheduler */}
+        {/* Right Panel - Team Availability Heat Map */}
         <div className="lg:col-span-8">
-          {bestTimes.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Best Meeting Times</span>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Team Availability
+                  </CardTitle>
+                  <CardDescription>
+                    {selectedMembers.size > 0
+                      ? `Showing availability for ${selectedMembers.size} selected member${selectedMembers.size > 1 ? 's' : ''}`
+                      : `Showing availability for all ${memberCalendars.length} team member${memberCalendars.length > 1 ? 's' : ''}`}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
                   <Button 
-                    onClick={() => setBestTimes([])}
-                    size="sm"
-                    variant="ghost"
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => navigateWeek('prev')}
+                    disabled={loadingCalendars}
                   >
-                    Close
+                    <ChevronLeft className="w-4 h-4" />
                   </Button>
-                </CardTitle>
-                <CardDescription>
-                  Suggested times when all {selectedMembers.size} members are available
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {bestTimes.map((time, index) => (
-                    <div 
-                      key={index}
-                      className="border rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer bg-gradient-to-r from-green-50 to-blue-50 border-green-200"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-3">
-                            <h4 className="font-bold text-lg">{time.label || `Option ${index + 1}`}</h4>
-                            <Badge className="bg-green-600">All Available</Badge>
+                  <span className="text-sm font-medium px-3 min-w-[120px] text-center">
+                    {getWeekLabel()}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => navigateWeek('next')}
+                    disabled={loadingCalendars}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingCalendars ? (
+                <div className="text-center py-16">
+                  <RefreshCw className="w-8 h-8 animate-spin mx-auto text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground">Loading availability...</p>
+                </div>
+              ) : memberCalendars.length === 0 ? (
+                <div className="text-center py-16">
+                  <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Calendar Data</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Waiting for team members to connect their calendars
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Legend */}
+                  <div className="flex items-center gap-4 text-xs flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 bg-green-500 rounded"></div>
+                      <span>High availability (80%+)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                      <span>Medium (50-80%)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 bg-orange-500 rounded"></div>
+                      <span>Low (20-50%)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 bg-red-500 rounded"></div>
+                      <span>Unavailable (&lt;20%)</span>
+                    </div>
+                  </div>
+
+                  {/* Availability Grid */}
+                  <div className="overflow-x-auto">
+                    <div className="inline-block min-w-full">
+                      <div className="grid grid-cols-[80px_repeat(5,1fr)] gap-1">
+                        {/* Header row */}
+                        <div className="p-2"></div>
+                        {getWeekDates().map((date, idx) => (
+                          <div key={idx} className="p-2 text-center text-sm font-medium text-muted-foreground">
+                            <div>{formatDate(date).split(',')[0]}</div>
+                            <div className="text-xs">{formatDate(date).split(',')[1]}</div>
                           </div>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium min-w-[60px]">Start:</span>
-                              <span>{new Date(time.start).toLocaleString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit'
-                              })}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium min-w-[60px]">End:</span>
-                              <span>{new Date(time.end).toLocaleString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit'
-                              })}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium min-w-[60px]">Duration:</span>
-                              <span>{time.duration} minutes</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                              <MapPin className="w-3 h-3" />
-                              <span>{userTimezone}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button size="lg" className="ml-4">
-                          Schedule
-                        </Button>
+                        ))}
+
+                        {/* Time slots */}
+                        {timeSlots.map((hour) => {
+                          const displayHour = hour > 12 ? hour - 12 : hour
+                          const ampm = hour >= 12 ? 'PM' : 'AM'
+                          
+                          return (
+                            <>
+                              <div key={`time-${hour}`} className="p-2 text-xs text-muted-foreground text-right flex items-center justify-end">
+                                {displayHour}:00 {ampm}
+                              </div>
+                              {getWeekDates().map((date, dayIdx) => {
+                                const { available, total } = getAvailabilityAtTime(date, hour)
+                                return (
+                                  <div
+                                    key={`${dayIdx}-${hour}`}
+                                    className={cn(
+                                      "p-3 rounded cursor-pointer hover:opacity-80 transition-all hover:scale-105",
+                                      getAvailabilityColor(available, total),
+                                      total === 0 && "bg-gray-100 cursor-not-allowed"
+                                    )}
+                                    title={total > 0 ? `${available}/${total} available at ${displayHour}:00 ${ampm}` : 'No data'}
+                                  >
+                                    {total > 0 && (
+                                      <div className="text-xs text-white font-bold text-center">
+                                        {available}/{total}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </>
+                          )
+                        })}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ) : selectedMembers.size >= 2 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Find Meeting Time</CardTitle>
-                <CardDescription>
-                  {selectedMembers.size} members selected
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="py-16">
-                <div className="text-center space-y-4">
-                  <Calendar className="w-16 h-16 mx-auto text-muted-foreground" />
-                  <h3 className="text-xl font-semibold">Ready to Find Meeting Times</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    You've selected {selectedMembers.size} team members. 
-                    Click "Find Best Time" to discover when everyone is available.
-                  </p>
-                  <Button 
-                    onClick={findBestMeetingTime}
-                    size="lg"
-                    disabled={findingBestTime}
-                    className="mt-4"
-                  >
-                    {findingBestTime ? 'Analyzing Calendars...' : 'Find Best Time'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Team Meeting Scheduler</CardTitle>
-                <CardDescription>Find the perfect time for your team meeting</CardDescription>
-              </CardHeader>
-              <CardContent className="py-16">
-                <div className="text-center space-y-6">
-                  <Users className="w-16 h-16 mx-auto text-muted-foreground" />
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2">Get Started</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto">
-                      Select at least 2 team members from the left panel to find the best meeting times when everyone is available.
-                    </p>
                   </div>
-                  <div className="pt-4 space-y-3 max-w-sm mx-auto">
-                    <div className="flex items-center gap-3 text-sm">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold flex-shrink-0">1</div>
-                      <span className="text-left">Select team members from the list</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold flex-shrink-0">2</div>
-                      <span className="text-left">Choose duration and preferred date</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold flex-shrink-0">3</div>
-                      <span className="text-left">Find and schedule the best time</span>
-                    </div>
+
+                  {/* Timezone indicator */}
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2 border-t">
+                    <MapPin className="w-3 h-3" />
+                    <span>Times shown in your timezone: {userTimezone}</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
