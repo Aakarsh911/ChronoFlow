@@ -39,14 +39,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Google account not connected' }, { status: 401 })
     }
 
-    const accessToken = user.integrations[0].accessToken
+    const integration = user.integrations[0]
+    const accessToken = integration.accessToken
     if (!accessToken) {
       return NextResponse.json({ error: 'No access token' }, { status: 401 })
     }
 
-    // Initialize Gmail API
-    const oauth2Client = new google.auth.OAuth2()
-    oauth2Client.setCredentials({ access_token: accessToken })
+    // Initialize Gmail API with both access and refresh tokens
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.NEXTAUTH_URL + '/api/auth/callback/google'
+    )
+
+    oauth2Client.setCredentials({
+      access_token: integration.accessToken,
+      refresh_token: integration.refreshToken || undefined,
+    })
+
+    // Handle token refresh automatically
+    oauth2Client.on('tokens', (tokens: any) => {
+      void (async () => {
+        try {
+          if (tokens.access_token || tokens.refresh_token || tokens.expiry_date) {
+            await prisma.integration.update({
+              where: { id: integration.id },
+              data: {
+                accessToken: tokens.access_token ?? integration.accessToken,
+                refreshToken: tokens.refresh_token ?? integration.refreshToken,
+                expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : integration.expiresAt,
+              },
+            })
+          }
+        } catch (e) {
+          console.error('Failed to persist refreshed Gmail sync tokens', e)
+        }
+      })()
+    })
     
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
 
