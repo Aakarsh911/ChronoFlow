@@ -1,12 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Users, RefreshCw, Calendar, Clock, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
+import { Users, RefreshCw, Calendar, Clock, MapPin, ChevronLeft, ChevronRight, Video, MapPinned, Bell, Repeat } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 
 // No dummy data — we render real Microsoft Teams members only
@@ -55,6 +60,26 @@ export function TeamScheduling() {
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set())
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0) // 0 = current week, 1 = next week, etc.
   const [userTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  
+  // Meeting creation dialog state
+  const [showMeetingDialog, setShowMeetingDialog] = useState(false)
+  const [creatingMeeting, setCreatingMeeting] = useState(false)
+  const [meetingForm, setMeetingForm] = useState({
+    subject: '',
+    body: '',
+    startTime: '',
+    endTime: '',
+    location: '',
+    isOnlineMeeting: true,
+    meetingType: 'online' as 'online' | 'in-person' | 'hybrid',
+    allowNewTimeProposals: true,
+    isAllDay: false,
+    showAs: 'busy' as 'free' | 'tentative' | 'busy' | 'oof',
+    importance: 'normal' as 'low' | 'normal' | 'high',
+    sensitivity: 'normal' as 'normal' | 'personal' | 'private' | 'confidential',
+    reminderMinutesBeforeStart: 15,
+    isReminderOn: true,
+  })
 
   // Fetch team members
   useEffect(() => {
@@ -262,6 +287,134 @@ export function TeamScheduling() {
     if (currentWeekOffset === 1) return 'Next Week'
     if (currentWeekOffset === -1) return 'Last Week'
     return `${Math.abs(currentWeekOffset)} weeks ${currentWeekOffset > 0 ? 'ahead' : 'ago'}`
+  }
+
+  // Handle time slot click to open meeting dialog
+  const handleTimeSlotClick = (date: Date, hour: number) => {
+    const startTime = new Date(date)
+    startTime.setHours(hour, 0, 0, 0)
+    
+    const endTime = new Date(startTime)
+    endTime.setHours(hour + 1, 0, 0, 0)
+
+    // Format for datetime-local input (YYYY-MM-DDTHH:MM) without timezone conversion
+    const formatDateTimeLocal = (d: Date) => {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const hours = String(d.getHours()).padStart(2, '0')
+      const minutes = String(d.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${minutes}`
+    }
+
+    setMeetingForm({
+      ...meetingForm,
+      startTime: formatDateTimeLocal(startTime),
+      endTime: formatDateTimeLocal(endTime),
+    })
+    setShowMeetingDialog(true)
+  }
+
+  // Create meeting via Microsoft Graph API
+  const createMeeting = async () => {
+    if (!meetingForm.subject.trim()) {
+      alert('Please enter a meeting subject')
+      return
+    }
+
+    if (selectedMembers.size === 0) {
+      alert('Please select at least one team member to invite')
+      return
+    }
+
+    setCreatingMeeting(true)
+    try {
+      // Get selected member details
+      const attendees = msTeamsMembers
+        .filter(m => selectedMembers.has(m.id))
+        .map(m => ({
+          emailAddress: {
+            address: m.email,
+            name: m.displayName
+          },
+          type: 'required'
+        }))
+
+      // Prepare meeting body
+      const meetingData = {
+        subject: meetingForm.subject,
+        body: {
+          contentType: 'HTML',
+          content: meetingForm.body || ''
+        },
+        start: {
+          dateTime: new Date(meetingForm.startTime).toISOString(),
+          timeZone: 'UTC'
+        },
+        end: {
+          dateTime: new Date(meetingForm.endTime).toISOString(),
+          timeZone: 'UTC'
+        },
+        location: meetingForm.meetingType !== 'online' ? {
+          displayName: meetingForm.location || (meetingForm.meetingType === 'in-person' ? 'Office' : 'Hybrid Meeting')
+        } : undefined,
+        attendees: attendees,
+        isOnlineMeeting: meetingForm.isOnlineMeeting,
+        onlineMeetingProvider: meetingForm.isOnlineMeeting ? 'teamsForBusiness' : undefined,
+        allowNewTimeProposals: meetingForm.allowNewTimeProposals,
+        isAllDay: meetingForm.isAllDay,
+        showAs: meetingForm.showAs,
+        importance: meetingForm.importance,
+        sensitivity: meetingForm.sensitivity,
+        isReminderOn: meetingForm.isReminderOn,
+        reminderMinutesBeforeStart: meetingForm.isReminderOn ? meetingForm.reminderMinutesBeforeStart : undefined,
+      }
+
+      const response = await fetch('/api/calendar/create-meeting', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(meetingData),
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        throw new Error(error)
+      }
+
+      const data = await response.json()
+      console.log('Meeting created:', data)
+      
+      alert('Meeting created successfully and invitations sent!')
+      setShowMeetingDialog(false)
+      
+      // Reset form
+      setMeetingForm({
+        subject: '',
+        body: '',
+        startTime: '',
+        endTime: '',
+        location: '',
+        isOnlineMeeting: true,
+        meetingType: 'online',
+        allowNewTimeProposals: true,
+        isAllDay: false,
+        showAs: 'busy',
+        importance: 'normal',
+        sensitivity: 'normal',
+        reminderMinutesBeforeStart: 15,
+        isReminderOn: true,
+      })
+      
+      // Refresh calendars to show new meeting
+      await fetchMemberCalendarsForWeek(currentWeekOffset)
+    } catch (error: any) {
+      console.error('Error creating meeting:', error)
+      alert('Failed to create meeting: ' + error.message)
+    } finally {
+      setCreatingMeeting(false)
+    }
   }
 
   // Time slots for the day (9 AM to 5 PM in user's timezone)
@@ -553,12 +706,13 @@ export function TeamScheduling() {
                                 return (
                                   <div
                                     key={`${dayIdx}-${hour}`}
+                                    onClick={() => total > 0 && handleTimeSlotClick(date, hour)}
                                     className={cn(
                                       "p-3 rounded cursor-pointer hover:opacity-80 transition-all hover:scale-105",
                                       getAvailabilityColor(available, total),
                                       total === 0 && "bg-gray-100 cursor-not-allowed"
                                     )}
-                                    title={total > 0 ? `${available}/${total} available at ${displayHour}:00 ${ampm}` : 'No data'}
+                                    title={total > 0 ? `Click to schedule meeting at ${displayHour}:00 ${ampm}` : 'No data'}
                                   >
                                     {total > 0 && (
                                       <div className="text-xs text-white font-bold text-center">
@@ -586,6 +740,256 @@ export function TeamScheduling() {
           </Card>
         </div>
       </div>
+
+      {/* Meeting Creation Dialog */}
+      <Dialog open={showMeetingDialog} onOpenChange={setShowMeetingDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Team Meeting</DialogTitle>
+            <DialogDescription>
+              Schedule a meeting with {selectedMembers.size} selected member{selectedMembers.size !== 1 ? 's' : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Meeting Subject */}
+            <div className="space-y-2">
+              <Label htmlFor="subject">Meeting Subject *</Label>
+              <Input
+                id="subject"
+                placeholder="e.g., Sprint Planning Meeting"
+                value={meetingForm.subject}
+                onChange={(e) => setMeetingForm({ ...meetingForm, subject: e.target.value })}
+              />
+            </div>
+
+            {/* Meeting Description */}
+            <div className="space-y-2">
+              <Label htmlFor="body">Description</Label>
+              <Textarea
+                id="body"
+                placeholder="Add meeting agenda or details..."
+                rows={3}
+                value={meetingForm.body}
+                onChange={(e) => setMeetingForm({ ...meetingForm, body: e.target.value })}
+              />
+            </div>
+
+            {/* Start and End Time */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Start Time *</Label>
+                <Input
+                  id="startTime"
+                  type="datetime-local"
+                  value={meetingForm.startTime}
+                  onChange={(e) => setMeetingForm({ ...meetingForm, startTime: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time *</Label>
+                <Input
+                  id="endTime"
+                  type="datetime-local"
+                  value={meetingForm.endTime}
+                  onChange={(e) => setMeetingForm({ ...meetingForm, endTime: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Meeting Type */}
+            <div className="space-y-2">
+              <Label>Meeting Type</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={meetingForm.meetingType === 'online' ? 'default' : 'outline'}
+                  className="w-full"
+                  onClick={() => setMeetingForm({ ...meetingForm, meetingType: 'online', isOnlineMeeting: true })}
+                >
+                  <Video className="w-4 h-4 mr-2" />
+                  Online
+                </Button>
+                <Button
+                  type="button"
+                  variant={meetingForm.meetingType === 'in-person' ? 'default' : 'outline'}
+                  className="w-full"
+                  onClick={() => setMeetingForm({ ...meetingForm, meetingType: 'in-person', isOnlineMeeting: false })}
+                >
+                  <MapPinned className="w-4 h-4 mr-2" />
+                  In-Person
+                </Button>
+                <Button
+                  type="button"
+                  variant={meetingForm.meetingType === 'hybrid' ? 'default' : 'outline'}
+                  className="w-full"
+                  onClick={() => setMeetingForm({ ...meetingForm, meetingType: 'hybrid', isOnlineMeeting: true })}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Hybrid
+                </Button>
+              </div>
+            </div>
+
+            {/* Location (for in-person or hybrid) */}
+            {(meetingForm.meetingType === 'in-person' || meetingForm.meetingType === 'hybrid') && (
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  placeholder="e.g., Conference Room A, Building 1"
+                  value={meetingForm.location}
+                  onChange={(e) => setMeetingForm({ ...meetingForm, location: e.target.value })}
+                />
+              </div>
+            )}
+
+            {/* Advanced Options */}
+            <div className="space-y-3 pt-4 border-t">
+              <h4 className="text-sm font-medium">Additional Options</h4>
+              
+              {/* Show As */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="showAs">Show As</Label>
+                  <Select value={meetingForm.showAs} onValueChange={(value: any) => setMeetingForm({ ...meetingForm, showAs: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Free</SelectItem>
+                      <SelectItem value="tentative">Tentative</SelectItem>
+                      <SelectItem value="busy">Busy</SelectItem>
+                      <SelectItem value="oof">Out of Office</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="importance">Importance</Label>
+                  <Select value={meetingForm.importance} onValueChange={(value: any) => setMeetingForm({ ...meetingForm, importance: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Reminder */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="reminder" className="flex items-center gap-2">
+                    <Bell className="w-4 h-4" />
+                    Reminder
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Send reminder before meeting</p>
+                </div>
+                <Switch
+                  id="reminder"
+                  checked={meetingForm.isReminderOn}
+                  onCheckedChange={(checked) => setMeetingForm({ ...meetingForm, isReminderOn: checked })}
+                />
+              </div>
+
+              {meetingForm.isReminderOn && (
+                <div className="space-y-2">
+                  <Label htmlFor="reminderTime">Reminder Time</Label>
+                  <Select 
+                    value={meetingForm.reminderMinutesBeforeStart.toString()} 
+                    onValueChange={(value) => setMeetingForm({ ...meetingForm, reminderMinutesBeforeStart: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">At time of event</SelectItem>
+                      <SelectItem value="5">5 minutes before</SelectItem>
+                      <SelectItem value="15">15 minutes before</SelectItem>
+                      <SelectItem value="30">30 minutes before</SelectItem>
+                      <SelectItem value="60">1 hour before</SelectItem>
+                      <SelectItem value="120">2 hours before</SelectItem>
+                      <SelectItem value="1440">1 day before</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Allow Time Proposals */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="timeProposals" className="flex items-center gap-2">
+                    <Repeat className="w-4 h-4" />
+                    Allow New Time Proposals
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Let attendees suggest alternate times</p>
+                </div>
+                <Switch
+                  id="timeProposals"
+                  checked={meetingForm.allowNewTimeProposals}
+                  onCheckedChange={(checked) => setMeetingForm({ ...meetingForm, allowNewTimeProposals: checked })}
+                />
+              </div>
+
+              {/* Sensitivity */}
+              <div className="space-y-2">
+                <Label htmlFor="sensitivity">Sensitivity</Label>
+                <Select value={meetingForm.sensitivity} onValueChange={(value: any) => setMeetingForm({ ...meetingForm, sensitivity: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="personal">Personal</SelectItem>
+                    <SelectItem value="private">Private</SelectItem>
+                    <SelectItem value="confidential">Confidential</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Selected Attendees */}
+            <div className="space-y-2 pt-4 border-t">
+              <Label>Attendees ({selectedMembers.size})</Label>
+              <div className="flex flex-wrap gap-2">
+                {msTeamsMembers
+                  .filter(m => selectedMembers.has(m.id))
+                  .map(member => (
+                    <Badge key={member.id} variant="secondary" className="text-xs">
+                      {member.displayName}
+                    </Badge>
+                  ))}
+              </div>
+              {selectedMembers.size === 0 && (
+                <p className="text-xs text-amber-600">Please select team members from the left panel first</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMeetingDialog(false)} disabled={creatingMeeting}>
+              Cancel
+            </Button>
+            <Button onClick={createMeeting} disabled={creatingMeeting || !meetingForm.subject.trim() || selectedMembers.size === 0}>
+              {creatingMeeting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Create Meeting
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
