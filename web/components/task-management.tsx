@@ -272,7 +272,7 @@ export function TaskManagement() {
               </div>
             </div>
             <div className="mt-4">
-              <Badge className="bg-slate-100 text-slate-700 border-slate-200">All Tasks</Badge>
+              <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-sm py-1 px-2">All Tasks</Badge>
             </div>
           </CardContent>
           <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-slate-300 to-slate-200" />
@@ -290,7 +290,7 @@ export function TaskManagement() {
               </div>
             </div>
             <div className="mt-4">
-              <Badge className="bg-blue-100 text-blue-700 border-blue-200">To Do</Badge>
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-sm py-1 px-2">To Do</Badge>
             </div>
           </CardContent>
           <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-blue-400 to-blue-300" />
@@ -308,7 +308,7 @@ export function TaskManagement() {
               </div>
             </div>
             <div className="mt-4">
-              <Badge className="bg-green-100 text-green-700 border-green-200">Done</Badge>
+              <Badge className="bg-green-100 text-green-700 border-green-200 text-sm py-1 px-2">Done</Badge>
             </div>
           </CardContent>
           <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-green-400 to-green-300" />
@@ -334,36 +334,46 @@ export function TaskManagement() {
       </div>
 
       {/* Filters and Search */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Task Management</CardTitle>
-              <CardDescription>All your tasks from integrated sources</CardDescription>
+      <Card className="shadow-sm border">
+        <CardHeader className="py-4">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3">
+                <CardTitle className="text-lg">Task Management</CardTitle>
+                <Badge variant="secondary" className="text-sm py-0.5 px-2">
+                  {tasks.length} items
+                </Badge>
+              </div>
+              <CardDescription className="text-sm text-muted-foreground mt-1">Unified view of tasks from Jira, Email AI, and integrations</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
-                <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
-                Sync with Jira
-              </Button>
-              <Button variant="outline" onClick={handleExtractFromEmails} disabled={isExtractingTasks}>
-                {isExtractingTasks ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4 mr-2" />
-                )}
-                Extract from Emails (AI)
-              </Button>
-              <Button className="gap-2">
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center rounded-md bg-muted p-1 gap-1">
+                <Button variant="ghost" size="sm" onClick={handleSync} disabled={isSyncing} className="px-3">
+                  <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
+                  <span className="hidden sm:inline">Sync</span>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleExtractFromEmails} disabled={isExtractingTasks} className="px-3">
+                  {isExtractingTasks ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-2" />
+                  )}
+                  <span className="hidden sm:inline">Extract</span>
+                </Button>
+              </div>
+
+              <Button className="gap-2" onClick={() => {/* Add Task flow */}}>
                 <Plus className="w-4 h-4" />
-                Add Task
+                <span className="hidden sm:inline">Add Task</span>
               </Button>
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
-          <div className="flex flex-col lg:flex-row gap-4 mb-6">
-            <div className="flex-1">
+          <div className="flex flex-col lg:flex-row gap-4 mb-6 items-start">
+            <div className="flex-1 w-full">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -374,24 +384,31 @@ export function TaskManagement() {
                 />
               </div>
             </div>
+
+            {/* Styled Source dropdown (restored) */}
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-[200px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Source" />
+              <SelectTrigger className="w-[220px] rounded-lg border px-3 py-2 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <SelectValue placeholder="All sources" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sources</SelectItem>
                 {uniqueSources.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {sourceConfig[s]?.name || s}
+                    <div className="flex items-center gap-3">
+                      <span className={cn(sourceConfig[s]?.color || "bg-gray-100 text-gray-700", "w-3 h-3 rounded-full")}></span>
+                      <span>{sourceConfig[s]?.name || s}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Styled Status dropdown (restored) */}
             <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filter by status" />
+              <SelectTrigger className="w-[180px] rounded-lg border px-3 py-2 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
@@ -404,8 +421,8 @@ export function TaskManagement() {
             </Select>
           </div>
 
-          <div className="mt-2 space-y-4">
-            {loading && <div className="text-center py-8 text-muted-foreground">Loading tasks…</div>}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {loading && <div className="col-span-full text-center py-8 text-muted-foreground">Loading tasks…</div>}
             {!loading &&
               filteredTasks.map((task) => {
                 const isChecked = task.status === "Done"
@@ -414,8 +431,8 @@ export function TaskManagement() {
                 const projectName = getProjectFromSourceData(task)
 
                 return (
-                  <Card key={task.id} className="hover:shadow-sm transition-shadow">
-                    <CardContent className="p-3">
+                  <Card key={task.id} className="rounded-lg border shadow-sm hover:shadow-md transition-shadow transition-transform hover:-translate-y-0.5">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-start gap-3">
                         <button
                           aria-pressed={isChecked}
@@ -433,7 +450,7 @@ export function TaskManagement() {
                           )}
                         </button>
 
-                        <div className="flex-1 space-y-2">
+                        <div className="flex-1 space-y-1">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1 flex-1 pr-2">
                               {task.url ? (
@@ -455,7 +472,7 @@ export function TaskManagement() {
                                 </h3>
                               )}
                               {task.description && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
                               )}
                             </div>
                             <DropdownMenu>
@@ -482,20 +499,20 @@ export function TaskManagement() {
                           </div>
 
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className={cn("text-xs", currentSourceConfig.color)}>
+                            <Badge variant="outline" className={cn("text-sm", currentSourceConfig.color)}>
                               <currentSourceConfig.icon className="w-3 h-3 mr-1" />
-                              <span className="font-semibold">{task.sourceId}</span>
+                              <span className="font-medium">{task.sourceId}</span>
                             </Badge>
                             {currentPriorityConfig && (
-                              <Badge variant="outline" className={cn("text-xs", currentPriorityConfig.color)}>
+                              <Badge variant="outline" className={cn("text-sm", currentPriorityConfig.color)}>
                                 {currentPriorityConfig.label}
                               </Badge>
                             )}
-                            <Badge variant="outline" className={cn("text-xs", getStatusBadgeClass(task.status))}>
+                            <Badge variant="outline" className={cn("text-sm", getStatusBadgeClass(task.status))}>
                               {task.status}
                             </Badge>
                             {projectName && (
-                              <Badge variant="secondary" className="text-xs">
+                              <Badge variant="secondary" className="text-sm">
                                 {projectName}
                               </Badge>
                             )}
@@ -508,7 +525,7 @@ export function TaskManagement() {
               })}
 
             {!loading && filteredTasks.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="col-span-full text-center py-12 text-muted-foreground">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No tasks found</p>
                 <p className="text-sm mt-1">Try syncing with Jira or adjusting your filters.</p>

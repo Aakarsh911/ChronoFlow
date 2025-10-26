@@ -123,3 +123,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Utilities for Task Management UI */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.transform-gpu { transform: translateZ(0); }
+.bg-gradient-to-r-from-bg { background: linear-gradient(90deg,var(--color-background),transparent); }
