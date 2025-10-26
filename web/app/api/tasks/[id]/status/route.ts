@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { PrismaClient } from "@prisma/client"
+import { deleteCache } from "@/lib/redis"
 
 const prisma = new PrismaClient()
 
@@ -54,6 +55,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
       return updated
     })
+
+    // Invalidate cache after status update
+    const cacheKey = `tasks:${user.id}`
+    await deleteCache(cacheKey)
 
     return NextResponse.json(updatedTask)
   } catch (error) {

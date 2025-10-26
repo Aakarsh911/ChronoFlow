@@ -11,12 +11,15 @@ import {
   MessageSquare,
   Calendar,
   MoreHorizontal,
+  Mail,
   KanbanSquare,
   Users,
   ListChecks,
   ListTodo,
   TrendingUp,
   RefreshCw,
+  Sparkles,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,6 +49,7 @@ const sourceConfig: Record<string, { icon: React.ElementType; color: string; nam
   JIRA: { icon: KanbanSquare, color: "bg-blue-500/10 text-blue-600 border-blue-200", name: "Jira" },
   SLACK: { icon: MessageSquare, color: "bg-purple-500/10 text-purple-600 border-purple-200", name: "Slack" },
   TEAMS: { icon: Users, color: "bg-indigo-500/10 text-indigo-600 border-indigo-200", name: "Teams" },
+  EMAIL_AI: { icon: Mail, color: "bg-purple-500/10 text-purple-600 border-purple-200", name: "Email (AI)" },
   MANUAL: { icon: ListTodo, color: "bg-gray-500/10 text-gray-600 border-gray-200", name: "Manual" },
 }
 
@@ -62,32 +66,39 @@ export function TaskManagement() {
   const [loading, setLoading] = useState(true)
   const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [isSyncing, startSyncTransition] = useTransition()
+  const [isExtractingTasks, startExtractTransition] = useTransition()
   const { toast } = useToast()
 
-  const fetchTasks = async () => {
-    setLoading(true)
+  const fetchTasks = async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
-      const res = await fetch("/api/tasks", { cache: "no-store" })
+      // Add timestamp to force cache bypass
+      const timestamp = new Date().getTime()
+      const res = await fetch(`/api/tasks?t=${timestamp}`, { cache: "no-store" })
       if (res.ok) {
         const data = await res.json()
         setTasks(data)
       } else {
+        if (!silent) {
+          setTasks([])
+          toast({
+            variant: "destructive",
+            title: "Failed to load tasks",
+            description: "There was a problem fetching your tasks.",
+          })
+        }
+      }
+    } catch (error) {
+      if (!silent) {
         setTasks([])
         toast({
           variant: "destructive",
-          title: "Failed to load tasks",
-          description: "There was a problem fetching your tasks.",
+          title: "Network Error",
+          description: "Could not connect to the server.",
         })
       }
-    } catch (error) {
-      setTasks([])
-      toast({
-        variant: "destructive",
-        title: "Network Error",
-        description: "Could not connect to the server.",
-      })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -111,6 +122,47 @@ export function TaskManagement() {
           variant: "destructive",
           title: "Sync Failed",
           description: "Could not sync tasks from Jira.",
+        })
+      }
+    })
+  }
+
+  const handleExtractFromEmails = () => {
+    startExtractTransition(async () => {
+      toast({ 
+        title: "🤖 AI Extraction Started", 
+        description: "Analyzing emails for actionable tasks..." 
+      })
+      
+      try {
+        const res = await fetch("/api/tasks/extract-from-emails", { 
+          method: "POST",
+          cache: "no-store"
+        })
+        
+        if (res.ok) {
+          const result = await res.json()
+          
+          toast({
+            title: "✅ Extraction Complete",
+            description: `Created ${result.tasksCreated} task(s) from ${result.emailsProcessed} email(s). ${result.duplicatesSkipped > 0 ? `Skipped ${result.duplicatesSkipped} duplicate(s).` : ''}`,
+          })
+          
+          // Instant cache refresh
+          await fetchTasks()
+        } else {
+          const error = await res.json()
+          toast({
+            variant: "destructive",
+            title: "❌ Extraction Failed",
+            description: error.error || "Could not extract tasks from emails.",
+          })
+        }
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "❌ Network Error",
+          description: "Could not connect to the server.",
         })
       }
     })
@@ -142,6 +194,8 @@ export function TaskManagement() {
         setTasks((prevTasks) =>
           prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
         )
+        // Silently refresh tasks to ensure cache is in sync (no loading state)
+        await fetchTasks(true)
       }
     } catch (error) {
       setTasks(originalTasks)
@@ -292,6 +346,14 @@ export function TaskManagement() {
                 <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
                 Sync with Jira
               </Button>
+              <Button variant="outline" onClick={handleExtractFromEmails} disabled={isExtractingTasks}>
+                {isExtractingTasks ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                Extract from Emails (AI)
+              </Button>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
                 Add Task
@@ -374,9 +436,24 @@ export function TaskManagement() {
                         <div className="flex-1 space-y-2">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1 flex-1 pr-2">
-                              <h3 className={cn("font-medium text-sm", isChecked && "line-through text-muted-foreground")}>
-                                {task.title}
-                              </h3>
+                              {task.url ? (
+                                <a 
+                                  href={task.url} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="group inline-flex items-center gap-1 hover:underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <h3 className={cn("font-medium text-sm", isChecked && "line-through text-muted-foreground")}>
+                                    {task.title}
+                                  </h3>
+                                  <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                                </a>
+                              ) : (
+                                <h3 className={cn("font-medium text-sm", isChecked && "line-through text-muted-foreground")}>
+                                  {task.title}
+                                </h3>
+                              )}
                               {task.description && (
                                 <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
                               )}
