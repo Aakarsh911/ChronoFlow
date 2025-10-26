@@ -40,7 +40,56 @@ export async function GET(request: NextRequest) {
     }
 
     const integration = user.integrations[0]
-    const accessToken = integration.accessToken
+    
+    // Check if token is expired and refresh proactively
+    let accessToken: string | null = integration.accessToken
+    let refreshToken: string | null | undefined = integration.refreshToken
+    
+    if (integration.expiresAt && new Date() >= new Date(integration.expiresAt)) {
+      console.log('🔄 Gmail sync token expired, refreshing...')
+      
+      if (!integration.refreshToken) {
+        console.error('❌ No refresh token available for Gmail sync')
+        return NextResponse.json({ 
+          error: 'Token expired. Please reconnect your Google account.',
+          needsReauth: true 
+        }, { status: 401 })
+      }
+      
+      const oauth2ClientRefresh = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+      )
+      
+      oauth2ClientRefresh.setCredentials({
+        refresh_token: integration.refreshToken,
+      })
+
+      try {
+        const { credentials } = await oauth2ClientRefresh.refreshAccessToken()
+        accessToken = credentials.access_token || integration.accessToken
+        refreshToken = credentials.refresh_token || integration.refreshToken
+        
+        // Update tokens in database
+        await prisma.integration.update({
+          where: { id: integration.id },
+          data: {
+            accessToken: credentials.access_token || integration.accessToken,
+            refreshToken: credentials.refresh_token || integration.refreshToken,
+            expiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
+          },
+        })
+        
+        console.log('✅ Gmail sync token refreshed successfully')
+      } catch (refreshError) {
+        console.error('❌ Failed to refresh Gmail sync token:', refreshError)
+        return NextResponse.json({ 
+          error: 'Failed to refresh token. Please reconnect your Google account.',
+          needsReauth: true 
+        }, { status: 401 })
+      }
+    }
+    
     if (!accessToken) {
       return NextResponse.json({ error: 'No access token' }, { status: 401 })
     }
@@ -53,8 +102,8 @@ export async function GET(request: NextRequest) {
     )
 
     oauth2Client.setCredentials({
-      access_token: integration.accessToken,
-      refresh_token: integration.refreshToken || undefined,
+      access_token: accessToken,
+      refresh_token: refreshToken || undefined,
     })
 
     // Handle token refresh automatically

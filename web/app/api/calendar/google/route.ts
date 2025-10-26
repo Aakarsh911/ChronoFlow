@@ -60,6 +60,55 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') || new Date().toISOString()
     const endDate = searchParams.get('endDate') || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
+    // Check if token is expired and refresh proactively
+    let accessToken = googleIntegration.accessToken
+    let refreshToken = googleIntegration.refreshToken
+    
+    if (googleIntegration.expiresAt && new Date() >= new Date(googleIntegration.expiresAt)) {
+      console.log('🔄 Google token expired, refreshing...')
+      
+      if (!googleIntegration.refreshToken) {
+        console.error('❌ No refresh token available for Google')
+        return NextResponse.json({ 
+          error: 'Token expired. Please reconnect your Google account.',
+          needsReauth: true 
+        }, { status: 401 })
+      }
+
+      const oauth2ClientRefresh = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+      )
+      
+      oauth2ClientRefresh.setCredentials({
+        refresh_token: googleIntegration.refreshToken,
+      })
+
+      try {
+        const { credentials } = await oauth2ClientRefresh.refreshAccessToken()
+        accessToken = credentials.access_token || googleIntegration.accessToken
+        refreshToken = credentials.refresh_token || googleIntegration.refreshToken
+        
+        // Update tokens in database
+        await prisma.integration.update({
+          where: { id: googleIntegration.id },
+          data: {
+            accessToken: credentials.access_token || googleIntegration.accessToken,
+            refreshToken: credentials.refresh_token || googleIntegration.refreshToken,
+            expiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
+          },
+        })
+        
+        console.log('✅ Google token refreshed successfully')
+      } catch (refreshError) {
+        console.error('❌ Failed to refresh Google token:', refreshError)
+        return NextResponse.json({ 
+          error: 'Failed to refresh token. Please reconnect your Google account.',
+          needsReauth: true 
+        }, { status: 401 })
+      }
+    }
+
     // Set up OAuth2 client
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -69,8 +118,8 @@ export async function GET(request: NextRequest) {
 
     // Set credentials using stored tokens
     oauth2Client.setCredentials({
-      access_token: googleIntegration.accessToken || undefined,
-      refresh_token: googleIntegration.refreshToken || undefined,
+      access_token: accessToken || undefined,
+      refresh_token: refreshToken || undefined,
     })
 
     // Handle token refresh if needed
@@ -101,8 +150,25 @@ export async function GET(request: NextRequest) {
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
 
-    // Fetch calendar list
-    const calendarListResponse = await calendar.calendarList.list()
+    // Fetch calendar list with error handling
+    let calendarListResponse
+    try {
+      calendarListResponse = await calendar.calendarList.list()
+    } catch (error: any) {
+      console.error('❌ Error fetching calendar list:', error)
+      
+      // Check if it's an invalid_grant error
+      if (error.code === 400 || error.message?.includes('invalid_grant')) {
+        return NextResponse.json({ 
+          error: 'Your Google Calendar access has expired. Please reconnect your account.',
+          needsReauth: true,
+          details: 'Token has been revoked or expired beyond refresh capability.'
+        }, { status: 401 })
+      }
+      
+      throw error
+    }
+    
     const calendars = calendarListResponse.data.items || []
 
     // Fetch events from all calendars

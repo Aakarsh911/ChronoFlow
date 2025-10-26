@@ -38,8 +38,55 @@ export async function POST(request: NextRequest) {
     }
 
     const integration = user.integrations[0];
-    const accessToken = integration.accessToken;
-    const refreshToken = integration.refreshToken;
+    
+    // Check if token is expired and refresh proactively
+    let accessToken: string | null = integration.accessToken;
+    let refreshToken: string | null | undefined = integration.refreshToken;
+    
+    if (integration.expiresAt && new Date() >= new Date(integration.expiresAt)) {
+      console.log('🔄 Gmail watch token expired, refreshing...');
+      
+      if (!integration.refreshToken) {
+        console.error('❌ No refresh token available for Gmail watch');
+        return NextResponse.json({ 
+          error: 'Token expired. Please reconnect your Google account.',
+          needsReauth: true 
+        }, { status: 401 });
+      }
+      
+      const oauth2ClientRefresh = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+      )
+      
+      oauth2ClientRefresh.setCredentials({
+        refresh_token: integration.refreshToken,
+      })
+
+      try {
+        const { credentials } = await oauth2ClientRefresh.refreshAccessToken()
+        accessToken = credentials.access_token || integration.accessToken
+        refreshToken = credentials.refresh_token || integration.refreshToken
+        
+        // Update tokens in database
+        await prisma.integration.update({
+          where: { id: integration.id },
+          data: {
+            accessToken: credentials.access_token || integration.accessToken,
+            refreshToken: credentials.refresh_token || integration.refreshToken,
+            expiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
+          },
+        })
+        
+        console.log('✅ Gmail watch token refreshed successfully')
+      } catch (refreshError) {
+        console.error('❌ Failed to refresh Gmail watch token:', refreshError)
+        return NextResponse.json({ 
+          error: 'Failed to refresh token. Please reconnect your Google account.',
+          needsReauth: true 
+        }, { status: 401 })
+      }
+    }
 
     if (!accessToken) {
       return NextResponse.json({ error: 'No access token' }, { status: 401 });
