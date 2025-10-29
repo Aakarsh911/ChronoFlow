@@ -10,9 +10,14 @@ export async function GET() {
     "profile",
     "offline_access",
     "User.Read",
+    // Calendar permissions: include ReadWrite so we can create focus blocks/events
     "Calendars.Read",
     "Calendars.Read.Shared",
+    "Calendars.ReadWrite",
+    "Calendars.ReadWrite.Shared",
+    // Online meetings
     "OnlineMeetings.Read",
+    "OnlineMeetings.ReadWrite",
     "Mail.Read",
     "Mail.Send",
     "MailboxSettings.Read",

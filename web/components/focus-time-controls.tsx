@@ -71,22 +71,114 @@ const focusPresets = [
 
 export function FocusTimeControls() {
   const [activeSession, setActiveSession] = useState(mockFocusSessions[0])
-  const [isRunning, setIsRunning] = useState(true)
-  const [timeRemaining, setTimeRemaining] = useState(35 * 60) // 35 minutes in seconds
+  // Don't auto-start; user controls when the timer runs
+  const [isRunning, setIsRunning] = useState(false)
+  // Initialize from session duration instead of a hardcoded default
+  const [timeRemaining, setTimeRemaining] = useState(((mockFocusSessions[0]?.duration) || 60) * 60)
   const [dndEnabled, setDndEnabled] = useState(true)
   const [selectedPreset, setSelectedPreset] = useState("Deep Work")
   const [customDuration, setCustomDuration] = useState([90])
+  const [focusEventId, setFocusEventId] = useState<string | null>(null)
+  // Ensure UI waits for calendar/local state hydration to avoid showing defaults
+  const [hydrated, setHydrated] = useState(false)
+  // Absolute end-of-session timestamp (ms since epoch). Drives countdown independent of tab state.
+  const [endTimestamp, setEndTimestamp] = useState<number | null>(null)
 
-  // Timer effect
+  // Timer effect: derive remaining from wall-clock endTimestamp for accuracy in background
   useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (isRunning && timeRemaining > 0) {
-      interval = setInterval(() => {
-        setTimeRemaining((prev) => prev - 1)
-      }, 1000)
+    let interval: NodeJS.Timeout | undefined
+    const tick = () => {
+      if (isRunning && endTimestamp) {
+        const now = Date.now()
+        const remaining = Math.max(0, Math.floor((endTimestamp - now) / 1000))
+        setTimeRemaining(remaining)
+      }
     }
-    return () => clearInterval(interval)
-  }, [isRunning, timeRemaining])
+    if (isRunning && endTimestamp) {
+      tick()
+      interval = setInterval(tick, 1000)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isRunning, endTimestamp])
+
+  // Update when tab becomes visible to catch up immediately
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && isRunning && endTimestamp) {
+        const now = Date.now()
+        const remaining = Math.max(0, Math.floor((endTimestamp - now) / 1000))
+        setTimeRemaining(remaining)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [isRunning, endTimestamp])
+
+  // Load persisted timer state on mount, but prefer live calendar state
+  useEffect(() => {
+    let cancelled = false
+    const hydrate = async () => {
+      try {
+        const res = await fetch('/api/focus/current', { cache: 'no-store' })
+        if (cancelled) return
+        if (res.ok) {
+          const data = await res.json()
+          if (data.active) {
+            setFocusEventId(data.eventId ?? null)
+            setIsRunning(true)
+            setTimeRemaining(data.remainingSeconds)
+            setEndTimestamp(Date.now() + data.remainingSeconds * 1000)
+            setActiveSession((prev) => ({
+              ...prev,
+              title: data.subject || 'Focus Block',
+              duration: data.durationMinutes,
+              startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              endTime: new Date(Date.now() + data.remainingSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: 'active' as const,
+            }))
+            setHydrated(true)
+            return // done; we prefer live state
+          }
+        }
+      } catch {}
+      // Fallback to localStorage
+      try {
+        const saved = localStorage.getItem('focusTimerState')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed.activeSession) setActiveSession(parsed.activeSession)
+          if (typeof parsed.timeRemaining === 'number') setTimeRemaining(parsed.timeRemaining)
+          if (typeof parsed.isRunning === 'boolean') setIsRunning(parsed.isRunning)
+          if (parsed.focusEventId) setFocusEventId(parsed.focusEventId)
+          if (typeof parsed.endTimestamp === 'number') setEndTimestamp(parsed.endTimestamp)
+          // If we have an endTimestamp and session is running, recompute accurate remaining
+          if (parsed.isRunning && typeof parsed.endTimestamp === 'number') {
+            const remaining = Math.max(0, Math.floor((parsed.endTimestamp - Date.now()) / 1000))
+            setTimeRemaining(remaining)
+          }
+        }
+      } catch {}
+      setHydrated(true)
+    }
+    hydrate()
+    return () => { cancelled = true }
+  }, [])
+
+  // Persist timer state so remounts don't reset it
+  useEffect(() => {
+    try {
+      const state = {
+        activeSession,
+        timeRemaining,
+        isRunning,
+        focusEventId,
+        endTimestamp,
+      }
+      localStorage.setItem('focusTimerState', JSON.stringify(state))
+    } catch {}
+  }, [activeSession, timeRemaining, isRunning, focusEventId, endTimestamp])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -105,16 +197,90 @@ export function FocusTimeControls() {
     return (elapsed / totalSeconds) * 100
   }
 
-  const handlePlayPause = () => {
-    setIsRunning(!isRunning)
+  const handlePlayPause = async () => {
+    // If currently paused and user is resuming, first try to pick up any existing active focus event
+    if (!isRunning) {
+      if (!focusEventId) {
+        try {
+          const res = await fetch('/api/focus/current', { cache: 'no-store' })
+          if (res.ok) {
+            const data = await res.json()
+            if (data.active) {
+              setFocusEventId(data.eventId ?? null)
+              setTimeRemaining(data.remainingSeconds)
+              setEndTimestamp(Date.now() + data.remainingSeconds * 1000)
+              setActiveSession((prev) => ({
+                ...prev,
+                title: data.subject || 'Focus Block',
+                duration: data.durationMinutes,
+                startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                endTime: new Date(Date.now() + data.remainingSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: 'active' as const,
+              }))
+              setIsRunning(true)
+              return // reuse existing event; do not create a duplicate
+            }
+          }
+        } catch {}
+      }
+
+      // No existing event found; create a new one with remaining duration
+      if (!focusEventId) {
+        try {
+          const duration = Math.max(1, Math.ceil(timeRemaining / 60))
+          const res = await fetch('/api/focus/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ durationMinutes: duration, title: 'Focus Block', description: activeSession.title })
+          })
+          if (res.ok) {
+            const data = await res.json()
+            setFocusEventId(data.eventId ?? null)
+            setEndTimestamp(Date.now() + duration * 60 * 1000)
+            console.log('Focus block created on resume:', data)
+          } else {
+            console.error('Failed to create focus block on resume:', await res.text())
+          }
+        } catch (e) {
+          console.error('Error creating focus block on resume', e)
+        }
+      }
+
+      setIsRunning(true)
+      return
+    }
+
+    // If currently running, this is a pause toggle only (no calendar change)
+    setIsRunning(false)
   }
 
-  const handleStop = () => {
+  const handleStop = async () => {
     setIsRunning(false)
     setTimeRemaining(activeSession.duration * 60)
+    setEndTimestamp(null)
+
+    // If a focus event exists, end it now
+    if (focusEventId) {
+      try {
+        const res = await fetch('/api/focus/stop', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: focusEventId })
+        })
+        if (!res.ok) {
+          console.error('Failed to end focus block:', await res.text())
+        } else {
+          console.log('Focus block ended')
+        }
+      } catch (e) {
+        console.error('Error ending focus block', e)
+      } finally {
+        setFocusEventId(null)
+      }
+    }
   }
 
-  const startNewSession = (preset: string, duration: number) => {
+  const startNewSession = async (preset: string, duration: number) => {
     const newSession = {
       id: Date.now(),
       title: `${preset} Session`,
@@ -128,7 +294,28 @@ export function FocusTimeControls() {
     }
     setActiveSession(newSession)
     setTimeRemaining(duration * 60)
+    setEndTimestamp(Date.now() + duration * 60 * 1000)
     setIsRunning(true)
+
+    // Create a busy focus block in the connected calendar
+    try {
+      const res = await fetch('/api/focus/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durationMinutes: duration, title: 'Focus Block', description: `${preset} focus session` })
+      })
+      if (!res.ok) {
+        const txt = await res.text()
+        console.error('Failed to create focus block:', txt)
+      } else {
+        const data = await res.json()
+        setFocusEventId(data.eventId ?? null)
+        setEndTimestamp(Date.now() + duration * 60 * 1000)
+        console.log('Focus block created:', data)
+      }
+    } catch (e) {
+      console.error('Error creating focus block event', e)
+    }
   }
 
   return (
@@ -153,10 +340,18 @@ export function FocusTimeControls() {
         <CardContent className="space-y-6">
           {/* Timer Display */}
           <div className="text-center">
-            <div className="text-6xl font-mono font-bold text-primary mb-2">{formatTime(timeRemaining)}</div>
-            <Progress value={getProgressPercentage()} className="w-full h-2 mb-4" />
+            <div className="text-6xl font-mono font-bold text-primary mb-2">
+              {hydrated ? formatTime(timeRemaining) : "—:—"}
+            </div>
+            <Progress value={hydrated ? getProgressPercentage() : 0} className="w-full h-2 mb-4" />
             <p className="text-sm text-muted-foreground">
-              {activeSession.startTime} - {activeSession.endTime} • {activeSession.duration} minutes
+              {hydrated
+                ? (
+                  <>
+                    {activeSession.startTime} - {activeSession.endTime} • {activeSession.duration} minutes
+                  </>
+                )
+                : "Syncing focus status…"}
             </p>
           </div>
 
