@@ -499,7 +499,7 @@ export function TaskManagement() {
                           </div>
 
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className={cn("text-sm", currentSourceConfig.color)}>
+                            <Badge variant="outline" className={cn("text-sm inline-flex items-center", currentSourceConfig.color)}>
                               <currentSourceConfig.icon className="w-3 h-3 mr-1" />
                               <span className="font-medium">
                                 {task.source === 'EMAIL_AI' ? 'Mail' : task.sourceId}

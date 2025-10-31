@@ -263,18 +263,24 @@
     background: transparent;
   }
 
-  /* Aurora Background Animation - Stripe-style with flowing waves */
-  .aurora-container {
-    position: relative;
-    background: linear-gradient(135deg, 
-      rgba(99, 102, 241, 0.3) 0%, 
-      rgba(168, 85, 247, 0.3) 25%,
-      rgba(236, 72, 153, 0.3) 50%,
-      rgba(59, 130, 246, 0.3) 75%,
-      rgba(139, 92, 246, 0.3) 100%
-    );
-    overflow: hidden;
-  }
+/* Aurora Background Animation - Stripe-style with flowing waves */
+.aurora-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.15) 0%, 
+    rgba(168, 85, 247, 0.15) 25%,
+    rgba(236, 72, 153, 0.15) 50%,
+    rgba(59, 130, 246, 0.15) 75%,
+    rgba(139, 92, 246, 0.15) 100%
+  );
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
 
   .aurora {
     position: absolute;
@@ -438,35 +444,35 @@
     );
   }
 
-  .dark .aurora-2 {
-    background: radial-gradient(
-      circle at center,
-      rgba(168, 85, 247, 1) 0%,
-      rgba(168, 85, 247, 0.8) 25%,
-      rgba(168, 85, 247, 0.4) 50%,
-      rgba(168, 85, 247, 0) 70%
-    );
-  }
+.dark .aurora-2 {
+  background: radial-gradient(
+    circle at center,
+    rgba(168, 85, 247, 0.9) 0%,
+    rgba(168, 85, 247, 0.6) 25%,
+    rgba(168, 85, 247, 0.3) 50%,
+    rgba(168, 85, 247, 0) 70%
+  );
+}
 
-  .dark .aurora-3 {
-    background: radial-gradient(
-      circle at center,
-      rgba(236, 72, 153, 1) 0%,
-      rgba(236, 72, 153, 0.8) 25%,
-      rgba(236, 72, 153, 0.4) 50%,
-      rgba(236, 72, 153, 0) 70%
-    );
-  }
+.dark .aurora-3 {
+  background: radial-gradient(
+    circle at center,
+    rgba(236, 72, 153, 0.8) 0%,
+    rgba(236, 72, 153, 0.5) 25%,
+    rgba(236, 72, 153, 0.25) 50%,
+    rgba(236, 72, 153, 0) 70%
+  );
+}
 
-  .dark .aurora-4 {
-    background: radial-gradient(
-      circle at center,
-      rgba(59, 130, 246, 1) 0%,
-      rgba(59, 130, 246, 0.8) 25%,
-      rgba(59, 130, 246, 0.4) 50%,
-      rgba(59, 130, 246, 0) 70%
-    );
-  }
+.dark .aurora-4 {
+  background: radial-gradient(
+    circle at center,
+    rgba(59, 130, 246, 0.9) 0%,
+    rgba(59, 130, 246, 0.6) 25%,
+    rgba(59, 130, 246, 0.3) 50%,
+    rgba(59, 130, 246, 0) 70%
+  );
+}
 
   /* Glassmorphism utility classes */
   .glass-strong {

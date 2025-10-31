@@ -400,8 +400,52 @@ export default function UnifiedMailDashboard() {
 
   if (loading) {
     return (
-      <div className="h-full w-full p-6 flex items-center justify-center">
-        <Skeleton className="h-10 w-48" />
+      <div className="h-screen w-full overflow-hidden flex">
+        {/* Email List Skeleton */}
+        <div className="w-1/2 border-r border-white/20 dark:border-white/10 flex flex-col">
+          {/* Header */}
+          <div className="flex-none px-4 py-2.5 border-b border-white/20 dark:border-white/10">
+            <Skeleton className="h-8 w-full mb-2" />
+          </div>
+          {/* Email items */}
+          <div className="flex-1 overflow-hidden p-3 space-y-2">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="p-3 rounded-lg glass-medium border border-white/20">
+                <div className="flex gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-3 w-3/4" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Email Viewer Skeleton */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-none px-6 py-4 border-b border-white/20 dark:border-white/10">
+            <Skeleton className="h-6 w-3/4 mb-3" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 p-6 space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -423,93 +467,81 @@ export default function UnifiedMailDashboard() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
-      {/* Aurora Background */}
-      <div className="aurora-container fixed inset-0 -z-10">
-        <div className="aurora aurora-1" />
-        <div className="aurora aurora-2" />
-        <div className="aurora aurora-3" />
-        <div className="aurora aurora-4" />
-      </div>
-
       {/* Main Content */}
       <div className="relative h-full flex flex-col">
-        {/* Header - Fixed */}
-        <div className="flex-none px-6 py-3 border-b border-white/20 dark:border-white/10 glass-strong">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-4">
-              {lastSync && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {lastSync.toLocaleTimeString()}
-                </p>
-              )}
-            </div>
-            
-            {/* Compact Stats */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                <Inbox className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold">{stats.total}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Mail className="h-4 w-4 text-purple-600" />
-                <span className="text-sm font-semibold">{stats.unread}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Star className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm font-semibold">{stats.starred}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <span className="text-sm font-semibold">{stats.important}</span>
-              </div>
+        {/* Header - Compact & Elegant */}
+        <div className="flex-none px-4 py-2.5 border-b border-white/20 dark:border-white/10 glass-strong">
+          <div className="flex items-center gap-3">
+            {/* Provider Filters */}
+            <Tabs value={providerFilter} onValueChange={(v) => setProviderFilter(v as ProviderFilter)} className="flex-none">
+              <TabsList className="glass-light h-8">
+                <TabsTrigger value="all" className="text-xs h-7 px-3">All</TabsTrigger>
+                <TabsTrigger value="gmail" className="text-xs h-7 px-3">Gmail</TabsTrigger>
+                <TabsTrigger value="outlook" className="text-xs h-7 px-3">Outlook</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Status Filters with Stats */}
+            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)} className="flex-none">
+              <TabsList className="glass-light h-8">
+                <TabsTrigger value="all" className="text-xs h-7 px-2.5">
+                  <Mail className="h-3.5 w-3.5 mr-1.5" />
+                  All
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.total}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="unread" className="text-xs h-7 px-2.5">
+                  <Inbox className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                  Unread
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.unread}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="starred" className="text-xs h-7 px-2.5">
+                  <Star className="h-3.5 w-3.5 mr-1.5 text-yellow-500" />
+                  Starred
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.starred}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="important" className="text-xs h-7 px-2.5">
+                  <AlertCircle className="h-3.5 w-3.5 mr-1.5 text-orange-500" />
+                  Important
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.important}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="attachments" className="text-xs h-7 px-2.5">
+                  <Paperclip className="h-3.5 w-3.5 mr-1.5" />
+                  Attachments
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.withAttachments}</Badge>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Refresh Button & Status */}
+            <div className="flex items-center gap-2 flex-none">
               {syncing && (
-                <Badge variant="outline" className="animate-pulse text-xs">Syncing...</Badge>
+                <Badge variant="outline" className="animate-pulse text-xs px-2 py-0.5">Syncing...</Badge>
               )}
               <Button
                 onClick={() => fetchAllEmails(true, true)}
                 disabled={syncing}
-                variant="outline"
+                variant="ghost"
                 size="sm"
+                className="h-8 w-8 p-0 glass-light"
+                title="Refresh"
               >
-                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
               </Button>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center gap-3">
-            <Tabs value={providerFilter} onValueChange={(v) => setProviderFilter(v as ProviderFilter)}>
-              <TabsList className="h-8">
-                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-                <TabsTrigger value="gmail" className="text-xs">Gmail</TabsTrigger>
-                <TabsTrigger value="outlook" className="text-xs">Outlook</TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="flex gap-1">
-              {(['all', 'unread', 'starred', 'important', 'attachments'] as StatusFilter[]).map((filter) => (
-                <Button
-                  key={filter}
-                  variant={statusFilter === filter ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter(filter)}
-                  className="h-8 text-xs capitalize"
-                >
-                  {filter === 'unread' && <Mail className="h-3 w-3 mr-1" />}
-                  {filter === 'starred' && <Star className="h-3 w-3 mr-1" />}
-                  {filter === 'important' && <AlertCircle className="h-3 w-3 mr-1" />}
-                  {filter === 'attachments' && <Paperclip className="h-3 w-3 mr-1" />}
-                  {filter}
-                </Button>
-              ))}
+              {lastSync && (
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  {formatTime(lastSync.toISOString())}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         {/* Split View - Scrollable */}
         <div className="flex-1 flex min-h-0">
-          {/* Email List */}
+      {/* Email List */}
           <div className="w-1/2 border-r border-white/20 dark:border-white/10 flex flex-col glass-light">
             <div className="flex-none px-4 py-2 border-b border-white/20 dark:border-white/10">
               <h3 className="text-sm font-semibold">Messages ({filteredEmails.length})</h3>
@@ -522,14 +554,14 @@ export default function UnifiedMailDashboard() {
                     <Mail className="h-12 w-12 mx-auto mb-4 opacity-30 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">No emails match your filters</p>
                   </div>
-                </div>
-              ) : (
+            </div>
+          ) : (
                 <div className="p-2 space-y-1">
-                  {filteredEmails.map((email) => (
+                {filteredEmails.map((email) => (
                     <div
-                      key={`${email.provider}-${email.id}`}
+                    key={`${email.provider}-${email.id}`}
                       onClick={() => fetchFullEmail(email)}
-                      className={cn(
+                    className={cn(
                         'p-3 rounded-lg cursor-pointer transition-all',
                         'glass-medium border-white/30 dark:border-white/10',
                         'hover:glass-strong hover:shadow-lg',
@@ -539,12 +571,12 @@ export default function UnifiedMailDashboard() {
                     >
                       <div className="flex gap-3">
                         <Avatar className="h-10 w-10 flex-shrink-0">
-                          <AvatarImage src={`https://ui-avatars.com/api/?name=${encodeURIComponent(email.from.name || email.from.address)}&background=random`} />
+                            <AvatarImage src={`https://ui-avatars.com/api/?name=${encodeURIComponent(email.from.name || email.from.address)}&background=random`} />
                           <AvatarFallback className="text-xs">
-                            {(email.from.name || email.from.address || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
+                              {(email.from.name || email.from.address || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <span className={cn(
                               "font-semibold text-sm truncate",
@@ -649,7 +681,7 @@ export default function UnifiedMailDashboard() {
                   <p className="text-sm text-muted-foreground">Click on any email from the list to read it here</p>
                 </div>
               </div>
-            )}
+          )}
           </div>
         </div>
       </div>
