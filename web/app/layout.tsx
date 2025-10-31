@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { NextAuthProvider } from "@/components/next-auth-provider"
+import ReduxProvider from "@/components/redux-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
 import "./globals.css"
@@ -23,7 +24,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={<div>Loading...</div>}>
-          <NextAuthProvider>{children}</NextAuthProvider>
+          <ReduxProvider>
+            <NextAuthProvider>{children}</NextAuthProvider>
+          </ReduxProvider>
         </Suspense>
         <Toaster />
         <Analytics />

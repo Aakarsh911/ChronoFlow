@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAppDispatch, useAppSelector } from "@/store/store"
+import { startTimer as startTimerAction, resumeTimer as resumeTimerAction, pauseTimer as pauseTimerAction, stopTimer as stopTimerAction, setEventId as setEventIdAction } from "@/store/focusTimerSlice"
 import {
   Play,
   Pause,
@@ -70,15 +72,24 @@ const focusPresets = [
 ]
 
 export function FocusTimeControls() {
+  const dispatch = useAppDispatch()
+  const {
+    isActive: storeIsActive,
+    isRunning,
+    eventId: storeEventId,
+    title: storeTitle,
+    startAt: storeStartAt,
+    endAt: storeEndAt,
+    pausedRemaining: storePausedRemaining,
+  } = useAppSelector((s) => s.focusTimer)
   const [activeSession, setActiveSession] = useState(mockFocusSessions[0])
-  // Don't auto-start; user controls when the timer runs
-  const [isRunning, setIsRunning] = useState(false)
   // Initialize from session duration instead of a hardcoded default
-  const [timeRemaining, setTimeRemaining] = useState(((mockFocusSessions[0]?.duration) || 60) * 60)
+  // Default to a neutral 60m rather than inheriting mock 120m
+  const [timeRemaining, setTimeRemaining] = useState(60 * 60)
   const [dndEnabled, setDndEnabled] = useState(true)
   const [selectedPreset, setSelectedPreset] = useState("Deep Work")
   const [customDuration, setCustomDuration] = useState([90])
-  const [focusEventId, setFocusEventId] = useState<string | null>(null)
+  const focusEventId = (storeEventId as string | null) ?? null
   // Ensure UI waits for calendar/local state hydration to avoid showing defaults
   const [hydrated, setHydrated] = useState(false)
   // Absolute end-of-session timestamp (ms since epoch). Drives countdown independent of tab state.
@@ -116,32 +127,44 @@ export function FocusTimeControls() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [isRunning, endTimestamp])
 
-  // Load persisted timer state on mount, but prefer live calendar state
+  // Load persisted timer state on mount, but prefer global store and then live calendar state
   useEffect(() => {
     let cancelled = false
     const hydrate = async () => {
       try {
-        const res = await fetch('/api/focus/current', { cache: 'no-store' })
-        if (cancelled) return
-        if (res.ok) {
-          const data = await res.json()
-          if (data.active) {
-            setFocusEventId(data.eventId ?? null)
-            setIsRunning(true)
-            setTimeRemaining(data.remainingSeconds)
-            setEndTimestamp(Date.now() + data.remainingSeconds * 1000)
+        // Prefer store: if active
+        if (storeIsActive) {
+          if (isRunning && storeEndAt && Date.now() < storeEndAt) {
+            const remaining = Math.max(0, Math.floor((storeEndAt - Date.now()) / 1000))
+            setTimeRemaining(remaining)
             setActiveSession((prev) => ({
               ...prev,
-              title: data.subject || 'Focus Block',
-              duration: data.durationMinutes,
-              startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              endTime: new Date(Date.now() + data.remainingSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              title: storeTitle || prev.title,
+              startTime: storeStartAt ? new Date(storeStartAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : prev.startTime,
+              endTime: storeEndAt ? new Date(storeEndAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : prev.endTime,
               status: 'active' as const,
             }))
+            setEndTimestamp(storeEndAt)
             setHydrated(true)
-            return // done; we prefer live state
+            return
           }
+          // Paused: show pausedRemaining and don't advance
+          if (!isRunning && typeof storePausedRemaining === 'number') {
+            setTimeRemaining(storePausedRemaining)
+            setActiveSession((prev) => ({
+              ...prev,
+              title: storeTitle || prev.title,
+              startTime: storeStartAt ? new Date(storeStartAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : prev.startTime,
+              endTime: storeEndAt ? new Date(storeEndAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : prev.endTime,
+              status: 'active' as const,
+            }))
+            setEndTimestamp(null)
+            setHydrated(true)
+            return
+          }
+
         }
+
       } catch {}
       // Fallback to localStorage
       try {
@@ -150,14 +173,6 @@ export function FocusTimeControls() {
           const parsed = JSON.parse(saved)
           if (parsed.activeSession) setActiveSession(parsed.activeSession)
           if (typeof parsed.timeRemaining === 'number') setTimeRemaining(parsed.timeRemaining)
-          if (typeof parsed.isRunning === 'boolean') setIsRunning(parsed.isRunning)
-          if (parsed.focusEventId) setFocusEventId(parsed.focusEventId)
-          if (typeof parsed.endTimestamp === 'number') setEndTimestamp(parsed.endTimestamp)
-          // If we have an endTimestamp and session is running, recompute accurate remaining
-          if (parsed.isRunning && typeof parsed.endTimestamp === 'number') {
-            const remaining = Math.max(0, Math.floor((parsed.endTimestamp - Date.now()) / 1000))
-            setTimeRemaining(remaining)
-          }
         }
       } catch {}
       setHydrated(true)
@@ -166,19 +181,22 @@ export function FocusTimeControls() {
     return () => { cancelled = true }
   }, [])
 
-  // Persist timer state so remounts don't reset it
+  // Keep local endTimestamp mirrored with storeEndAt for the ticking effect
+  useEffect(() => {
+    setEndTimestamp(storeEndAt ?? null)
+  }, [storeEndAt])
+
+  // Persist minimal UI state (activeSession + last seen timeRemaining) for UX continuity
   useEffect(() => {
     try {
       const state = {
         activeSession,
         timeRemaining,
-        isRunning,
-        focusEventId,
         endTimestamp,
       }
       localStorage.setItem('focusTimerState', JSON.stringify(state))
     } catch {}
-  }, [activeSession, timeRemaining, isRunning, focusEventId, endTimestamp])
+  }, [activeSession, timeRemaining, endTimestamp])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -198,66 +216,65 @@ export function FocusTimeControls() {
   }
 
   const handlePlayPause = async () => {
-    // If currently paused and user is resuming, first try to pick up any existing active focus event
+    // Resume: create a NEW calendar event for the remaining time
     if (!isRunning) {
-      if (!focusEventId) {
-        try {
-          const res = await fetch('/api/focus/current', { cache: 'no-store' })
-          if (res.ok) {
-            const data = await res.json()
-            if (data.active) {
-              setFocusEventId(data.eventId ?? null)
-              setTimeRemaining(data.remainingSeconds)
-              setEndTimestamp(Date.now() + data.remainingSeconds * 1000)
-              setActiveSession((prev) => ({
-                ...prev,
-                title: data.subject || 'Focus Block',
-                duration: data.durationMinutes,
-                startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                endTime: new Date(Date.now() + data.remainingSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: 'active' as const,
-              }))
-              setIsRunning(true)
-              return // reuse existing event; do not create a duplicate
-            }
-          }
-        } catch {}
-      }
-
-      // No existing event found; create a new one with remaining duration
-      if (!focusEventId) {
-        try {
-          const duration = Math.max(1, Math.ceil(timeRemaining / 60))
-          const res = await fetch('/api/focus/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ durationMinutes: duration, title: 'Focus Block', description: activeSession.title })
-          })
-          if (res.ok) {
-            const data = await res.json()
-            setFocusEventId(data.eventId ?? null)
-            setEndTimestamp(Date.now() + duration * 60 * 1000)
-            console.log('Focus block created on resume:', data)
-          } else {
-            console.error('Failed to create focus block on resume:', await res.text())
-          }
-        } catch (e) {
-          console.error('Error creating focus block on resume', e)
+      const remainingSec = endTimestamp ? Math.max(0, Math.floor((endTimestamp - Date.now()) / 1000)) : timeRemaining
+      const duration = Math.max(1, Math.ceil(remainingSec / 60))
+      try {
+        // If somehow an eventId still exists, end it just in case
+        if (focusEventId) {
+          try {
+            await fetch('/api/focus/stop', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ eventId: focusEventId })
+            })
+          } catch {}
+          dispatch(setEventIdAction(null))
         }
-      }
 
-      setIsRunning(true)
+        const res = await fetch('/api/focus/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ durationMinutes: duration, title: 'Focus Block', description: activeSession.title })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          dispatch(setEventIdAction(data.eventId))
+          dispatch(startTimerAction({ durationMinutes: duration, title: data.title ?? activeSession.title, eventId: data.eventId }))
+          // Keep the UI aligned exactly with remaining seconds
+          setTimeRemaining(remainingSec)
+          console.log('Focus block created on resume:', data)
+        } else {
+          console.error('Failed to create focus block on resume:', await res.text())
+        }
+      } catch (e) {
+        console.error('Error creating focus block on resume', e)
+      }
       return
     }
 
-    // If currently running, this is a pause toggle only (no calendar change)
-    setIsRunning(false)
+    // Pause: stop the calendar event and keep pausedRemaining in store
+    dispatch(pauseTimerAction())
+    if (focusEventId) {
+      try {
+        await fetch('/api/focus/stop', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: focusEventId })
+        })
+      } catch (e) {
+        console.error('Error ending focus block on pause', e)
+      } finally {
+        dispatch(setEventIdAction(null))
+      }
+    }
   }
 
   const handleStop = async () => {
-    setIsRunning(false)
     setTimeRemaining(activeSession.duration * 60)
     setEndTimestamp(null)
+    dispatch(stopTimerAction())
 
     // If a focus event exists, end it now
     if (focusEventId) {
@@ -275,12 +292,28 @@ export function FocusTimeControls() {
       } catch (e) {
         console.error('Error ending focus block', e)
       } finally {
-        setFocusEventId(null)
+        dispatch(setEventIdAction(null))
       }
     }
   }
 
   const startNewSession = async (preset: string, duration: number) => {
+    // If there's an existing focus block, end it first to avoid overlapping/old-duration events
+    if (focusEventId) {
+      try {
+        await fetch('/api/focus/stop', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: focusEventId })
+        })
+      } catch (e) {
+        console.error('Error ending previous focus block before starting new', e)
+      } finally {
+        dispatch(stopTimerAction())
+        dispatch(setEventIdAction(null))
+      }
+    }
+
     const newSession = {
       id: Date.now(),
       title: `${preset} Session`,
@@ -295,7 +328,7 @@ export function FocusTimeControls() {
     setActiveSession(newSession)
     setTimeRemaining(duration * 60)
     setEndTimestamp(Date.now() + duration * 60 * 1000)
-    setIsRunning(true)
+  dispatch(startTimerAction({ durationMinutes: duration, title: newSession.title }))
 
     // Create a busy focus block in the connected calendar
     try {
@@ -309,7 +342,7 @@ export function FocusTimeControls() {
         console.error('Failed to create focus block:', txt)
       } else {
         const data = await res.json()
-        setFocusEventId(data.eventId ?? null)
+        dispatch(setEventIdAction(data.eventId))
         setEndTimestamp(Date.now() + duration * 60 * 1000)
         console.log('Focus block created:', data)
       }
