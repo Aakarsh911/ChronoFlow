@@ -3,9 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { google } from 'googleapis'
 import type { Credentials } from 'google-auth-library'
-import { PrismaClient, Provider } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { Provider } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {

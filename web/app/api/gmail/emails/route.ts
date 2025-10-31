@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { PrismaClient, Provider } from '@prisma/client'
+import { Provider } from '@prisma/client'
 import { google } from 'googleapis'
 import { cache, cacheKeys, cacheTTL } from '@/lib/redis'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 /**
  * Fetch Gmail emails for today

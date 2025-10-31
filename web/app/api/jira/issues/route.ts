@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { PrismaClient } from "@prisma/client"
 import { getCache, setCache, cacheKeys, cacheTTL } from "@/lib/redis"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/prisma"
 
 // Helper function to extract plain text from Jira's Atlassian Document Format (ADF)
 function extractTextFromADF(adf: any): string {

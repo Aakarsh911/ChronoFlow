@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteCachePattern } from '@/lib/redis';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Gmail Push Notifications Endpoint
@@ -9,7 +9,6 @@ import { PrismaClient } from '@prisma/client';
  */
 
 const eventEmitter = global as any;
-const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {

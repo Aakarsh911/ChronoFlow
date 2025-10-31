@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { google } from 'googleapis';
-import { PrismaClient, Provider } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Provider } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Gmail Watch API - Set up push notifications via Pub/Sub

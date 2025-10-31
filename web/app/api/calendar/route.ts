@@ -3,10 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { google } from 'googleapis'
 import { Client } from '@microsoft/microsoft-graph-client'
-import { PrismaClient } from '@prisma/client'
 import { cache, cacheKeys, cacheTTL } from '@/lib/redis'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // Microsoft Outlook color palette mapping
 const OUTLOOK_COLORS: Record<string, string> = {

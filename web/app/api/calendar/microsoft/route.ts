@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { Client } from '@microsoft/microsoft-graph-client'
-import { PrismaClient, Provider } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { Provider } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 // Microsoft Outlook color palette mapping
 // Reference: https://learn.microsoft.com/en-us/graph/api/resources/outlookcategory

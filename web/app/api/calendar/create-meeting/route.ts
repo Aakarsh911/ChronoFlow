@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { PrismaClient } from '@prisma/client'
 import { Client } from '@microsoft/microsoft-graph-client'
+import { prisma } from '@/lib/prisma'
 import 'isomorphic-fetch'
-
-const prisma = new PrismaClient()
 
 // Helper function to get Microsoft Graph client
 function getGraphClient(accessToken: string) {

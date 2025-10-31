@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { PrismaClient, Provider } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Provider } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Delta Query API for Outlook emails

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { PrismaClient } from '@prisma/client'
 import { extractTasksFromEmailsBatch } from '@/lib/gemini'
 import { deleteCache } from '@/lib/redis'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 /**
  * Extract actionable tasks from emails using AI (Gemini)

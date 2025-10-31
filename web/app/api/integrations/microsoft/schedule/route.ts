@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { PrismaClient, Provider } from '@prisma/client'
+import { Provider } from '@prisma/client'
 import { Client } from '@microsoft/microsoft-graph-client'
 import 'isomorphic-fetch'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 type Body = {
   accountIds: string[]
