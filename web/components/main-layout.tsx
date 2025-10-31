@@ -64,7 +64,7 @@ const navigationItems = [
     badge: null
   },
   {
-    title: "Focus Time",
+    title: "Focus",
     href: "/focus",
     icon: Clock,
     badge: null
@@ -119,24 +119,20 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-border transition-transform duration-300 ease-in-out lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 w-20 bg-white border-r border-border transition-transform duration-300 ease-in-out lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center gap-3 px-6 py-6 border-b border-border">
+          <div className="flex items-center justify-center h-[65px] border-b border-border">
             <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-md">
               <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">ChronoFlow</h1>
-              <p className="text-xs text-muted-foreground">Intelligent Productivity</p>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 space-y-1 mt-6">
+          <nav className="flex-1 px-2 space-y-1 mt-6">
             {navigationItems.map((item) => {
               const isActive = pathname === item.href
               const Icon = item.icon
@@ -146,22 +142,27 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <Link key={item.href} href={item.href}>
                   <div 
                     className={cn(
-                      "sidebar-nav-item group flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium cursor-pointer",
+                      "sidebar-nav-item group flex flex-col items-center justify-center px-2 py-3 rounded-lg text-sm font-medium cursor-pointer relative",
                       isActive 
-                        ? "active bg-primary/10 text-primary border-r-2 border-primary" 
+                        ? "active bg-primary/10 text-primary" 
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                     onClick={() => setSidebarOpen(false)}
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
-                      <span>{item.title}</span>
+                    <div className="relative">
+                      <Icon className={cn(
+                        "w-5 h-5 shrink-0", 
+                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      )} />
+                      {dynamicBadge && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-accent rounded-full flex items-center justify-center shadow-sm">
+                          <span className="text-[9px] font-bold text-white">{dynamicBadge}</span>
+                        </div>
+                      )}
                     </div>
-                    {dynamicBadge && (
-                      <Badge variant="secondary" className="text-xs bg-accent/10 text-accent">
-                        {dynamicBadge}
-                      </Badge>
-                    )}
+                    <span className="text-[10px] font-medium mt-1">
+                      {item.title}
+                    </span>
                   </div>
                 </Link>
               )
@@ -169,29 +170,26 @@ export function MainLayout({ children }: MainLayoutProps) {
           </nav>
 
           {/* AI Actions */}
-          <div className="px-4 py-4">
-            <Button className="w-full gradient-primary text-white shadow-md hover:shadow-lg transition-all duration-200">
-              <Zap className="w-4 h-4 mr-2" />
-              AI Actions
+          <div className="px-2 py-4">
+            <Button 
+              size="icon"
+              className="w-full h-12 gradient-primary text-white shadow-md hover:shadow-lg transition-all duration-200"
+            >
+              <Zap className="w-5 h-5" />
             </Button>
           </div>
 
           {/* User Profile */}
-          <div className="p-4 border-t border-border">
+          <div className="p-2 border-t border-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
-                  <Avatar className="w-8 h-8">
+                <div className="flex items-center justify-center p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                  <Avatar className="w-10 h-10">
                     <AvatarImage src={user?.image || "/placeholder-user.png"} />
                     <AvatarFallback className="bg-primary text-white text-xs">
                       {user?.name?.charAt(0) || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-foreground">{user?.name || "User"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 elevated-card" align="start" sideOffset={8}>
@@ -218,7 +216,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-20">
         {/* Top Header */}
         <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-border">
           <div className="flex items-center justify-between px-6 py-4">
