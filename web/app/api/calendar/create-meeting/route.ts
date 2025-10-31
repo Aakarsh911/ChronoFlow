@@ -105,17 +105,36 @@ export async function POST(req: NextRequest) {
     // Initialize Graph client
     const client = getGraphClient(accessToken)
 
-    // Create the meeting/event
+    // Ensure attendees are properly formatted
+    const eventPayload = {
+      ...meetingData,
+    }
+
+    console.log('Creating event with attendees:', meetingData.attendees?.length || 0)
+    console.log('Event payload:', JSON.stringify(eventPayload, null, 2))
+
+    // Create the meeting/event on the organizer's calendar
+    // By default, Microsoft Graph sends meeting invitations to all attendees when you create an event
+    // No additional flag needed - invitations are sent automatically when attendees are present
     const event = await client
-      .api('/me/calendar/events')
-      .post(meetingData)
+      .api('/me/events')
+      .header('Prefer', 'outlook.timezone="UTC"')
+      .post(eventPayload)
 
     console.log('Meeting created successfully:', event.id)
+    console.log('Invitations sent to attendees:', event.attendees?.length || 0)
+    
+    // Log each attendee for debugging
+    if (event.attendees && event.attendees.length > 0) {
+      event.attendees.forEach((att: any, index: number) => {
+        console.log(`Attendee ${index + 1}:`, att.emailAddress?.address, '- Status:', att.status?.response || 'none')
+      })
+    }
 
     return NextResponse.json({ 
       success: true, 
       event: event,
-      message: 'Meeting created and invitations sent successfully'
+      message: `Meeting created and invitations sent to ${event.attendees?.length || 0} attendee(s)`
     })
   } catch (error: any) {
     console.error('Create meeting API error:', error)

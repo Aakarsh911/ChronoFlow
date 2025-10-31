@@ -85,7 +85,8 @@ export function TeamScheduling() {
   useEffect(() => {
     let mounted = true
     setLoadingTeams(true)
-    fetch('/api/integrations/teams/members')
+    // Force refresh to bypass cache and get fresh data with new logging
+    fetch('/api/integrations/teams/members?forceRefresh=true')
       .then(async (res) => {
         if (!res.ok) throw new Error(await res.text())
         return res.json()
@@ -93,6 +94,7 @@ export function TeamScheduling() {
       .then((data) => {
         if (!mounted) return
         const members = data?.members || []
+        console.log('📥 Received team members:', members)
         setMsTeamsMembers(members)
         setTeamsError(null)
       })
@@ -329,16 +331,41 @@ export function TeamScheduling() {
 
     setCreatingMeeting(true)
     try {
-      // Get selected member details
-      const attendees = msTeamsMembers
-        .filter(m => selectedMembers.has(m.id))
+      // Debug: Log selected member IDs
+      console.log('=== DEBUG: Meeting Creation ===')
+      console.log('Selected member IDs:', Array.from(selectedMembers))
+      console.log('All team members:', msTeamsMembers.map(m => ({ id: m.id, name: m.displayName, email: m.email })))
+
+      // Get selected member details and filter out any without email
+      const selectedMembersData = msTeamsMembers.filter(m => selectedMembers.has(m.id))
+      console.log('Matched selected members:', selectedMembersData.map(m => ({ name: m.displayName, email: m.email })))
+
+      // Check which members are being filtered out due to missing email
+      const membersWithoutEmail = selectedMembersData.filter(m => !m.email)
+      if (membersWithoutEmail.length > 0) {
+        console.warn('⚠️  WARNING: The following members have no email and will be excluded:', 
+          membersWithoutEmail.map(m => m.displayName))
+      }
+
+      const attendees = selectedMembersData
+        .filter(m => m.email) // Only include members with email addresses
         .map(m => ({
           emailAddress: {
-            address: m.email,
+            address: m.email!,
             name: m.displayName
           },
           type: 'required'
         }))
+
+      console.log('Final attendees count:', attendees.length)
+      console.log('Final attendees:', attendees)
+      console.log('=== END DEBUG ===')
+
+      if (attendees.length === 0) {
+        alert('No valid email addresses found for selected members')
+        setCreatingMeeting(false)
+        return
+      }
 
       // Prepare meeting body
       const meetingData = {
@@ -369,6 +396,8 @@ export function TeamScheduling() {
         isReminderOn: meetingForm.isReminderOn,
         reminderMinutesBeforeStart: meetingForm.isReminderOn ? meetingForm.reminderMinutesBeforeStart : undefined,
       }
+
+      console.log('📤 Sending meeting data to API:', JSON.stringify(meetingData, null, 2))
 
       const response = await fetch('/api/calendar/create-meeting', {
         method: 'POST',

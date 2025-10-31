@@ -121,12 +121,22 @@ export async function GET(req: NextRequest) {
             seen[userId] = true
             let email: string | undefined
             let jobTitle: string | undefined
+            
+            // Try to get email from member object first (fallback)
+            const memberEmail = m.email || m?.user?.email || m?.user?.mail || m?.user?.userPrincipalName
+            
             try {
               const userObj = await client.api(`/users/${userId}`).select('id,displayName,mail,userPrincipalName,jobTitle').get()
-              email = userObj.mail || userObj.userPrincipalName
+              email = userObj.mail || userObj.userPrincipalName || memberEmail
               jobTitle = userObj.jobTitle || undefined
-            } catch {
-              // ignore user lookup failures
+              console.log(`✓ Fetched user details for ${displayName}: email=${email}`)
+            } catch (err: any) {
+              console.warn(`⚠️  Failed to fetch user details for ${displayName} (${userId}):`, err?.message || 'Unknown error')
+              // Fallback to member email if user lookup fails
+              email = memberEmail
+              if (email) {
+                console.log(`  ↳ Using fallback email from member object: ${email}`)
+              }
             }
 
             members.push({ id: userId, displayName, email, jobTitle, teamIds: [t.id] })
