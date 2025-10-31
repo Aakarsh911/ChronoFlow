@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { Provider } from '@prisma/client'
 import { google } from 'googleapis'
 import { prisma } from '@/lib/prisma'
+import { cache, cacheKeys } from '@/lib/redis'
 
 /**
  * Sync Gmail emails using history
@@ -210,6 +211,14 @@ export async function GET(request: NextRequest) {
     )
 
     const validEmails = emails.filter(e => e !== null)
+
+    // If there are any changes, invalidate the cache
+    if (validEmails.length > 0 || deletedMessageIds.size > 0) {
+      const todayStr = new Date().toISOString().split('T')[0]
+      const cacheKey = cacheKeys.emails(user.id, todayStr)
+      await cache.del(cacheKey)
+      console.log(`🗑️ Invalidated cache due to ${validEmails.length} changes and ${deletedMessageIds.size} deletions`)
+    }
 
     return NextResponse.json({
       emails: validEmails,
