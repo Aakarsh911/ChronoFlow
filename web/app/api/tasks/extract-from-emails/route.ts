@@ -99,9 +99,24 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 [Task Extraction] Processing ${allEmails.length} emails total`)
 
-    // Extract tasks using AI (single batch call)
-    const extractionResults = await extractTasksFromEmailsBatch(allEmails)
-    
+    // Split emails into batches of 20
+    function chunkArray<T>(arr: T[], size: number): T[][] {
+      const res: T[][] = [];
+      for (let i = 0; i < arr.length; i += size) {
+        res.push(arr.slice(i, i + size));
+      }
+      return res;
+    }
+
+    const BATCH_SIZE = 10;
+    const emailBatches = chunkArray(allEmails, BATCH_SIZE);
+    let extractionResults: any[] = [];
+
+    for (const batch of emailBatches) {
+      const batchResults = await extractTasksFromEmailsBatch(batch);
+      extractionResults = extractionResults.concat(batchResults);
+    }
+
     console.log(`✅ [AI] Found actionable items in ${extractionResults.length} emails`)
 
     // Create tasks in database

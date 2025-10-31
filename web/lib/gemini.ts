@@ -53,7 +53,7 @@ export async function extractTasksFromEmail(
       },
     })
 
-    const prompt = `You are an AI assistant that extracts actionable tasks from emails. Analyze the following email and extract ONLY genuine actionable items that require the recipient to do something.
+    const prompt = `You are an AI assistant that extracts actionable tasks from emails. Analyze the following emails and extract ONLY genuine actionable items that require the recipient to do something.
 
 Email Details:
 From: ${from}
@@ -103,7 +103,14 @@ Return ONLY the JSON object, no additional text.`
     
     // Parse the JSON response
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const parsed: TaskExtractionResult = JSON.parse(cleanedResponse)
+    let parsed: any
+    try {
+      parsed = JSON.parse(cleanedResponse)
+    } catch (err) {
+      console.error('❌ [Gemini] Failed to parse JSON:', err)
+      console.error('❌ [Gemini] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
+      return [] // Return empty array on parse error
+    }
 
     // Validate the response structure
     if (typeof parsed.hasActionableItems !== 'boolean' || !Array.isArray(parsed.tasks)) {
@@ -245,7 +252,14 @@ Return ONLY the JSON object. Be conservative - when in doubt, don't extract it.`
     
     // Parse the JSON response
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const parsed = JSON.parse(cleanedResponse)
+    let parsed: any
+    try {
+      parsed = JSON.parse(cleanedResponse)
+    } catch (err) {
+      console.error('❌ [Gemini] Failed to parse JSON:', err)
+      console.error('❌ [Gemini] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
+      return results // Return empty array on parse error
+    }
 
     // Convert to EmailTaskResult array
     emails.forEach((email) => {
@@ -386,7 +400,14 @@ Return ONLY the JSON object. Be conservative - when in doubt, don't extract it.`
     
     // Parse the JSON response
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const parsed = JSON.parse(cleanedResponse)
+    let parsed: any
+    try {
+      parsed = JSON.parse(cleanedResponse)
+    } catch (err) {
+      console.error('❌ [Gemini] Failed to parse JSON:', err)
+      console.error('❌ [Gemini] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
+      return results // Return empty array on parse error
+    }
 
     // Convert to Map
     Object.keys(parsed).forEach((emailId) => {

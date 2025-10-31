@@ -4,83 +4,83 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Light theme inspired by Stripe and Loom - vibrant and sophisticated */
-  --background: oklch(0.99 0.005 270); /* Pure white background */
-  --foreground: oklch(0.15 0.02 270); /* Dark text */
-  --card: oklch(0.98 0.005 270); /* Very light card background */
-  --card-foreground: oklch(0.15 0.02 270);
+  /* Deep Ocean Blue - Professional & Modern */
+  --background: oklch(0.99 0.002 240); /* Clean white with slight cool tint */
+  --foreground: oklch(0.18 0.015 240); /* Deep charcoal */
+  --card: oklch(0.98 0.003 240); /* Subtle cool card background */
+  --card-foreground: oklch(0.18 0.015 240);
   --popover: oklch(1 0 0); /* Pure white */
-  --popover-foreground: oklch(0.15 0.02 270);
-  --primary: oklch(0.55 0.2 250); /* Vibrant purple-blue */
+  --popover-foreground: oklch(0.18 0.015 240);
+  --primary: oklch(0.45 0.15 240); /* Deep ocean blue */
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.92 0.02 270); /* Light gray */
-  --secondary-foreground: oklch(0.25 0.02 270);
-  --muted: oklch(0.95 0.01 270); /* Very light muted */
-  --muted-foreground: oklch(0.45 0.01 270); /* Medium gray text */
-  --accent: oklch(0.6 0.25 180); /* Vibrant teal/cyan */
+  --secondary: oklch(0.94 0.008 240); /* Cool light gray */
+  --secondary-foreground: oklch(0.25 0.012 240);
+  --muted: oklch(0.96 0.005 240); /* Very light cool gray */
+  --muted-foreground: oklch(0.48 0.01 240); /* Medium cool gray */
+  --accent: oklch(0.58 0.18 200); /* Electric cyan/aqua */
   --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.6 0.25 25); /* Vibrant red */
+  --destructive: oklch(0.55 0.22 25); /* Professional red */
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0.01 270); /* Light border */
-  --input: oklch(0.96 0.005 270); /* Light input background */
-  --ring: oklch(0.6 0.25 180 / 0.3); /* Teal focus ring */
-  --chart-1: oklch(0.6 0.25 180); /* Teal */
-  --chart-2: oklch(0.55 0.2 250); /* Purple-blue */
-  --chart-3: oklch(0.65 0.2 120); /* Green */
-  --chart-4: oklch(0.65 0.25 60); /* Orange */
-  --chart-5: oklch(0.65 0.2 300); /* Pink */
+  --border: oklch(0.92 0.005 240); /* Subtle cool border */
+  --input: oklch(0.97 0.003 240); /* Light input background */
+  --ring: oklch(0.58 0.18 200 / 0.4); /* Cyan focus ring */
+  --chart-1: oklch(0.58 0.18 200); /* Cyan */
+  --chart-2: oklch(0.45 0.15 240); /* Ocean blue */
+  --chart-3: oklch(0.62 0.18 150); /* Teal green */
+  --chart-4: oklch(0.65 0.2 50); /* Amber */
+  --chart-5: oklch(0.55 0.18 280); /* Purple */
   --radius: 0.75rem;
-  --sidebar: oklch(0.97 0.005 270); /* Light sidebar */
-  --sidebar-foreground: oklch(0.15 0.02 270);
-  --sidebar-primary: oklch(0.55 0.2 250);
+  --sidebar: oklch(0.98 0.002 240); /* Light cool sidebar */
+  --sidebar-foreground: oklch(0.18 0.015 240);
+  --sidebar-primary: oklch(0.45 0.15 240);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.6 0.25 180);
+  --sidebar-accent: oklch(0.58 0.18 200);
   --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.92 0.01 270);
-  --sidebar-ring: oklch(0.6 0.25 180 / 0.3);
+  --sidebar-border: oklch(0.93 0.005 240);
+  --sidebar-ring: oklch(0.58 0.18 200 / 0.4);
 
-  /* Vibrant accent colors for highlights and special elements */
-  --success: oklch(0.65 0.2 140); /* Vibrant green */
-  --warning: oklch(0.7 0.2 70); /* Vibrant yellow */
-  --info: oklch(0.6 0.2 220); /* Vibrant blue */
-  --gradient-1: linear-gradient(135deg, oklch(0.55 0.2 250) 0%, oklch(0.6 0.25 180) 100%);
-  --gradient-2: linear-gradient(135deg, oklch(0.6 0.25 180) 0%, oklch(0.65 0.2 120) 100%);
+  /* Professional accent colors */
+  --success: oklch(0.62 0.18 145); /* Ocean green */
+  --warning: oklch(0.68 0.18 65); /* Amber */
+  --info: oklch(0.58 0.18 220); /* Sky blue */
+  --gradient-1: linear-gradient(135deg, oklch(0.45 0.15 240) 0%, oklch(0.58 0.18 200) 100%);
+  --gradient-2: linear-gradient(135deg, oklch(0.58 0.18 200) 0%, oklch(0.62 0.18 150) 100%);
 }
 
 .dark {
-  /* Dark mode option - keeping light as default */
-  --background: oklch(0.09 0.02 270);
-  --foreground: oklch(0.95 0.01 270);
-  --card: oklch(0.12 0.02 270);
-  --card-foreground: oklch(0.95 0.01 270);
-  --popover: oklch(0.12 0.02 270);
-  --popover-foreground: oklch(0.95 0.01 270);
-  --primary: oklch(0.6 0.2 250);
+  /* Deep Ocean Blue - Dark Mode */
+  --background: oklch(0.12 0.015 240);
+  --foreground: oklch(0.95 0.008 240);
+  --card: oklch(0.15 0.015 240);
+  --card-foreground: oklch(0.95 0.008 240);
+  --popover: oklch(0.15 0.015 240);
+  --popover-foreground: oklch(0.95 0.008 240);
+  --primary: oklch(0.55 0.18 230);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.18 0.02 270);
-  --secondary-foreground: oklch(0.85 0.01 270);
-  --muted: oklch(0.15 0.01 270);
-  --muted-foreground: oklch(0.65 0.01 270);
-  --accent: oklch(0.65 0.25 180);
+  --secondary: oklch(0.22 0.015 240);
+  --secondary-foreground: oklch(0.88 0.008 240);
+  --muted: oklch(0.18 0.012 240);
+  --muted-foreground: oklch(0.68 0.008 240);
+  --accent: oklch(0.62 0.2 200);
   --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.65 0.25 25);
+  --destructive: oklch(0.6 0.24 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.2 0.02 270);
-  --input: oklch(0.15 0.02 270);
-  --ring: oklch(0.65 0.25 180 / 0.5);
-  --chart-1: oklch(0.65 0.25 180);
-  --chart-2: oklch(0.6 0.2 250);
-  --chart-3: oklch(0.7 0.2 120);
-  --chart-4: oklch(0.7 0.25 60);
-  --chart-5: oklch(0.7 0.2 300);
-  --sidebar: oklch(0.08 0.02 270);
-  --sidebar-foreground: oklch(0.95 0.01 270);
-  --sidebar-primary: oklch(0.6 0.2 250);
+  --border: oklch(0.25 0.015 240);
+  --input: oklch(0.18 0.015 240);
+  --ring: oklch(0.62 0.2 200 / 0.5);
+  --chart-1: oklch(0.62 0.2 200);
+  --chart-2: oklch(0.55 0.18 230);
+  --chart-3: oklch(0.65 0.2 150);
+  --chart-4: oklch(0.7 0.22 50);
+  --chart-5: oklch(0.6 0.2 280);
+  --sidebar: oklch(0.1 0.015 240);
+  --sidebar-foreground: oklch(0.95 0.008 240);
+  --sidebar-primary: oklch(0.55 0.18 230);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.65 0.25 180);
+  --sidebar-accent: oklch(0.62 0.2 200);
   --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.2 0.02 270);
-  --sidebar-ring: oklch(0.65 0.25 180 / 0.5);
+  --sidebar-border: oklch(0.25 0.015 240);
+  --sidebar-ring: oklch(0.62 0.2 200 / 0.5);
 }
 
 @theme inline {
@@ -155,19 +155,19 @@
   }
 
   .gradient-primary {
-    background: linear-gradient(135deg, oklch(0.55 0.2 250) 0%, oklch(0.6 0.25 180) 100%);
+    background: linear-gradient(135deg, oklch(0.45 0.15 240) 0%, oklch(0.58 0.18 200) 100%);
   }
 
   .gradient-accent {
-    background: linear-gradient(135deg, oklch(0.6 0.25 180) 0%, oklch(0.65 0.2 120) 100%);
+    background: linear-gradient(135deg, oklch(0.58 0.18 200) 0%, oklch(0.62 0.18 150) 100%);
   }
 
   .glow-primary {
-    box-shadow: 0 0 20px rgba(102, 51, 238, 0.3);
+    box-shadow: 0 0 20px rgba(36, 89, 178, 0.35);
   }
 
   .glow-accent {
-    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+    box-shadow: 0 0 20px rgba(0, 158, 195, 0.35);
   }
 
   .glow-subtle {
@@ -176,8 +176,8 @@
 
   .ai-highlight {
     position: relative;
-    background: linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(102, 51, 238, 0.05) 100%);
-    border: 1px solid rgba(14, 165, 233, 0.2);
+    background: linear-gradient(135deg, rgba(0, 158, 195, 0.05) 0%, rgba(36, 89, 178, 0.05) 100%);
+    border: 1px solid rgba(0, 158, 195, 0.2);
   }
 
   .ai-highlight::before {
@@ -186,7 +186,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(14, 165, 233, 0.3), rgba(102, 51, 238, 0.3));
+    background: linear-gradient(135deg, rgba(0, 158, 195, 0.3), rgba(36, 89, 178, 0.3));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -199,14 +199,14 @@
   }
 
   .sidebar-nav-item:hover {
-    background: rgba(102, 51, 238, 0.08);
+    background: rgba(36, 89, 178, 0.08);
     transform: translateX(2px);
   }
 
   .sidebar-nav-item.active {
-    background: rgba(102, 51, 238, 0.1);
-    color: oklch(0.55 0.2 250);
-    border-right: 2px solid oklch(0.55 0.2 250);
+    background: rgba(36, 89, 178, 0.12);
+    color: oklch(0.45 0.15 240);
+    border-right: 2px solid oklch(0.45 0.15 240);
   }
 
   /* Custom scrollbar styling */
