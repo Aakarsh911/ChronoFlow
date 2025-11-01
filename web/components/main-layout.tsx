@@ -39,6 +39,7 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { NotificationDropdown } from "@/components/notification-dropdown"
+import AIChatDrawer from "@/components/ai-chat-drawer"
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -94,6 +95,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const user = session?.user
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [aiChatOpen, setAiChatOpen] = useState(false)
   const [taskCount, setTaskCount] = useState<number | null>(null)
 
   useEffect(() => {
@@ -196,9 +198,11 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <TooltipTrigger asChild>
                   <Button 
                     size="icon"
-                    className="w-full h-12 gradient-primary text-white shadow-md hover:shadow-lg transition-all duration-200"
+                    onClick={() => setAiChatOpen(true)}
+                    className="w-full h-12 gradient-primary text-white shadow-md hover:shadow-lg transition-all duration-200 relative overflow-hidden group"
                   >
-                    <Zap className="w-5 h-5" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <Zap className="w-5 h-5 relative z-10" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">
@@ -297,6 +301,9 @@ export function MainLayout({ children }: MainLayoutProps) {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* AI Chat Drawer */}
+      <AIChatDrawer isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
       </div>
     </TooltipProvider>
   )
