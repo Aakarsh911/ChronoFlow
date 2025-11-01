@@ -13,7 +13,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 const tools = [
   {
     name: 'reply_to_email',
-    description: 'Generate a reply to an email. ALWAYS call this function when the user wants to reply to, respond to, or answer an email. The system will handle email selection if no email is in context.',
+    description: 'Generate a NEW reply to an email. ONLY call when user explicitly wants to create/send a NEW reply. DO NOT call when asking about replies that were already sent. The system will handle email selection if no email is in context.',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -94,6 +94,32 @@ const tools = [
       required: ['title', 'duration'],
     },
   },
+  {
+    name: 'compose_new_email',
+    description: 'Compose and send a NEW email to someone. ONLY use when user explicitly requests to send/write/compose a NEW email. DO NOT use when user asks about emails that were already sent or asks about email content.',
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        to: {
+          type: SchemaType.STRING,
+          description: 'Recipient email address (e.g., "john@example.com"). If not provided by user, ask for it.',
+        },
+        subject: {
+          type: SchemaType.STRING,
+          description: 'Email subject line. If not provided, infer from context or ask.',
+        },
+        context: {
+          type: SchemaType.STRING,
+          description: 'What the email should be about. User\'s instructions for email content.',
+        },
+        tone: {
+          type: SchemaType.STRING,
+          description: 'Tone of the email: professional, casual, friendly, or formal. Default to professional.',
+        },
+      },
+      required: ['context'],
+    },
+  },
 ]
 
 export async function POST(request: NextRequest) {
@@ -110,21 +136,46 @@ export async function POST(request: NextRequest) {
     }
 
     // Build system prompt with context
-    let systemPrompt = `You are an AI assistant for ChronoFlow, a productivity and email management application. You help users with:
-- Replying to emails professionally
-- Creating Jira tickets from emails
-- Extracting tasks from conversations
-- Scheduling meetings
-- Managing their calendar and tasks
+    let systemPrompt = `You are an AI assistant for ChronoFlow, a productivity and email management application. You are conversational, helpful, and professional.
 
-IMPORTANT FUNCTION CALLING RULES:
-- When the user asks to reply to, respond to, or answer an email, ALWAYS call the reply_to_email function immediately
-- Do NOT ask for email IDs or clarification - just call the function and the system will handle email selection
-- When they want to create a Jira ticket, call create_jira_ticket
-- When they ask about tasks, call extract_tasks
-- When they want to schedule a meeting, call schedule_meeting
+CORE CAPABILITIES:
+- Reply to emails, compose new emails, forward emails
+- Create and manage tasks from emails or conversations
+- Create Jira tickets from emails or requests
+- Schedule meetings and manage calendar
+- Extract tasks, action items, and insights
+- Answer questions about productivity and workflow
 
-You are helpful, concise, and professional. Prefer calling functions over asking clarifying questions.
+WHEN TO USE FUNCTIONS vs WHEN TO CHAT:
+✅ CALL FUNCTIONS when user explicitly requests a NEW ACTION:
+- "reply to this email" / "respond to the email" / "answer this email" → reply_to_email
+- "send an email to..." / "email john about..." / "compose a new email" → compose_new_email
+- "create a Jira ticket" / "make a ticket" → create_jira_ticket
+- "extract tasks" / "find action items" → extract_tasks
+- "schedule a meeting" / "set up a meeting" → schedule_meeting
+
+❌ DO NOT call functions for:
+- Greetings ("hi", "hello", "yo", "hey")
+- Questions about what you just did ("what was in that email?", "what did I send?", "can you show me the email?")
+- Questions about content that was just created/sent ("what did the email say?", "what was the subject?")
+- Acknowledgments ("thanks", "ok", "great", "cool")
+- Casual conversation
+- Follow-up questions about completed actions ("did it send?", "was it successful?")
+- Information requests about recent actions ("what did you write?", "show me what you sent")
+- Questions about your capabilities ("what can you do?", "how do you work?")
+
+IMPORTANT RULES:
+- DO NOT call tools when user asks about something that JUST happened in this conversation
+- DO NOT call tools to retrieve information about actions you JUST performed
+- ONLY call tools when the user wants to perform a NEW action
+- After completing an action, you can refer to the chat history to answer questions about it
+- Respond conversationally to questions about recent messages or actions in this chat
+
+FUNCTION CALLING RULES:
+- Only call functions when user clearly requests a NEW action
+- Don't ask for clarification - call the function and let the system prompt if needed
+- After completing an action, respond conversationally and wait for the next instruction
+- If user asks about what you just did, answer from chat history without calling tools
 
 Current user: ${session.user.email}`
 
@@ -141,7 +192,7 @@ Current user: ${session.user.email}`
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash-exp',
       generationConfig: {
-        temperature: 0.3, // Lower temperature for more consistent tool calling
+        temperature: 0.5, // Balanced for both conversation and tool calling
         topP: 0.95,
         topK: 40,
         maxOutputTokens: 2048,
@@ -157,7 +208,7 @@ Current user: ${session.user.email}`
       },
       {
         role: 'model',
-        parts: [{ text: 'Understood! I\'ll help you manage emails, tasks, and calendar efficiently. What would you like me to do?' }],
+        parts: [{ text: 'Understood! I can help you with emails, tasks, meetings, and Jira tickets. I\'ll chat with you normally and only use functions when you request specific actions. How can I help?' }],
       },
     ]
 

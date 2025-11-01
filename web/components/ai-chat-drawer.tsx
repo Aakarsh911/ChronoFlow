@@ -37,6 +37,12 @@ interface Message {
     provider: 'gmail' | 'outlook'
     subject: string
   }
+  newEmail?: {
+    content: string
+    to: string
+    subject: string
+    provider: 'gmail' | 'outlook'
+  }
 }
 
 interface AIChatDrawerProps {
@@ -218,6 +224,72 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
         }
         setMessages(prev => [...prev, errorMessage])
       }
+    } else if (toolCall.name === 'compose_new_email') {
+      // Compose new email
+      const to = toolCall.arguments.to
+      const subject = toolCall.arguments.subject
+      const context = toolCall.arguments.context
+      const tone = toolCall.arguments.tone || 'professional'
+
+      // If missing recipient, ask for it
+      if (!to) {
+        const aiMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Who would you like to send this email to? Please provide their email address.',
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, aiMessage])
+        return
+      }
+
+      // Generate email
+      setIsTyping(true)
+      try {
+        const response = await fetch('/api/ai/compose-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to,
+            subject,
+            context,
+            tone,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to compose email')
+        }
+
+        const { body: emailBody, subject: generatedSubject } = await response.json()
+
+        // Show draft in chat
+        const aiMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: message || `I've drafted ${tone === 'professional' ? 'a professional' : 'a ' + tone} email to ${to}:`,
+          timestamp: new Date(),
+          newEmail: {
+            content: emailBody,
+            to,
+            subject: subject || generatedSubject,
+            provider: 'gmail', // Default to Gmail, will select in send component
+          },
+        }
+
+        setMessages(prev => [...prev, aiMessage])
+      } catch (error) {
+        console.error('Error composing email:', error)
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Sorry, I couldn\'t compose the email. Please try again.',
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, errorMessage])
+      } finally {
+        setIsTyping(false)
+      }
     } else {
       // Other tools (Jira, tasks, meetings) - to be implemented
       const aiMessage: Message = {
@@ -358,7 +430,7 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
                       )}
                     </div>
 
-                    {/* Draft Email Component */}
+                    {/* Draft Email Component (Reply) */}
                     {message.draftEmail && message.role === 'assistant' && (
                       <div className="mt-3 w-full max-w-full">
                         <EmailDraftComponent
@@ -374,6 +446,29 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
                           onSent={() => {
                             setMessages(prev => prev.map(m => 
                               m.id === message.id ? { ...m, draftEmail: undefined } : m
+                            ))
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* New Email Component */}
+                    {message.newEmail && message.role === 'assistant' && (
+                      <div className="mt-3 w-full max-w-full">
+                        <EmailDraftComponent
+                          to={message.newEmail.to}
+                          provider={message.newEmail.provider}
+                          subject={message.newEmail.subject}
+                          draftContent={message.newEmail.content}
+                          isNewEmail={true}
+                          onClose={() => {
+                            setMessages(prev => prev.map(m => 
+                              m.id === message.id ? { ...m, newEmail: undefined } : m
+                            ))
+                          }}
+                          onSent={() => {
+                            setMessages(prev => prev.map(m => 
+                              m.id === message.id ? { ...m, newEmail: undefined } : m
                             ))
                           }}
                         />

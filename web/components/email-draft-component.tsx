@@ -10,38 +10,45 @@ import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 
 interface EmailDraftProps {
-  emailId: string
+  emailId?: string // Optional for new emails
+  to?: string // For new emails
   provider: 'gmail' | 'outlook'
   subject: string
   draftContent: string
+  isNewEmail?: boolean // Flag to indicate new email vs reply
   onClose: () => void
   onSent?: () => void
 }
 
 export default function EmailDraftComponent({
   emailId,
+  to,
   provider,
   subject,
   draftContent,
+  isNewEmail = false,
   onClose,
   onSent
 }: EmailDraftProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState(draftContent)
+  const [editedSubject, setEditedSubject] = useState(subject)
+  const [editedTo, setEditedTo] = useState(to || '')
   const [isSending, setIsSending] = useState(false)
   const { toast } = useToast()
 
   const handleSend = async () => {
     setIsSending(true)
     try {
-      const response = await fetch('/api/mail/send-reply', {
+      const endpoint = isNewEmail ? '/api/mail/send-new' : '/api/mail/send-reply'
+      const body = isNewEmail
+        ? { to: editedTo, subject: editedSubject, body: editedContent, provider }
+        : { emailId, provider, replyContent: editedContent }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          emailId,
-          provider,
-          replyContent: editedContent,
-        }),
+        body: JSON.stringify(body),
       })
 
       if (!response.ok) {
@@ -75,7 +82,7 @@ export default function EmailDraftComponent({
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-purple-500 animate-pulse" />
             <h3 className="text-sm font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              AI Draft Reply
+              {isNewEmail ? 'New Email Draft' : 'AI Draft Reply'}
             </h3>
             <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
               READY
@@ -102,11 +109,44 @@ export default function EmailDraftComponent({
           </div>
         </div>
         
-        {/* Subject */}
-        <div className="text-xs">
-          <span className="text-muted-foreground font-medium">Re: </span>
-          <span className="font-semibold">{subject}</span>
-        </div>
+        {/* Recipient (for new emails) & Subject */}
+        {isNewEmail && (
+          <>
+            {isEditing ? (
+              <div className="mb-2">
+                <label className="text-xs text-muted-foreground font-medium block mb-1">To:</label>
+                <Input
+                  value={editedTo}
+                  onChange={(e) => setEditedTo(e.target.value)}
+                  className="h-7 text-xs glass-medium"
+                  placeholder="recipient@example.com"
+                />
+              </div>
+            ) : (
+              <div className="text-xs mb-1">
+                <span className="text-muted-foreground font-medium">To: </span>
+                <span className="font-semibold">{editedTo}</span>
+              </div>
+            )}
+          </>
+        )}
+        
+        {isEditing && isNewEmail ? (
+          <div className="mb-2">
+            <label className="text-xs text-muted-foreground font-medium block mb-1">Subject:</label>
+            <Input
+              value={editedSubject}
+              onChange={(e) => setEditedSubject(e.target.value)}
+              className="h-7 text-xs glass-medium"
+              placeholder="Email subject"
+            />
+          </div>
+        ) : (
+          <div className="text-xs">
+            <span className="text-muted-foreground font-medium">{isNewEmail ? 'Subject: ' : 'Re: '}</span>
+            <span className="font-semibold">{isNewEmail ? editedSubject : subject}</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -152,7 +192,7 @@ export default function EmailDraftComponent({
           </Button>
           <Button
             onClick={handleSend}
-            disabled={isSending || !editedContent.trim()}
+            disabled={isSending || !editedContent.trim() || (isNewEmail && (!editedTo.trim() || !editedSubject.trim()))}
             size="sm"
             className="h-8 px-4 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-700 text-white shadow-lg shadow-purple-500/30"
           >
@@ -164,7 +204,7 @@ export default function EmailDraftComponent({
             ) : (
               <>
                 <Send className="h-3.5 w-3.5 mr-2" />
-                Send Reply
+                {isNewEmail ? 'Send Email' : 'Send Reply'}
               </>
             )}
           </Button>
