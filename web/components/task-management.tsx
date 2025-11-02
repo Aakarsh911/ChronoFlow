@@ -21,6 +21,9 @@ import {
   Sparkles,
   Loader2,
   Zap,
+  Target,
+  Clock,
+  Flame,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -297,168 +300,204 @@ export function TaskManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Task Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="elevated-card border-0 relative overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Tasks</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{stats.total}</p>
-              </div>
-              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
-                <ListTodo className="w-6 h-6 text-slate-600" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-sm py-1 px-2">All Tasks</Badge>
-            </div>
-          </CardContent>
-          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-slate-300 to-slate-200" />
-        </Card>
-
-        <Card className="elevated-card border-0 relative overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Open Tasks</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{openCount}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <ListChecks className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-sm py-1 px-2">To Do</Badge>
-            </div>
-          </CardContent>
-          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-blue-400 to-blue-300" />
-        </Card>
-
-        <Card className="elevated-card border-0 relative overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{stats.completed}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <Badge className="bg-green-100 text-green-700 border-green-200 text-sm py-1 px-2">Done</Badge>
-            </div>
-          </CardContent>
-          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-green-400 to-green-300" />
-        </Card>
-
-        <Card className="elevated-card border-0 relative overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Completion</p>
-                <p className="text-2xl font-bold text-foreground mt-2">{completionPct}%</p>
-              </div>
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-amber-600" />
-              </div>
-            </div>
-            <div className="mt-4 py-1">
-              <Progress value={completionPct} className="h-2" />
-            </div>
-          </CardContent>
-          <div className="absolute bottom-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 to-amber-300" />
-        </Card>
+    <div className="relative min-h-screen">
+      {/* Animated Mesh Background */}
+      <div className="mesh-gradient-bg">
+        <div className="floating-shape shape-1"></div>
+        <div className="floating-shape shape-2"></div>
+        <div className="floating-shape shape-3"></div>
+        <div className="floating-shape shape-4"></div>
       </div>
 
-      {/* Filters and Search */}
-      <Card className="shadow-sm border">
-        <CardHeader className="py-4">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-3">
-                <CardTitle className="text-lg">Task Management</CardTitle>
-                <Badge variant="secondary" className="text-sm py-0.5 px-2">
-                  {tasks.length} items
-                </Badge>
+      {/* Content */}
+      <div className="relative z-10 space-y-6">
+        {/* Task Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm">
+                <Target className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <CardDescription className="text-sm text-muted-foreground mt-1">Unified view of tasks from Jira, Email AI, and integrations</CardDescription>
+              <div className="text-right">
+                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                  {stats.total}
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Total Tasks</div>
+              </div>
+            </div>
+            <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" />
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 backdrop-blur-sm">
+                <Flame className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-400 dark:to-red-400 bg-clip-text text-transparent">
+                  {openCount}
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">In Progress</div>
+              </div>
+            </div>
+            <div className="h-1 bg-gradient-to-r from-orange-500 to-red-500 rounded-full" />
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 backdrop-blur-sm">
+                <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                  {stats.completed}
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Completed</div>
+              </div>
+            </div>
+            <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full" />
+          </div>
+        </div>
+
+        <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-yellow-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-500/20 backdrop-blur-sm">
+                <TrendingUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-yellow-600 dark:from-amber-400 dark:to-yellow-400 bg-clip-text text-transparent">
+                  {completionPct}%
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Progress</div>
+              </div>
+            </div>
+            <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full transition-all duration-500"
+                style={{ width: `${completionPct}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+        {/* Filters and Actions */}
+        <div className="glass-card p-6 rounded-2xl">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent">
+                Task Management
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Unified view from Jira, Email AI, Teams, and more
+              </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center rounded-md bg-muted p-1 gap-1">
-                <Button variant="ghost" size="sm" onClick={handleSync} disabled={isSyncing} className="px-3">
-                  <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
-                  <span className="hidden sm:inline">Sync</span>
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleExtractFromEmails} disabled={isExtractingTasks} className="px-3">
-                  {isExtractingTasks ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4 mr-2" />
-                  )}
-                  <span className="hidden sm:inline">Extract</span>
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleExtractFromTeams} disabled={isExtractingFromTeams} className="px-3">
-                  {isExtractingFromTeams ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Zap className="w-4 h-4 mr-2" />
-                  )}
-                  <span className="hidden sm:inline">Teams</span>
-                </Button>
-              </div>
-
-              <Button className="gap-2" onClick={() => {/* Add Task flow */}}>
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add Task</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSync} 
+                disabled={isSyncing}
+                className="bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-200"
+              >
+                <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
+                Sync
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExtractFromEmails} 
+                disabled={isExtractingTasks}
+                className="bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-200"
+              >
+                {isExtractingTasks ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                Extract
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExtractFromTeams} 
+                disabled={isExtractingFromTeams}
+                className="bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-200"
+              >
+                {isExtractingFromTeams ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Zap className="w-4 h-4 mr-2" />
+                )}
+                Teams
+              </Button>
+              <Button 
+                size="sm"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
+                onClick={() => {/* Add Task flow */}}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Task
               </Button>
             </div>
           </div>
-        </CardHeader>
 
-        <CardContent>
-          <div className="flex flex-col lg:flex-row gap-4 mb-6 items-start">
-            <div className="flex-1 w-full">
+          {/* Search and Filters */}
+          <div className="flex flex-col lg:flex-row gap-3 mb-6">
+            <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   placeholder="Search tasks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500"
                 />
               </div>
             </div>
 
-            {/* Styled Source dropdown (restored) */}
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-[220px] rounded-lg border px-3 py-2 flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <SelectValue placeholder="All sources" />
+              <SelectTrigger className="w-[200px] bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-slate-500" />
+                  <SelectValue placeholder="All sources" />
+                </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700">
                 <SelectItem value="all">All Sources</SelectItem>
-                {uniqueSources.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    <div className="flex items-center gap-3">
-                      <span className={cn(sourceConfig[s]?.color || "bg-gray-100 text-gray-700", "w-3 h-3 rounded-full")}></span>
-                      <span>{sourceConfig[s]?.name || s}</span>
-                    </div>
-                  </SelectItem>
-                ))}
+                {uniqueSources.map((s) => {
+                  const config = sourceConfig[s] || sourceConfig.MANUAL
+                  return (
+                    <SelectItem key={s} value={s}>
+                      <div className="flex items-center gap-2">
+                        <config.icon className="w-3.5 h-3.5" />
+                        <span>{config.name}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
 
-            {/* Styled Status dropdown (restored) */}
             <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-[180px] rounded-lg border px-3 py-2 flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <SelectValue placeholder="All statuses" />
+              <SelectTrigger className="w-[180px] bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="w-4 h-4 text-slate-500" />
+                  <SelectValue placeholder="All statuses" />
+                </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700">
                 <SelectItem value="all">All Statuses</SelectItem>
                 {uniqueStatuses.map((s) => (
                   <SelectItem key={s} value={s}>
@@ -469,8 +508,15 @@ export function TaskManagement() {
             </Select>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {loading && <div className="col-span-full text-center py-8 text-muted-foreground">Loading tasks…</div>}
+          {/* Task List */}
+          <div className="space-y-3">
+            {loading && (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-slate-400" />
+                <p className="text-slate-600 dark:text-slate-400">Loading tasks...</p>
+              </div>
+            )}
+            
             {!loading &&
               filteredTasks.map((task) => {
                 const isChecked = task.status === "Done"
@@ -479,111 +525,159 @@ export function TaskManagement() {
                 const projectName = getProjectFromSourceData(task)
 
                 return (
-                  <Card key={task.id} className="rounded-lg border shadow-sm hover:shadow-md transition-shadow transition-transform hover:-translate-y-0.5">
-                    <CardContent className="p-3 md:p-4">
-                      <div className="flex items-start gap-3">
-                        <button
-                          aria-pressed={isChecked}
-                          aria-label={isChecked ? "Mark as not done" : "Mark as done"}
-                          onClick={() => toggleTaskStatus(task.id, task.status)}
-                          className={cn(
-                            "h-7 w-7 inline-flex items-center justify-center rounded-md transition-all",
-                            "hover:bg-primary/10 hover:scale-110 active:scale-95"
-                          )}
-                        >
-                          {isChecked ? (
-                            <CheckCircle2 className="w-5 h-5 text-accent transition-colors" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
-                          )}
-                        </button>
+                  <div 
+                    key={task.id} 
+                    className={cn(
+                      "relative bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700",
+                      "rounded-xl p-5 group transition-all duration-200",
+                      "hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50",
+                      "hover:border-slate-300 dark:hover:border-slate-600",
+                      isChecked && "opacity-75"
+                    )}
+                  >
+                    <div className="flex items-start gap-4">
+                      <button
+                        aria-pressed={isChecked}
+                        aria-label={isChecked ? "Mark as not done" : "Mark as done"}
+                        onClick={() => toggleTaskStatus(task.id, task.status)}
+                        className={cn(
+                          "flex-shrink-0 mt-0.5 p-1.5 rounded-lg transition-all duration-200",
+                          "hover:scale-110 active:scale-95",
+                          isChecked 
+                            ? "bg-gradient-to-br from-green-500 to-emerald-500 shadow-sm" 
+                            : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
+                        )}
+                      >
+                        {isChecked ? (
+                          <CheckCircle2 className="w-5 h-5 text-white" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-slate-400" />
+                        )}
+                      </button>
 
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1 flex-1 pr-2">
-                              {task.url ? (
-                                <a 
-                                  href={task.url} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="group inline-flex items-center gap-1 hover:underline"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <h3 className={cn("font-medium text-sm", isChecked && "line-through text-muted-foreground")}>
-                                    {task.title}
-                                  </h3>
-                                  <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                                </a>
-                              ) : (
-                                <h3 className={cn("font-medium text-sm", isChecked && "line-through text-muted-foreground")}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex-1 min-w-0">
+                            {task.url ? (
+                              <a 
+                                href={task.url} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="group/link inline-flex items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <h3 className={cn(
+                                  "font-semibold text-base leading-tight",
+                                  isChecked 
+                                    ? "line-through text-slate-400 dark:text-slate-500" 
+                                    : "text-slate-900 dark:text-slate-100 group-hover/link:text-blue-600 dark:group-hover/link:text-blue-400"
+                                )}>
                                   {task.title}
                                 </h3>
-                              )}
-                              {task.description && (
-                                <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
-                              )}
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {task.url && (
-                                  <DropdownMenuItem asChild>
-                                    <a href={task.url} target="_blank" rel="noreferrer" className="flex items-center">
-                                      <ExternalLink className="w-4 h-4 mr-2" />
-                                      Open in {currentSourceConfig.name}
-                                    </a>
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem>
-                                  <Calendar className="w-4 h-4 mr-2" />
-                                  Schedule Focus Time
+                                <ExternalLink className="w-4 h-4 text-slate-400 opacity-0 group-hover/link:opacity-100 transition-opacity flex-shrink-0" />
+                              </a>
+                            ) : (
+                              <h3 className={cn(
+                                "font-semibold text-base leading-tight",
+                                isChecked 
+                                  ? "line-through text-slate-400 dark:text-slate-500" 
+                                  : "text-slate-900 dark:text-slate-100"
+                              )}>
+                                {task.title}
+                              </h3>
+                            )}
+                            {task.description && (
+                              <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mt-1.5 leading-relaxed">
+                                {task.description}
+                              </p>
+                            )}
+                          </div>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="flex-shrink-0 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                              >
+                                <MoreHorizontal className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700">
+                              {task.url && (
+                                <DropdownMenuItem asChild>
+                                  <a href={task.url} target="_blank" rel="noreferrer" className="flex items-center cursor-pointer">
+                                    <ExternalLink className="w-4 h-4 mr-2" />
+                                    Open in {currentSourceConfig.name}
+                                  </a>
                                 </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                              )}
+                              <DropdownMenuItem>
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Schedule Focus Time
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
 
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className={cn("text-sm inline-flex items-center", currentSourceConfig.color)}>
-                              <currentSourceConfig.icon className="w-3 h-3 mr-1" />
-                              <span className="font-medium">
-                                {task.source === 'EMAIL_AI' ? 'Mail' : task.sourceId}
-                              </span>
-                            </Badge>
-                            {currentPriorityConfig && (
-                              <Badge variant="outline" className={cn("text-sm", currentPriorityConfig.color)}>
-                                {currentPriorityConfig.label}
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className={cn("text-sm", getStatusBadgeClass(task.status))}>
-                              {task.status}
-                            </Badge>
-                            {projectName && (
-                              <Badge variant="secondary" className="text-sm">
-                                {projectName}
-                              </Badge>
-                            )}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
+                            currentSourceConfig.color
+                          )}>
+                            <currentSourceConfig.icon className="w-3.5 h-3.5" />
+                            <span>{task.source === 'EMAIL_AI' ? 'Mail' : task.sourceId}</span>
                           </div>
+                          
+                          {currentPriorityConfig && (
+                            <div className={cn(
+                              "px-2.5 py-1 rounded-lg text-xs font-medium",
+                              currentPriorityConfig.color
+                            )}>
+                              {currentPriorityConfig.label}
+                            </div>
+                          )}
+                          
+                          <div className={cn(
+                            "px-2.5 py-1 rounded-lg text-xs font-medium",
+                            getStatusBadgeClass(task.status)
+                          )}>
+                            {task.status}
+                          </div>
+                          
+                          {projectName && (
+                            <div className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                              {projectName}
+                            </div>
+                          )}
+                          
+                          {task.dueDate && (
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400">
+                              <Clock className="w-3.5 h-3.5" />
+                              {new Date(task.dueDate).toLocaleDateString()}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 )
               })}
 
             {!loading && filteredTasks.length === 0 && (
-              <div className="col-span-full text-center py-12 text-muted-foreground">
-                <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No tasks found</p>
-                <p className="text-sm mt-1">Try syncing with Jira or adjusting your filters.</p>
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 mb-4">
+                  <ListTodo className="w-8 h-8 text-slate-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">No tasks found</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Try syncing with Jira or adjusting your filters.
+                </p>
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

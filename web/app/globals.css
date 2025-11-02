@@ -504,6 +504,197 @@
     border: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
 
+  /* Glass Components */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .glass-card {
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-button {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(16px) saturate(160%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    transition: all 0.2s ease;
+  }
+
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.5) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .glass-button {
+    background: rgba(15, 23, 42, 0.5) !important;
+    backdrop-filter: blur(16px) saturate(160%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .dark .glass-button:hover {
+    background: rgba(15, 23, 42, 0.6) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(16px) saturate(160%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.6) !important;
+    border-color: rgba(59, 130, 246, 0.5) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .dark .glass-input {
+    background: rgba(15, 23, 42, 0.5) !important;
+    backdrop-filter: blur(16px) saturate(160%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .dark .glass-input:focus {
+    background: rgba(15, 23, 42, 0.6) !important;
+    border-color: rgba(59, 130, 246, 0.5) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+
+  /* Mesh Gradient Background with Floating Shapes */
+  .mesh-gradient-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: 
+      radial-gradient(at 10% 20%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+      radial-gradient(at 90% 10%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+      radial-gradient(at 20% 90%, rgba(168, 85, 247, 0.08) 0px, transparent 50%),
+      linear-gradient(135deg, 
+        rgba(249, 250, 251, 1) 0%, 
+        rgba(243, 244, 246, 1) 50%, 
+        rgba(249, 250, 251, 1) 100%
+      );
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .dark .mesh-gradient-bg {
+    background: 
+      radial-gradient(at 10% 20%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+      radial-gradient(at 90% 10%, rgba(139, 92, 246, 0.12) 0px, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
+      radial-gradient(at 20% 90%, rgba(168, 85, 247, 0.12) 0px, transparent 50%),
+      linear-gradient(135deg, 
+        rgba(15, 23, 42, 1) 0%, 
+        rgba(30, 41, 59, 1) 50%, 
+        rgba(15, 23, 42, 1) 100%
+      );
+  }
+
+  .floating-shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.4;
+    will-change: transform;
+    pointer-events: none;
+  }
+
+  .shape-1 {
+    top: 10%;
+    left: 5%;
+    width: 300px;
+    height: 300px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(59, 130, 246, 0.4));
+    animation: float-1 25s ease-in-out infinite;
+  }
+
+  .shape-2 {
+    top: 60%;
+    right: 10%;
+    width: 400px;
+    height: 400px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(168, 85, 247, 0.4));
+    animation: float-2 30s ease-in-out infinite;
+  }
+
+  .shape-3 {
+    bottom: 20%;
+    left: 15%;
+    width: 350px;
+    height: 350px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(99, 102, 241, 0.4));
+    animation: float-3 28s ease-in-out infinite;
+  }
+
+  .shape-4 {
+    top: 40%;
+    right: 30%;
+    width: 250px;
+    height: 250px;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(139, 92, 246, 0.4));
+    animation: float-4 22s ease-in-out infinite;
+  }
+
+  @keyframes float-1 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(50px, -30px) scale(1.1);
+    }
+    66% {
+      transform: translate(-30px, 40px) scale(0.9);
+    }
+  }
+
+  @keyframes float-2 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(-60px, 50px) scale(1.15);
+    }
+    66% {
+      transform: translate(40px, -40px) scale(0.85);
+    }
+  }
+
+  @keyframes float-3 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(40px, 60px) scale(1.2);
+    }
+    66% {
+      transform: translate(-50px, -30px) scale(0.9);
+    }
+  }
+
+  @keyframes float-4 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(-40px, -50px) scale(1.1);
+    }
+    66% {
+      transform: translate(50px, 30px) scale(0.95);
+    }
+  }
+
   /* Prose Styles for Email Content */
   .prose {
     color: var(--foreground);
