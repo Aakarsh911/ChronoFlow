@@ -1,32 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
+import { chatWithTools } from '@/lib/ai'
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is not set')
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-
-// Define available tools for the AI using Gemini's function calling format
+// Define available tools for the AI using Bedrock's tool calling (JSON Schema)
 const tools = [
   {
     name: 'reply_to_email',
     description: 'Generate a NEW reply to an email. ONLY call when user explicitly wants to create/send a NEW reply. DO NOT call when asking about replies that were already sent. The system will handle email selection if no email is in context.',
     parameters: {
-      type: SchemaType.OBJECT,
+      type: 'object',
       properties: {
         emailId: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Optional. The ID of the email to reply to. Leave empty if no email is selected - the system will prompt the user to select one.',
         },
         tone: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'The tone of the reply: professional, casual, friendly, or formal',
         },
         additionalInstructions: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Any specific instructions from the user about what to include in the reply',
         },
       },
@@ -37,18 +31,18 @@ const tools = [
     name: 'create_jira_ticket',
     description: 'Create a Jira ticket from an email or conversation context',
     parameters: {
-      type: SchemaType.OBJECT,
+      type: 'object',
       properties: {
         title: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Title of the Jira ticket',
         },
         description: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Description of the issue',
         },
         priority: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Priority level: High, Medium, or Low',
         },
       },
@@ -59,10 +53,10 @@ const tools = [
     name: 'extract_tasks',
     description: 'Extract action items and tasks from emails or conversations',
     parameters: {
-      type: SchemaType.OBJECT,
+      type: 'object',
       properties: {
         source: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Where to extract tasks from (e.g., "last 5 emails", "this email", "this conversation")',
         },
       },
@@ -73,20 +67,20 @@ const tools = [
     name: 'schedule_meeting',
     description: 'Schedule a meeting based on user request',
     parameters: {
-      type: SchemaType.OBJECT,
+      type: 'object',
       properties: {
         title: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Meeting title',
         },
         duration: {
-          type: SchemaType.NUMBER,
+          type: 'number',
           description: 'Duration in minutes',
         },
         attendees: {
-          type: SchemaType.ARRAY,
+          type: 'array',
           items: {
-            type: SchemaType.STRING,
+            type: 'string',
           },
           description: 'List of attendee email addresses',
         },
@@ -98,22 +92,22 @@ const tools = [
     name: 'compose_new_email',
     description: 'Compose and send a NEW email to someone. ONLY use when user explicitly requests to send/write/compose a NEW email. DO NOT use when user asks about emails that were already sent or asks about email content.',
     parameters: {
-      type: SchemaType.OBJECT,
+      type: 'object',
       properties: {
         to: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Recipient email address (e.g., "john@example.com"). If not provided by user, ask for it.',
         },
         subject: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Email subject line. If not provided, infer from context or ask.',
         },
         context: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'What the email should be about. User\'s instructions for email content.',
         },
         tone: {
-          type: SchemaType.STRING,
+          type: 'string',
           description: 'Tone of the email: professional, casual, friendly, or formal. Default to professional.',
         },
       },
@@ -188,74 +182,30 @@ Current user: ${session.user.email}`
 - Preview: ${selectedEmail.bodyPreview}`
     }
 
-    // Initialize Gemini model with function calling
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.5, // Balanced for both conversation and tool calling
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 2048,
-      },
-      tools: [{ functionDeclarations: tools as any }],
-    })
-
-    // Build chat history for Gemini
-    const chatHistory = [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }],
-      },
-      {
-        role: 'model',
-        parts: [{ text: 'Understood! I can help you with emails, tasks, meetings, and Jira tickets. I\'ll chat with you normally and only use functions when you request specific actions. How can I help?' }],
-      },
+    // Build conversation history for Bedrock
+    const history = [
+      { role: 'user' as const, content: systemPrompt },
+      { role: 'assistant' as const, content: 'Understood! I can help you with emails, tasks, meetings, and Jira tickets. I\'ll chat with you normally and only use tools when you request specific actions. How can I help?' },
     ]
 
-    // Add conversation messages
-    for (const msg of messages) {
-      if (msg.role === 'user') {
-        chatHistory.push({
-          role: 'user',
-          parts: [{ text: msg.content }],
-        })
-      } else if (msg.role === 'assistant') {
-        chatHistory.push({
-          role: 'model',
-          parts: [{ text: msg.content }],
-        })
-      }
+    for (const msg of messages.slice(0, -1)) {
+      if (msg.role === 'user') history.push({ role: 'user', content: msg.content })
+      if (msg.role === 'assistant') history.push({ role: 'assistant', content: msg.content })
     }
 
-    // Start chat
-    const chat = model.startChat({
-      history: chatHistory.slice(0, -1), // All but the last message
+    const lastMessage = messages[messages.length - 1]
+    const result = await chatWithTools({
+      systemPrompt,
+      tools,
+      history,
+      lastUserMessage: lastMessage.content,
+      temperature: 0.5,
+      maxTokens: 2048,
     })
 
-    // Get the last user message
-    const lastMessage = messages[messages.length - 1]
-    const result = await chat.sendMessage(lastMessage.content)
-    const response = result.response
-
-    // Check if Gemini wants to call a function
-    const functionCalls = response.functionCalls()
-    
-    if (functionCalls && functionCalls.length > 0) {
-      const functionCall = functionCalls[0]
-      
-      return NextResponse.json({
-        message: response.text() || '',
-        toolCall: {
-          name: functionCall.name,
-          arguments: functionCall.args,
-        },
-      })
-    }
-
-    // Regular text response
     return NextResponse.json({
-      message: response.text() || 'I apologize, but I encountered an error.',
-      toolCall: null,
+      message: result.message || 'I apologize, but I encountered an error.',
+      toolCall: result.toolCall,
     })
 
   } catch (error) {

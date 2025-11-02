@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is not set')
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+import { generateText } from '@/lib/ai'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,22 +16,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing context' }, { status: 400 })
     }
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 1024,
-      },
-    })
+    
 
-    const toneDescription = {
+    const toneMap = {
       professional: 'professional and courteous',
       casual: 'casual and friendly',
       friendly: 'warm and friendly',
       formal: 'formal and respectful',
-    }[tone || 'professional']
+    } as const
+    const allowedTones = Object.keys(toneMap) as Array<keyof typeof toneMap>
+    const toneKey: keyof typeof toneMap = allowedTones.includes((tone as any)) ? (tone as keyof typeof toneMap) : 'professional'
+    const toneDescription = toneMap[toneKey]
 
     const prompt = `You are helping compose a new email. Generate a ${toneDescription} email based on the following information:
 
@@ -57,9 +46,7 @@ Guidelines:
 
 Generate only the email body:`
 
-    const result = await model.generateContent(prompt)
-    const response = result.response
-    const emailBody = response.text().trim()
+    const emailBody = (await generateText(prompt, { temperature: 0.7, maxTokens: 1024 })).trim()
 
     // Generate subject if not provided
     let generatedSubject = subject
@@ -68,11 +55,9 @@ Generate only the email body:`
 
 Return ONLY the subject line, no quotes or explanations.`
       
-      const subjectResult = await model.generateContent(subjectPrompt)
-      generatedSubject = subjectResult.response.text().trim().replace(/['"]/g, '')
-    }
-
-    return NextResponse.json({ 
+      const subjectText = await generateText(subjectPrompt, { temperature: 0.7, maxTokens: 128 })
+      generatedSubject = subjectText.trim().replace(/['"]/g, '')
+    }    return NextResponse.json({ 
       body: emailBody,
       subject: generatedSubject || 'Follow up',
     })

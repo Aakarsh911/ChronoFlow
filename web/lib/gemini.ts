@@ -1,10 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is not set in environment variables')
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+import { generateText } from '@/lib/ai'
 
 export interface ExtractedTask {
   title: string
@@ -43,16 +37,6 @@ export async function extractTasksFromEmail(
   from: string
 ): Promise<TaskExtractionResult> {
   try {
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.3, // Lower temperature for more consistent extraction
-        topP: 0.8,
-        topK: 40,
-        maxOutputTokens: 1024,
-      },
-    })
-
     const prompt = `You are an AI assistant that extracts actionable tasks from emails. Analyze the following emails and extract ONLY genuine actionable items that require the recipient to do something.
 
 Email Details:
@@ -98,8 +82,7 @@ Examples of NON-actionable items:
 
 Return ONLY the JSON object, no additional text.`
 
-    const result = await model.generateContent(prompt)
-    const response = result.response.text()
+  const response = await generateText(prompt, { temperature: 0.3, maxTokens: 1024 })
     
     // Parse the JSON response
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
@@ -107,14 +90,18 @@ Return ONLY the JSON object, no additional text.`
     try {
       parsed = JSON.parse(cleanedResponse)
     } catch (err) {
-      console.error('❌ [Gemini] Failed to parse JSON:', err)
-      console.error('❌ [Gemini] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
-      return [] // Return empty array on parse error
+      console.error('❌ [AI] Failed to parse JSON:', err)
+      console.error('❌ [AI] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
+      return {
+        hasActionableItems: false,
+        tasks: [],
+        confidence: 0,
+      }
     }
 
     // Validate the response structure
     if (typeof parsed.hasActionableItems !== 'boolean' || !Array.isArray(parsed.tasks)) {
-      throw new Error('Invalid response structure from Gemini')
+  throw new Error('Invalid response structure from AI')
     }
 
     // Filter out tasks with very low confidence
@@ -160,15 +147,6 @@ export async function extractTasksFromEmailsBatch(
   }
 
   try {
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.2,
-        topP: 0.8,
-        topK: 40,
-        maxOutputTokens: 4096,
-      },
-    })
 
     // Create batch prompt
     const emailsText = emails.map((email, index) => `
@@ -247,8 +225,7 @@ Priority Guidelines:
 
 Return ONLY the JSON object. Be conservative - when in doubt, don't extract it.`
 
-    const result = await model.generateContent(prompt)
-    const response = result.response.text()
+  const response = await generateText(prompt, { temperature: 0.2, maxTokens: 4096 })
     
     // Parse the JSON response
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
@@ -256,8 +233,8 @@ Return ONLY the JSON object. Be conservative - when in doubt, don't extract it.`
     try {
       parsed = JSON.parse(cleanedResponse)
     } catch (err) {
-      console.error('❌ [Gemini] Failed to parse JSON:', err)
-      console.error('❌ [Gemini] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
+      console.error('❌ [AI] Failed to parse JSON:', err)
+      console.error('❌ [AI] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
       return results // Return empty array on parse error
     }
 
@@ -308,15 +285,6 @@ export async function extractTasksFromEmails(
   }
 
   try {
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.2, // Lower temperature for more consistent extraction
-        topP: 0.8,
-        topK: 40,
-        maxOutputTokens: 4096, // Increased for batch processing
-      },
-    })
 
     // Create a batch prompt with all emails
     const emailsText = emails.map((email, index) => `
@@ -395,8 +363,7 @@ Priority Guidelines:
 
 Return ONLY the JSON object. Be conservative - when in doubt, don't extract it.`
 
-    const result = await model.generateContent(prompt)
-    const response = result.response.text()
+  const response = await generateText(prompt, { temperature: 0.2, maxTokens: 4096 })
     
     // Parse the JSON response
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
@@ -404,8 +371,8 @@ Return ONLY the JSON object. Be conservative - when in doubt, don't extract it.`
     try {
       parsed = JSON.parse(cleanedResponse)
     } catch (err) {
-      console.error('❌ [Gemini] Failed to parse JSON:', err)
-      console.error('❌ [Gemini] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
+      console.error('❌ [AI] Failed to parse JSON:', err)
+      console.error('❌ [AI] Raw response:', cleanedResponse.slice(0, 2000) + (cleanedResponse.length > 2000 ? '... (truncated)' : ''))
       return results // Return empty array on parse error
     }
 

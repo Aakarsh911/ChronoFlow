@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { generateText } from '@/lib/ai'
 import { prisma } from '@/lib/prisma'
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is not set')
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+// Using unified AI helper (Gemini in dev, Bedrock in prod)
 
 /**
  * Extract actionable tasks from Teams messages using AI (Gemini)
@@ -164,11 +160,9 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Extract tasks from a batch of Teams messages using Gemini
+ * Extract tasks from a batch of Teams messages using Bedrock (Claude)
  */
 async function extractTasksFromMessagesBatch(messages: any[]): Promise<any[]> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
-
   const prompt = `You are an AI task extraction assistant. Analyze these Teams messages and extract ONLY actionable tasks.
 
 TEAMS MESSAGES:
@@ -208,8 +202,7 @@ If NO actionable tasks found in ANY messages, return an empty array: []
 RETURN ONLY THE JSON ARRAY, NO OTHER TEXT.`
 
   try {
-    const result = await model.generateContent(prompt)
-    const response = result.response.text()
+    const response = await generateText(prompt, { temperature: 0.2, maxTokens: 2048 })
     
     // Extract JSON from response (handle markdown code blocks)
     const jsonMatch = response.match(/\[[\s\S]*\]/)
