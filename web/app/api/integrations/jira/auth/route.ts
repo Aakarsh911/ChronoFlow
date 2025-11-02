@@ -6,6 +6,7 @@ export async function GET() {
   const scope = encodeURIComponent([
     "read:jira-user",
     "read:jira-work",
+    "write:jira-work",
     "read:me",
     "offline_access",
   ].join(" "))

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Send, Sparkles, Bot, User, Loader2, Zap, Mail } from 'lucide-react'
+import { X, Send, Sparkles, Bot, User, Loader2, Zap, Mail, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import EmailSelectorModal from '@/components/email-selector-modal'
 import EmailDraftComponent from '@/components/email-draft-component'
+import JiraTicketCreator from '@/components/jira-ticket-creator'
 
 interface Email {
   id: string
@@ -43,6 +44,14 @@ interface Message {
     subject: string
     provider: 'gmail' | 'outlook'
   }
+  jiraTicket?: {
+    title: string
+    description: string
+    priority: string
+    key?: string
+    url?: string
+    showCreator?: boolean
+  }
 }
 
 interface AIChatDrawerProps {
@@ -55,7 +64,7 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm your AI assistant. I can help you with:\n\n• Creating Jira tickets from emails\n• Drafting email responses\n• Extracting tasks from conversations\n• Scheduling meetings\n• Searching through your emails\n\nWhat would you like to do?",
+      content: "Hi! I'm your AI assistant. I can help you with:\n\n• Creating Jira tickets\n• Drafting email responses\n• Composing new emails\n• Extracting tasks from conversations\n• Scheduling meetings\n\nWhat would you like to do?",
       timestamp: new Date(),
     }
   ])
@@ -290,8 +299,28 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
       } finally {
         setIsTyping(false)
       }
+    } else if (toolCall.name === 'create_jira_ticket') {
+      // Show Jira ticket creation UI
+      const title = toolCall.arguments.title || ''
+      const description = toolCall.arguments.description || ''
+      const priority = toolCall.arguments.priority || 'Medium'
+
+      const aiMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: message || `I'll help you create a Jira ticket. Please review and edit the details:`,
+        timestamp: new Date(),
+        jiraTicket: {
+          title,
+          description,
+          priority,
+          showCreator: true,
+        },
+      }
+
+      setMessages(prev => [...prev, aiMessage])
     } else {
-      // Other tools (Jira, tasks, meetings) - to be implemented
+      // Other tools (tasks, meetings) - to be implemented
       const aiMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
@@ -409,10 +438,10 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
                         : "glass-medium border border-white/20 dark:border-white/10"
                     )}>
                       <p className={cn(
-                        "text-sm whitespace-pre-wrap leading-relaxed font-semibold",
+                        "text-sm whitespace-pre-wrap leading-relaxed",
                         message.role === 'user' 
-                          ? "bg-gradient-to-br from-blue-700 via-blue-600 to-purple-600 dark:from-blue-300 dark:via-blue-200 dark:to-purple-300 bg-clip-text text-transparent" 
-                          : "bg-gradient-to-br from-slate-800 via-slate-700 to-slate-600 dark:from-slate-100 dark:via-slate-50 dark:to-slate-200 bg-clip-text text-transparent"
+                          ? "font-semibold bg-gradient-to-br from-blue-700 via-blue-600 to-purple-600 dark:from-blue-300 dark:via-blue-200 dark:to-purple-300 bg-clip-text text-transparent" 
+                          : "text-white font-medium"
                       )}>
                         {message.content}
                       </p>
@@ -472,6 +501,82 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
                             ))
                           }}
                         />
+                      </div>
+                    )}
+
+                    {message.jiraTicket && message.role === 'assistant' && (
+                      <div className="mt-3 w-full max-w-full">
+                        {message.jiraTicket.showCreator ? (
+                          <JiraTicketCreator
+                            initialTitle={message.jiraTicket.title}
+                            initialDescription={message.jiraTicket.description}
+                            initialPriority={message.jiraTicket.priority}
+                            onSuccess={({ key, url }) => {
+                              setMessages(prev => prev.map(m => 
+                                m.id === message.id 
+                                  ? { ...m, jiraTicket: { ...m.jiraTicket!, key, url, showCreator: false } } 
+                                  : m
+                              ))
+                            }}
+                            onClose={() => {
+                              setMessages(prev => prev.map(m => 
+                                m.id === message.id ? { ...m, jiraTicket: undefined } : m
+                              ))
+                            }}
+                          />
+                        ) : (
+                          <div className="glass-strong border border-green-500/30 rounded-xl p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="p-2 rounded-lg bg-green-500/20">
+                                  <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                </div>
+                              <div>
+                                <h4 className="font-semibold text-slate-800 dark:text-white text-sm">Jira Ticket Created</h4>
+                                {message.jiraTicket.key && (
+                                  <Badge variant="secondary" className="mt-1 bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">
+                                    {message.jiraTicket.key}
+                                  </Badge>
+                                )}
+                              </div>
+                              </div>
+                              {message.jiraTicket.url && (
+                                <a
+                                  href={message.jiraTicket.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  <span>Open in Jira</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Title</div>
+                                <div className="text-sm font-medium text-slate-800 dark:text-white">{message.jiraTicket.title}</div>
+                              </div>
+                              
+                              <div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Description</div>
+                                <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{message.jiraTicket.description}</div>
+                              </div>
+                              
+                              <div className="flex items-center gap-4 pt-2 border-t border-slate-200 dark:border-white/10">
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                  Priority: <span className={cn(
+                                    "font-semibold",
+                                    message.jiraTicket.priority === 'High' && "text-red-500 dark:text-red-400",
+                                    message.jiraTicket.priority === 'Medium' && "text-yellow-600 dark:text-yellow-400",
+                                    message.jiraTicket.priority === 'Low' && "text-green-600 dark:text-green-400"
+                                  )}>{message.jiraTicket.priority}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
