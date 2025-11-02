@@ -25,7 +25,7 @@ async function refreshMicrosoftToken(refreshToken: string, integrationId: string
         client_secret: process.env.AZURE_AD_CLIENT_SECRET!,
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
-        scope: 'openid email profile offline_access User.Read Calendars.ReadWrite Calendars.ReadWrite.Shared OnlineMeetings.ReadWrite MailboxSettings.Read',
+        scope: 'openid email profile offline_access User.Read Calendars.Read Calendars.Read.Shared Calendars.ReadWrite Calendars.ReadWrite.Shared OnlineMeetings.Read OnlineMeetings.ReadWrite Mail.Read Mail.Send MailboxSettings.Read Chat.Read ChatMessage.Read ChannelMessage.Read.All Team.ReadBasic.All TeamMember.Read.All',
       }),
     })
 

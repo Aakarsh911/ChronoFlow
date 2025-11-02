@@ -25,7 +25,7 @@ export const authOptions: NextAuthOptions = {
       tenantId: process.env.AZURE_AD_TENANT_ID || "common",
       authorization: {
         params: {
-          scope: 'openid email profile offline_access User.Read Calendars.Read Calendars.Read.Shared Mail.Read Mail.ReadWrite',
+          scope: 'openid email profile offline_access User.Read Calendars.Read Calendars.Read.Shared Calendars.ReadWrite Calendars.ReadWrite.Shared OnlineMeetings.Read OnlineMeetings.ReadWrite Mail.Read Mail.ReadWrite Mail.Send MailboxSettings.Read Chat.Read ChatMessage.Read ChannelMessage.Read.All Team.ReadBasic.All TeamMember.Read.All',
         },
       },
     }),

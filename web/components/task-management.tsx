@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Sparkles,
   Loader2,
+  Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -67,6 +68,7 @@ export function TaskManagement() {
   const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [isSyncing, startSyncTransition] = useTransition()
   const [isExtractingTasks, startExtractTransition] = useTransition()
+  const [isExtractingFromTeams, startTeamsExtractTransition] = useTransition()
   const { toast } = useToast()
 
   const fetchTasks = async (silent = false) => {
@@ -122,6 +124,44 @@ export function TaskManagement() {
           variant: "destructive",
           title: "Sync Failed",
           description: "Could not sync tasks from Jira.",
+        })
+      }
+    })
+  }
+
+  const handleExtractFromTeams = () => {
+    startTeamsExtractTransition(async () => {
+      toast({ 
+        title: "🤖 Teams Extraction Started", 
+        description: "Analyzing saved Teams messages for actionable tasks..." 
+      })
+      
+      try {
+        const res = await fetch("/api/tasks/extract-from-teams", { 
+          method: "POST" 
+        })
+        
+        if (res.ok) {
+          const result = await res.json()
+          toast({
+            title: "✅ Teams Extraction Complete",
+            description: `Found ${result.extracted} tasks. Created ${result.created} new tasks.`,
+          })
+          await fetchTasks()
+        } else {
+          const error = await res.json()
+          toast({
+            variant: "destructive",
+            title: "Teams Extraction Failed",
+            description: error.error || "Could not extract tasks from Teams messages. Make sure you have saved some messages in Teams.",
+          })
+        }
+      } catch (error) {
+        console.error("Teams extraction error:", error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to extract tasks from Teams messages.",
         })
       }
     })
@@ -360,6 +400,14 @@ export function TaskManagement() {
                     <Sparkles className="w-4 h-4 mr-2" />
                   )}
                   <span className="hidden sm:inline">Extract</span>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleExtractFromTeams} disabled={isExtractingFromTeams} className="px-3">
+                  {isExtractingFromTeams ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4 mr-2" />
+                  )}
+                  <span className="hidden sm:inline">Teams</span>
                 </Button>
               </div>
 

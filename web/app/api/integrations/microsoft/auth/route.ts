@@ -18,9 +18,14 @@ export async function GET() {
     // Online meetings
     "OnlineMeetings.Read",
     "OnlineMeetings.ReadWrite",
+    // Mail permissions
     "Mail.Read",
     "Mail.Send",
     "MailboxSettings.Read",
+    // Teams permissions (for saved messages and task extraction)
+    "Chat.Read",
+    "ChatMessage.Read",
+    "ChannelMessage.Read.All",
   ].join(" "))
 
   if (!clientId || !redirectUri) {
