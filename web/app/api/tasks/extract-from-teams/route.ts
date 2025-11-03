@@ -102,29 +102,21 @@ export async function POST(request: NextRequest) {
         }
 
         // Create task
-        const task = await prisma.task.create({
-          data: {
-            userId: user.id,
-            title: taskData.task,
-            description: taskData.context || taskData.messageBody?.substring(0, 500),
-            source: 'TEAMS',
-            sourceId: taskData.messageId,
-            status: 'TODO',
-            priority: taskData.priority || 'Medium',
-            dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
-            url: taskData.webUrl || null,
-            sourceData: {
-              messageId: taskData.messageId,
-              chatId: taskData.chatId,
-              from: taskData.from,
-              createdDateTime: taskData.createdDateTime,
-              extractedAt: new Date().toISOString(),
-            },
-          },
-        })
+        const createdTask = await prisma.task.create({
+            data: {
+              title: taskData.task,
+              description: taskData.context || taskData.messageBody?.substring(0, 500),
+              status: 'To Do',
+              priority: taskData.priority || 'medium',
+              dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
+              userId: user.id,
+              source: 'teams',
+              sourceId: taskData.messageId,
+            }
+          })
 
-        createdTasks.push(task)
-        console.log(`✅ Created task: ${task.title}`)
+        createdTasks.push(createdTask)
+        console.log(`✅ Created task: ${createdTask.title}`)
       } catch (error) {
         console.error(`❌ Failed to create task from message ${taskData.messageId}:`, error)
       }

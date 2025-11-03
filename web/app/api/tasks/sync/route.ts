@@ -123,8 +123,6 @@ export async function POST() {
 
     const jiraStatus = f.status?.name?.toLowerCase().includes("done") 
       ? "Done" 
-      : f.status?.name?.toLowerCase().includes("progress") 
-      ? "In Progress" 
       : "To Do"
 
     const taskData = {

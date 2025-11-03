@@ -29,7 +29,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const updatedTask = await prisma.$transaction(async (tx: any) => {
-      const newCompletedAt = status === "done" && !task.completedAt ? new Date() : status !== "done" ? null : task.completedAt
+      // Set completedAt when marking as Done, clear it when marking as To Do
+      const newCompletedAt = status === "Done" ? new Date() : null
 
       const updated = await tx.task.update({
         where: { id: taskId },

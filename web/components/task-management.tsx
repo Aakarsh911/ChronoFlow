@@ -24,6 +24,7 @@ import {
   Target,
   Clock,
   Flame,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,6 +33,16 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 
@@ -72,6 +83,8 @@ export function TaskManagement() {
   const [isSyncing, startSyncTransition] = useTransition()
   const [isExtractingTasks, startExtractTransition] = useTransition()
   const [isExtractingFromTeams, startTeamsExtractTransition] = useTransition()
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
   const { toast } = useToast()
 
   const fetchTasks = async (silent = false) => {
@@ -250,6 +263,40 @@ export function TaskManagement() {
     }
   }
 
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return
+
+    try {
+      const res = await fetch(`/api/tasks/${taskToDelete}`, {
+        method: "DELETE",
+      })
+
+      if (!res.ok) {
+        toast({
+          variant: "destructive",
+          title: "Delete Failed",
+          description: "Could not delete task.",
+        })
+      } else {
+        // Remove task from local state
+        setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskToDelete))
+        toast({
+          title: "✅ Task Deleted",
+          description: "Task has been permanently deleted.",
+        })
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Network Error",
+        description: "Could not connect to the server.",
+      })
+    } finally {
+      setDeleteDialogOpen(false)
+      setTaskToDelete(null)
+    }
+  }
+
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -262,17 +309,15 @@ export function TaskManagement() {
   const stats = React.useMemo(() => {
     const total = tasks.length
     const completed = tasks.filter((t) => t.status === "Done").length
-    const inProgress = tasks.filter((t) => t.status === "In Progress").length
-    const todo = total - completed - inProgress
-    return { total, completed, inProgress, todo }
+    const todo = total - completed
+    return { total, completed, todo }
   }, [tasks])
 
-  const openCount = stats.todo + stats.inProgress
+  const openCount = stats.todo
   const completionPct = React.useMemo(() => (stats.total ? Math.round((stats.completed / stats.total) * 100) : 0), [stats])
 
   const STATUS_COLOR_CLASSES: Record<string, string> = {
     "To Do": "bg-gray-500/10 text-gray-700 border-gray-200",
-    "In Progress": "bg-sky-500/10 text-sky-700 border-sky-200",
     "Done": "bg-emerald-500/10 text-emerald-700 border-emerald-200",
   }
 
@@ -342,7 +387,7 @@ export function TaskManagement() {
                 <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-400 dark:to-red-400 bg-clip-text text-transparent">
                   {openCount}
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">In Progress</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">To Do</div>
               </div>
             </div>
             <div className="h-1 bg-gradient-to-r from-orange-500 to-red-500 rounded-full" />
@@ -616,6 +661,16 @@ export function TaskManagement() {
                                 <Calendar className="w-4 h-4 mr-2" />
                                 Schedule Focus Time
                               </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-950/30"
+                                onClick={() => {
+                                  setTaskToDelete(task.id)
+                                  setDeleteDialogOpen(true)
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Task
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -678,6 +733,32 @@ export function TaskManagement() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              Delete Task
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+              This action cannot be undone. This will permanently delete the task from your account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteTask}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
