@@ -567,6 +567,100 @@
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   }
 
+  /* Dark Depth Gradient Background - 3D Perspective Effect */
+  .depth-gradient-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: 
+      radial-gradient(ellipse at top, rgba(30, 41, 59, 1) 0%, rgba(15, 23, 42, 1) 40%, rgba(2, 6, 23, 1) 100%);
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .depth-layer {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.3;
+    will-change: transform;
+    pointer-events: none;
+  }
+
+  .layer-1 {
+    top: 20%;
+    left: 10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, rgba(59, 130, 246, 0) 70%);
+    animation: depth-float-1 20s ease-in-out infinite;
+  }
+
+  .layer-2 {
+    top: 50%;
+    right: 15%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(168, 85, 247, 0) 70%);
+    animation: depth-float-2 25s ease-in-out infinite;
+  }
+
+  .layer-3 {
+    bottom: 10%;
+    left: 20%;
+    width: 550px;
+    height: 550px;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(236, 72, 153, 0) 70%);
+    animation: depth-float-3 22s ease-in-out infinite;
+  }
+
+  @keyframes depth-float-1 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(-30px, 40px) scale(1.1);
+    }
+    66% {
+      transform: translate(40px, -30px) scale(0.9);
+    }
+  }
+
+  @keyframes depth-float-2 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(40px, -40px) scale(1.15);
+    }
+    66% {
+      transform: translate(-50px, 30px) scale(0.85);
+    }
+  }
+
+  @keyframes depth-float-3 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(50px, 30px) scale(1.2);
+    }
+    66% {
+      transform: translate(-40px, -40px) scale(0.9);
+    }
+  }
+
+  /* Dark Glass Card */
+  .glass-card-dark {
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
   /* Mesh Gradient Background with Floating Shapes */
   .mesh-gradient-bg {
     position: fixed;
@@ -802,4 +896,131 @@
   .prose-sm h3 {
     font-size: 1.125em;
   }
+}
+
+/* Gradient Mesh Background */
+.gradient-mesh-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 25%, #f093fb10 50%, #4facfe10 75%, #00f2fe08 100%);
+}
+
+.mesh-gradient {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.6;
+  mix-blend-mode: multiply;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+.dark .mesh-gradient {
+  mix-blend-mode: screen;
+  opacity: 0.3;
+}
+
+.mesh-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.8) 0%, rgba(102, 126, 234, 0) 70%);
+  top: -10%;
+  left: -5%;
+  animation: mesh-float-1 20s ease-in-out infinite;
+}
+
+.mesh-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(240, 147, 251, 0.8) 0%, rgba(240, 147, 251, 0) 70%);
+  top: 50%;
+  right: -5%;
+  animation: mesh-float-2 25s ease-in-out infinite;
+}
+
+.mesh-3 {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(79, 172, 254, 0.7) 0%, rgba(79, 172, 254, 0) 70%);
+  bottom: -10%;
+  left: 30%;
+  animation: mesh-float-3 22s ease-in-out infinite;
+}
+
+.mesh-4 {
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(118, 75, 162, 0.6) 0%, rgba(118, 75, 162, 0) 70%);
+  top: 40%;
+  left: 50%;
+  animation: mesh-float-4 18s ease-in-out infinite;
+}
+
+@keyframes mesh-float-1 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate(50px, -30px) rotate(120deg) scale(1.1);
+  }
+  66% {
+    transform: translate(-30px, 50px) rotate(240deg) scale(0.9);
+  }
+}
+
+@keyframes mesh-float-2 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate(-60px, -40px) rotate(-120deg) scale(1.15);
+  }
+  66% {
+    transform: translate(40px, 60px) rotate(-240deg) scale(0.95);
+  }
+}
+
+@keyframes mesh-float-3 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate(70px, 40px) rotate(90deg) scale(1.2);
+  }
+  66% {
+    transform: translate(-50px, -30px) rotate(180deg) scale(0.85);
+  }
+}
+
+@keyframes mesh-float-4 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate(-40px, 50px) rotate(-90deg) scale(1.1);
+  }
+  66% {
+    transform: translate(60px, -40px) rotate(-180deg) scale(0.9);
+  }
+}
+
+/* Glass Morphism Card */
+.glass-morphism-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}
+
+.dark .glass-morphism-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
