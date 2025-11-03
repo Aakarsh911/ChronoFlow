@@ -8,67 +8,26 @@ import {
   Pause,
   Square,
   Clock,
-  Bell,
-  BellOff,
-  Settings,
-  Zap,
-  Target,
-  Users,
   Timer,
+  Zap,
+  TrendingUp,
+  Target,
+  Flame,
   CheckCircle2,
+  Calendar as CalendarIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
 
-// Mock focus session data
-const mockFocusSessions = [
-  {
-    id: 1,
-    title: "Deep Work - Authentication Bug",
-    duration: 120, // minutes
-    completed: 85,
-    status: "active",
-    startTime: "9:00 AM",
-    endTime: "11:00 AM",
-    task: "Fix authentication bug in login flow",
-    interruptions: 2,
-  },
-  {
-    id: 2,
-    title: "Code Review Session",
-    duration: 60,
-    completed: 60,
-    status: "completed",
-    startTime: "2:00 PM",
-    endTime: "3:00 PM",
-    task: "Review PR for new dashboard components",
-    interruptions: 0,
-  },
-  {
-    id: 3,
-    title: "Documentation Writing",
-    duration: 90,
-    completed: 0,
-    status: "scheduled",
-    startTime: "4:00 PM",
-    endTime: "5:30 PM",
-    task: "Update API documentation",
-    interruptions: 0,
-  },
-]
-
 const focusPresets = [
-  { name: "Pomodoro", duration: 25, break: 5 },
-  { name: "Deep Work", duration: 90, break: 15 },
-  { name: "Quick Focus", duration: 45, break: 10 },
-  { name: "Extended", duration: 120, break: 20 },
+  { name: "Quick Focus", duration: 25, icon: Zap, color: "from-orange-500 to-amber-500" },
+  { name: "Deep Work", duration: 90, icon: Flame, color: "from-red-500 to-pink-500" },
+  { name: "Power Hour", duration: 60, icon: Target, color: "from-purple-500 to-indigo-500" },
+  { name: "Extended", duration: 120, icon: TrendingUp, color: "from-blue-500 to-cyan-500" },
 ]
 
 export function FocusTimeControls() {
@@ -82,20 +41,65 @@ export function FocusTimeControls() {
     endAt: storeEndAt,
     pausedRemaining: storePausedRemaining,
   } = useAppSelector((s) => s.focusTimer)
-  const [activeSession, setActiveSession] = useState(mockFocusSessions[0])
-  // Initialize from session duration instead of a hardcoded default
-  // Default to a neutral 60m rather than inheriting mock 120m
+  
   const [timeRemaining, setTimeRemaining] = useState(60 * 60)
-  const [dndEnabled, setDndEnabled] = useState(true)
-  const [selectedPreset, setSelectedPreset] = useState("Deep Work")
   const [customDuration, setCustomDuration] = useState([90])
+  const [sessionDuration, setSessionDuration] = useState(90)
   const focusEventId = (storeEventId as string | null) ?? null
-  // Ensure UI waits for calendar/local state hydration to avoid showing defaults
   const [hydrated, setHydrated] = useState(false)
-  // Absolute end-of-session timestamp (ms since epoch). Drives countdown independent of tab state.
   const [endTimestamp, setEndTimestamp] = useState<number | null>(null)
+  const [todaysSessions, setTodaysSessions] = useState<any[]>([])
+  const [stats, setStats] = useState({
+    totalToday: 0,
+    completedToday: 0,
+    totalMinutes: 0,
+  })
 
-  // Timer effect: derive remaining from wall-clock endTimestamp for accuracy in background
+  // Fetch today's focus sessions
+  useEffect(() => {
+    fetchTodaysSessions()
+  }, [])
+
+  const fetchTodaysSessions = async () => {
+    try {
+      // Fetch from calendar API
+      const res = await fetch('/api/calendar')
+      if (res.ok) {
+        const data = await res.json()
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        // Filter focus blocks from today
+        const focusEvents = (data.events || []).filter((event: any) => {
+          if (!event.start?.dateTime) return false
+          const eventDate = new Date(event.start.dateTime)
+          eventDate.setHours(0, 0, 0, 0)
+          return eventDate.getTime() === today.getTime() && 
+                 (event.summary?.toLowerCase().includes('focus') || 
+                  event.summary?.toLowerCase().includes('deep work'))
+        })
+
+        const now = new Date()
+        const completedSessions = focusEvents.filter((e: any) => new Date(e.end?.dateTime) < now)
+        const totalMinutes = focusEvents.reduce((acc: number, e: any) => {
+          const start = new Date(e.start.dateTime).getTime()
+          const end = new Date(e.end.dateTime).getTime()
+          return acc + Math.round((end - start) / 60000)
+        }, 0)
+
+        setTodaysSessions(focusEvents)
+        setStats({
+          totalToday: focusEvents.length,
+          completedToday: completedSessions.length,
+          totalMinutes,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching today\'s sessions:', error)
+    }
+  }
+
+  // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined
     const tick = () => {
@@ -103,6 +107,9 @@ export function FocusTimeControls() {
         const now = Date.now()
         const remaining = Math.max(0, Math.floor((endTimestamp - now) / 1000))
         setTimeRemaining(remaining)
+        if (remaining === 0) {
+          handleStop()
+        }
       }
     }
     if (isRunning && endTimestamp) {
@@ -114,89 +121,29 @@ export function FocusTimeControls() {
     }
   }, [isRunning, endTimestamp])
 
-  // Update when tab becomes visible to catch up immediately
+  // Hydrate from store
   useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible' && isRunning && endTimestamp) {
-        const now = Date.now()
-        const remaining = Math.max(0, Math.floor((endTimestamp - now) / 1000))
-        setTimeRemaining(remaining)
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [isRunning, endTimestamp])
-
-  // Load persisted timer state on mount, but prefer global store and then live calendar state
-  useEffect(() => {
-    let cancelled = false
     const hydrate = async () => {
-      try {
-        // Prefer store: if active
-        if (storeIsActive) {
-          if (isRunning && storeEndAt && Date.now() < storeEndAt) {
-            const remaining = Math.max(0, Math.floor((storeEndAt - Date.now()) / 1000))
-            setTimeRemaining(remaining)
-            setActiveSession((prev) => ({
-              ...prev,
-              title: storeTitle || prev.title,
-              startTime: storeStartAt ? new Date(storeStartAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : prev.startTime,
-              endTime: storeEndAt ? new Date(storeEndAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : prev.endTime,
-              status: 'active' as const,
-            }))
-            setEndTimestamp(storeEndAt)
-            setHydrated(true)
-            return
-          }
-          // Paused: show pausedRemaining and don't advance
-          if (!isRunning && typeof storePausedRemaining === 'number') {
-            setTimeRemaining(storePausedRemaining)
-            setActiveSession((prev) => ({
-              ...prev,
-              title: storeTitle || prev.title,
-              startTime: storeStartAt ? new Date(storeStartAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : prev.startTime,
-              endTime: storeEndAt ? new Date(storeEndAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : prev.endTime,
-              status: 'active' as const,
-            }))
-            setEndTimestamp(null)
-            setHydrated(true)
-            return
-          }
-
+      if (storeIsActive) {
+        if (isRunning && storeEndAt && Date.now() < storeEndAt) {
+          const remaining = Math.max(0, Math.floor((storeEndAt - Date.now()) / 1000))
+          const duration = Math.floor((storeEndAt - (storeStartAt || Date.now())) / 60000)
+          setTimeRemaining(remaining)
+          setSessionDuration(duration)
+          setEndTimestamp(storeEndAt)
+        } else if (!isRunning && typeof storePausedRemaining === 'number') {
+          setTimeRemaining(storePausedRemaining)
+          setEndTimestamp(null)
         }
-
-      } catch {}
-      // Fallback to localStorage
-      try {
-        const saved = localStorage.getItem('focusTimerState')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (parsed.activeSession) setActiveSession(parsed.activeSession)
-          if (typeof parsed.timeRemaining === 'number') setTimeRemaining(parsed.timeRemaining)
-        }
-      } catch {}
+      }
       setHydrated(true)
     }
     hydrate()
-    return () => { cancelled = true }
   }, [])
 
-  // Keep local endTimestamp mirrored with storeEndAt for the ticking effect
   useEffect(() => {
     setEndTimestamp(storeEndAt ?? null)
   }, [storeEndAt])
-
-  // Persist minimal UI state (activeSession + last seen timeRemaining) for UX continuity
-  useEffect(() => {
-    try {
-      const state = {
-        activeSession,
-        timeRemaining,
-        endTimestamp,
-      }
-      localStorage.setItem('focusTimerState', JSON.stringify(state))
-    } catch {}
-  }, [activeSession, timeRemaining, endTimestamp])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -210,18 +157,16 @@ export function FocusTimeControls() {
   }
 
   const getProgressPercentage = () => {
-    const totalSeconds = activeSession.duration * 60
+    const totalSeconds = sessionDuration * 60
     const elapsed = totalSeconds - timeRemaining
-    return (elapsed / totalSeconds) * 100
+    return Math.min(100, Math.max(0, (elapsed / totalSeconds) * 100))
   }
 
   const handlePlayPause = async () => {
-    // Resume: create a NEW calendar event for the remaining time
     if (!isRunning) {
       const remainingSec = endTimestamp ? Math.max(0, Math.floor((endTimestamp - Date.now()) / 1000)) : timeRemaining
       const duration = Math.max(1, Math.ceil(remainingSec / 60))
       try {
-        // If somehow an eventId still exists, end it just in case
         if (focusEventId) {
           try {
             await fetch('/api/focus/stop', {
@@ -236,25 +181,21 @@ export function FocusTimeControls() {
         const res = await fetch('/api/focus/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ durationMinutes: duration, title: 'Focus Block', description: activeSession.title })
+          body: JSON.stringify({ durationMinutes: duration, title: 'Focus Block', description: storeTitle || 'Deep work session' })
         })
         if (res.ok) {
           const data = await res.json()
           dispatch(setEventIdAction(data.eventId))
-          dispatch(startTimerAction({ durationMinutes: duration, title: data.title ?? activeSession.title, eventId: data.eventId }))
-          // Keep the UI aligned exactly with remaining seconds
+          dispatch(startTimerAction({ durationMinutes: duration, title: data.title ?? 'Focus Session', eventId: data.eventId }))
           setTimeRemaining(remainingSec)
-          console.log('Focus block created on resume:', data)
-        } else {
-          console.error('Failed to create focus block on resume:', await res.text())
+          fetchTodaysSessions()
         }
       } catch (e) {
-        console.error('Error creating focus block on resume', e)
+        console.error('Error creating focus block', e)
       }
       return
     }
 
-    // Pause: stop the calendar event and keep pausedRemaining in store
     dispatch(pauseTimerAction())
     if (focusEventId) {
       try {
@@ -272,33 +213,10 @@ export function FocusTimeControls() {
   }
 
   const handleStop = async () => {
-    setTimeRemaining(activeSession.duration * 60)
+    setTimeRemaining(sessionDuration * 60)
     setEndTimestamp(null)
     dispatch(stopTimerAction())
 
-    // If a focus event exists, end it now
-    if (focusEventId) {
-      try {
-        const res = await fetch('/api/focus/stop', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventId: focusEventId })
-        })
-        if (!res.ok) {
-          console.error('Failed to end focus block:', await res.text())
-        } else {
-          console.log('Focus block ended')
-        }
-      } catch (e) {
-        console.error('Error ending focus block', e)
-      } finally {
-        dispatch(setEventIdAction(null))
-      }
-    }
-  }
-
-  const startNewSession = async (preset: string, duration: number) => {
-    // If there's an existing focus block, end it first to avoid overlapping/old-duration events
     if (focusEventId) {
       try {
         await fetch('/api/focus/stop', {
@@ -307,44 +225,47 @@ export function FocusTimeControls() {
           body: JSON.stringify({ eventId: focusEventId })
         })
       } catch (e) {
-        console.error('Error ending previous focus block before starting new', e)
+        console.error('Error ending focus block', e)
+      } finally {
+        dispatch(setEventIdAction(null))
+      }
+    }
+    
+    fetchTodaysSessions()
+  }
+
+  const startNewSession = async (preset: string, duration: number) => {
+    if (focusEventId) {
+      try {
+        await fetch('/api/focus/stop', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: focusEventId })
+        })
+      } catch (e) {
+        console.error('Error ending previous focus block', e)
       } finally {
         dispatch(stopTimerAction())
         dispatch(setEventIdAction(null))
       }
     }
 
-    const newSession = {
-      id: Date.now(),
-      title: `${preset} Session`,
-      duration,
-      completed: 0,
-      status: "active" as const,
-      startTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      endTime: new Date(Date.now() + duration * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      task: "Custom focus session",
-      interruptions: 0,
-    }
-    setActiveSession(newSession)
     setTimeRemaining(duration * 60)
+    setSessionDuration(duration)
     setEndTimestamp(Date.now() + duration * 60 * 1000)
-  dispatch(startTimerAction({ durationMinutes: duration, title: newSession.title }))
+    dispatch(startTimerAction({ durationMinutes: duration, title: `${preset} Session` }))
 
-    // Create a busy focus block in the connected calendar
     try {
       const res = await fetch('/api/focus/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ durationMinutes: duration, title: 'Focus Block', description: `${preset} focus session` })
       })
-      if (!res.ok) {
-        const txt = await res.text()
-        console.error('Failed to create focus block:', txt)
-      } else {
+      if (res.ok) {
         const data = await res.json()
         dispatch(setEventIdAction(data.eventId))
         setEndTimestamp(Date.now() + duration * 60 * 1000)
-        console.log('Focus block created:', data)
+        fetchTodaysSessions()
       }
     } catch (e) {
       console.error('Error creating focus block event', e)
@@ -352,358 +273,288 @@ export function FocusTimeControls() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Active Focus Session */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Timer className="w-5 h-5 text-primary" />
-                {activeSession.title}
-              </CardTitle>
-              <CardDescription>{activeSession.task}</CardDescription>
-            </div>
-            <Badge variant={isRunning ? "default" : "secondary"} className="gap-1">
-              {isRunning ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
-              {isRunning ? "Active" : "Paused"}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Timer Display */}
-          <div className="text-center">
-            <div className="text-6xl font-mono font-bold text-primary mb-2">
-              {hydrated ? formatTime(timeRemaining) : "—:—"}
-            </div>
-            <Progress value={hydrated ? getProgressPercentage() : 0} className="w-full h-2 mb-4" />
-            <p className="text-sm text-muted-foreground">
-              {hydrated
-                ? (
-                  <>
-                    {activeSession.startTime} - {activeSession.endTime} • {activeSession.duration} minutes
-                  </>
-                )
-                : "Syncing focus status…"}
-            </p>
-          </div>
+    <div className="relative min-h-screen">
+      {/* Subtle Warm Background */}
+      <div className="focus-blob-bg">
+        <div className="focus-blob focus-blob-1"></div>
+        <div className="focus-blob focus-blob-2"></div>
+        <div className="focus-blob focus-blob-3"></div>
+      </div>
 
-          {/* Control Buttons */}
-          <div className="flex items-center justify-center gap-3">
-            <Button variant="outline" size="lg" onClick={handlePlayPause} className="gap-2 bg-transparent">
-              {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {isRunning ? "Pause" : "Resume"}
-            </Button>
-            <Button variant="outline" size="lg" onClick={handleStop} className="gap-2 bg-transparent">
-              <Square className="w-4 h-4" />
-              Stop
-            </Button>
-          </div>
+      <div className="relative z-10 p-6 space-y-6">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 dark:from-orange-400 dark:to-pink-400 bg-clip-text text-transparent mb-2">
+            Focus Mode
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400">Deep work sessions for maximum productivity</p>
+        </div>
 
-          {/* Focus Status */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-background/50">
-              <div className="flex items-center gap-2">
-                <BellOff className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Do Not Disturb</span>
-              </div>
-              <Switch checked={dndEnabled} onCheckedChange={setDndEnabled} />
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-background/50">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Slack Status</span>
-              </div>
-              <Badge variant="secondary" className="text-xs">
-                In Focus
-              </Badge>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-background/50">
-              <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Interruptions</span>
-              </div>
-              <span className="text-sm font-bold">{activeSession.interruptions}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Quick Start Focus Sessions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Start</CardTitle>
-            <CardDescription>Start a focus session with preset durations</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              {focusPresets.map((preset) => (
-                <Button
-                  key={preset.name}
-                  variant="outline"
-                  className="h-auto p-4 flex flex-col items-start gap-2 bg-transparent"
-                  onClick={() => startNewSession(preset.name, preset.duration)}
-                >
-                  <div className="font-medium text-sm">{preset.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {preset.duration}m focus • {preset.break}m break
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-amber-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/20 backdrop-blur-sm">
+                  <Flame className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 dark:from-orange-400 dark:to-amber-400 bg-clip-text text-transparent">
+                    {stats.totalToday}
                   </div>
-                </Button>
-              ))}
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Custom Duration</label>
-                <span className="text-sm text-muted-foreground">{customDuration[0]} minutes</span>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Sessions Today</div>
+                </div>
               </div>
-              <Slider
-                value={customDuration}
-                onValueChange={setCustomDuration}
-                max={180}
-                min={15}
-                step={15}
-                className="w-full"
-              />
-              <Button
-                variant="outline"
-                className="w-full bg-transparent"
-                onClick={() => startNewSession("Custom", customDuration[0])}
-              >
-                Start {customDuration[0]}m Focus Session
-              </Button>
+              <div className="h-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full" />
+            </div>
+          </div>
+
+          <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 backdrop-blur-sm">
+                  <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                    {stats.completedToday}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Completed</div>
+                </div>
+              </div>
+              <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full" />
+            </div>
+          </div>
+
+          <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-sm">
+                  <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                    {Math.floor(stats.totalMinutes / 60)}h {stats.totalMinutes % 60}m
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Total Time</div>
+                </div>
+              </div>
+              <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Active Session Card */}
+        <Card className="glass-card border-0 shadow-2xl">
+          <CardContent className="p-8">
+            <div className="text-center space-y-6">
+              {/* Timer Display */}
+              <div>
+                <div className="text-7xl font-mono font-bold bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 dark:from-orange-400 dark:via-red-400 dark:to-pink-400 bg-clip-text text-transparent mb-4">
+                  {hydrated ? formatTime(timeRemaining) : "—:—"}
+                </div>
+                <Badge 
+                  variant={isRunning ? "default" : "secondary"} 
+                  className={cn(
+                    "text-sm px-4 py-1",
+                    isRunning && "bg-gradient-to-r from-green-500 to-emerald-500 text-white animate-pulse"
+                  )}
+                >
+                  {isRunning ? "In Focus" : "Ready"}
+                </Badge>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="max-w-2xl mx-auto space-y-2">
+                <Progress value={hydrated ? getProgressPercentage() : 0} className="h-3" />
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {hydrated ? `${sessionDuration} minute session` : "Select a focus duration below"}
+                </p>
+              </div>
+
+              {/* Control Buttons */}
+              <div className="flex items-center justify-center gap-4">
+                <Button 
+                  size="lg" 
+                  onClick={handlePlayPause}
+                  className={cn(
+                    "gap-2 px-8 py-6 text-lg font-semibold",
+                    isRunning 
+                      ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" 
+                      : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                  )}
+                >
+                  {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  {isRunning ? "Pause" : "Start"}
+                </Button>
+                {storeIsActive && (
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    onClick={handleStop}
+                    className="gap-2 px-8 py-6 text-lg font-semibold bg-white/60 dark:bg-slate-800/60 hover:bg-white/80 dark:hover:bg-slate-800/80"
+                  >
+                    <Square className="w-5 h-5" />
+                    Stop
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Focus Settings */}
-        <Card>
+        {/* Quick Start Presets */}
+        <Card className="glass-card border-0 shadow-xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Focus Settings
-            </CardTitle>
-            <CardDescription>Configure your focus time preferences</CardDescription>
+            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quick Start</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">Choose a preset or customize your session</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-sm">Auto-start DND</div>
-                  <div className="text-xs text-muted-foreground">Automatically enable do not disturb</div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-sm">Update Slack Status</div>
-                  <div className="text-xs text-muted-foreground">Set status to "In Focus" during sessions</div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-sm">Block Calendar</div>
-                  <div className="text-xs text-muted-foreground">Show as busy during focus time</div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-sm">Auto-reschedule</div>
-                  <div className="text-xs text-muted-foreground">Move focus blocks when meetings conflict</div>
-                </div>
-                <Switch defaultChecked />
-              </div>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {focusPresets.map((preset) => {
+                const Icon = preset.icon
+                return (
+                  <button
+                    key={preset.name}
+                    onClick={() => startNewSession(preset.name, preset.duration)}
+                    className="group relative p-6 rounded-2xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm border border-white/30 dark:border-slate-700/30 hover:scale-105 transition-all duration-300 hover:shadow-xl"
+                  >
+                    <div className={cn(
+                      "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-300",
+                      preset.color
+                    )} />
+                    <div className="relative space-y-3">
+                      <div className={cn("w-12 h-12 mx-auto rounded-xl bg-gradient-to-br flex items-center justify-center", preset.color)}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">{preset.name}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">{preset.duration} minutes</div>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Break Reminder</label>
-              <Select defaultValue="15">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 minutes</SelectItem>
-                  <SelectItem value="10">10 minutes</SelectItem>
-                  <SelectItem value="15">15 minutes</SelectItem>
-                  <SelectItem value="20">20 minutes</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Custom Duration */}
+            <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm rounded-2xl p-6 border border-white/30 dark:border-slate-700/30">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-slate-900 dark:text-slate-100">Custom Duration</label>
+                  <span className="text-lg font-bold text-slate-900 dark:text-slate-100">{customDuration[0]} min</span>
+                </div>
+                <Slider
+                  value={customDuration}
+                  onValueChange={setCustomDuration}
+                  max={180}
+                  min={15}
+                  step={15}
+                  className="w-full"
+                />
+                <Button
+                  onClick={() => startNewSession("Custom", customDuration[0])}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold"
+                >
+                  Start {customDuration[0]} Minute Session
+                </Button>
+              </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Today's Sessions */}
+        <Card className="glass-card border-0 shadow-xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
+              <CalendarIcon className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+              Today's Focus Sessions
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">
+              {todaysSessions.length === 0 ? "No sessions yet today - start your first one!" : `${todaysSessions.length} session${todaysSessions.length !== 1 ? 's' : ''} today`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {todaysSessions.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-100 to-pink-100 dark:from-orange-900/30 dark:to-pink-900/30 mb-4">
+                  <Timer className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">No focus sessions yet</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Start your first focus session using the presets above
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {todaysSessions.map((session, index) => {
+                  const start = new Date(session.start?.dateTime)
+                  const end = new Date(session.end?.dateTime)
+                  const now = new Date()
+                  const isCompleted = end < now
+                  const isActive = start <= now && end > now
+                  const duration = Math.round((end.getTime() - start.getTime()) / 60000)
+
+                  return (
+                    <div
+                      key={session.id || index}
+                      className={cn(
+                        "relative p-5 rounded-xl backdrop-blur-sm border transition-all duration-200",
+                        isActive && "bg-green-500/10 border-green-300 dark:border-green-700",
+                        isCompleted && "bg-slate-500/10 border-slate-300 dark:border-slate-700",
+                        !isActive && !isCompleted && "bg-blue-500/10 border-blue-300 dark:border-blue-700"
+                      )}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={cn(
+                            "w-3 h-3 rounded-full mt-1.5",
+                            isActive && "bg-green-500 animate-pulse",
+                            isCompleted && "bg-slate-400",
+                            !isActive && !isCompleted && "bg-blue-500"
+                          )}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-slate-900 dark:text-slate-100">{session.summary || 'Focus Session'}</h4>
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={isActive ? "default" : "secondary"}
+                              className={cn(
+                                "text-xs",
+                                isActive && "bg-gradient-to-r from-green-500 to-emerald-500 text-white",
+                                isCompleted && "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                              )}
+                            >
+                              {isActive ? "Active" : isCompleted ? "Completed" : "Upcoming"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 mt-3">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-slate-500" />
+                              <span className="text-sm text-slate-600 dark:text-slate-400">{duration} min</span>
+                            </div>
+                            {isCompleted && (
+                              <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Today's Focus Sessions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Today's Focus Sessions</CardTitle>
-          <CardDescription>Your scheduled and completed focus blocks</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="all">All Sessions</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="completed">Completed</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="all" className="mt-4">
-              <div className="space-y-3">
-                {mockFocusSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className={cn(
-                      "flex items-center gap-4 p-4 rounded-lg border transition-colors",
-                      session.status === "active" && "bg-primary/5 border-primary/20",
-                      session.status === "completed" && "bg-accent/5 border-accent/20",
-                      session.status === "scheduled" && "bg-muted/30 border-border",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "w-3 h-3 rounded-full",
-                        session.status === "active" && "bg-primary",
-                        session.status === "completed" && "bg-accent",
-                        session.status === "scheduled" && "bg-muted-foreground",
-                      )}
-                    ></div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-sm">{session.title}</h4>
-                        <span className="text-xs text-muted-foreground">
-                          {session.startTime} - {session.endTime}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">{session.task}</p>
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-xs">{session.duration}m</span>
-                        </div>
-                        {session.status === "active" && (
-                          <div className="flex items-center gap-1">
-                            <Progress value={session.completed} className="w-16 h-1" />
-                            <span className="text-xs">{session.completed}%</span>
-                          </div>
-                        )}
-                        {session.interruptions > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Bell className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs">{session.interruptions} interruptions</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <Badge
-                      variant={
-                        session.status === "active"
-                          ? "default"
-                          : session.status === "completed"
-                            ? "secondary"
-                            : "outline"
-                      }
-                      className="text-xs capitalize"
-                    >
-                      {session.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="active" className="mt-4">
-              <div className="space-y-3">
-                {mockFocusSessions
-                  .filter((s) => s.status === "active")
-                  .map((session) => (
-                    <div key={session.id} className="text-center py-8 text-muted-foreground">
-                      <Timer className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Active session shown above</p>
-                    </div>
-                  ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="completed" className="mt-4">
-              <div className="space-y-3">
-                {mockFocusSessions
-                  .filter((s) => s.status === "completed")
-                  .map((session) => (
-                    <div
-                      key={session.id}
-                      className="flex items-center gap-4 p-4 rounded-lg bg-accent/5 border border-accent/20"
-                    >
-                      <CheckCircle2 className="w-5 h-5 text-accent" />
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm">{session.title}</h4>
-                        <p className="text-xs text-muted-foreground">{session.task}</p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        Completed
-                      </Badge>
-                    </div>
-                  ))}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      {/* AI Insights */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-accent" />
-            Focus Insights
-          </CardTitle>
-          <CardDescription>AI-powered analysis of your focus patterns</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-primary mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-sm">Optimal Focus Time</h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    You're most productive during 90-minute sessions between 9-11 AM. Consider scheduling deep work
-                    then.
-                  </p>
-                  <Button variant="outline" size="sm" className="mt-2 text-xs bg-transparent">
-                    Schedule Morning Focus
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
-              <div className="flex items-start gap-3">
-                <Target className="w-5 h-5 text-accent mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-sm">Interruption Pattern</h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    You have 40% fewer interruptions when DND is enabled. Keep it on during focus sessions.
-                  </p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <Progress value={60} className="flex-1 h-2" />
-                    <span className="text-xs font-medium">60% effective</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

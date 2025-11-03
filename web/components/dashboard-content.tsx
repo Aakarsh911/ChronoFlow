@@ -152,12 +152,11 @@ export function DashboardContent() {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Gradient Mesh Background */}
-      <div className="gradient-mesh-bg">
-        <div className="mesh-gradient mesh-1"></div>
-        <div className="mesh-gradient mesh-2"></div>
-        <div className="mesh-gradient mesh-3"></div>
-        <div className="mesh-gradient mesh-4"></div>
+      {/* Subtle Professional Background */}
+      <div className="blob-bg">
+        <div className="blob blob-1"></div>
+        <div className="blob blob-2"></div>
+        <div className="blob blob-3"></div>
       </div>
 
       <div className="relative z-10 p-6 space-y-8">
@@ -188,7 +187,7 @@ export function DashboardContent() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Focus Time Card */}
-          <Card className="elevated-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <Card className="glass-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <CardContent className="p-6">
               {isLoading ? (
                 <div className="space-y-3">
@@ -230,7 +229,7 @@ export function DashboardContent() {
           </Card>
 
           {/* Tasks Card */}
-          <Card className="elevated-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <Card className="glass-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <CardContent className="p-6">
               {isLoading ? (
                 <div className="space-y-3">
@@ -267,7 +266,7 @@ export function DashboardContent() {
           </Card>
 
           {/* Next Meeting Card */}
-          <Card className="elevated-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <Card className="glass-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <CardContent className="p-6">
               {isLoading ? (
                 <div className="space-y-3">
@@ -317,7 +316,7 @@ export function DashboardContent() {
           </Card>
 
           {/* Analytics Card */}
-          <Card className="elevated-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
+          <Card className="glass-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -344,7 +343,7 @@ export function DashboardContent() {
         {/* Today's Schedule */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="elevated-card border-0 hover:shadow-2xl transition-shadow duration-300">
+            <Card className="glass-card border-0 hover:shadow-2xl transition-shadow duration-300">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -411,7 +410,7 @@ export function DashboardContent() {
           {/* Sidebar Cards */}
           <div className="space-y-6">
             {/* Today's Progress */}
-            <Card className="elevated-card border-0 hover:shadow-2xl transition-shadow duration-300">
+            <Card className="glass-card border-0 hover:shadow-2xl transition-shadow duration-300">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-semibold text-foreground">Today's Progress</CardTitle>
               </CardHeader>
@@ -467,7 +466,7 @@ export function DashboardContent() {
             </Card>
 
             {/* Quick Links */}
-            <Card className="elevated-card border-0 hover:shadow-2xl transition-shadow duration-300">
+            <Card className="glass-card border-0 hover:shadow-2xl transition-shadow duration-300">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-foreground">
                   <Zap className="w-5 h-5 text-accent" />

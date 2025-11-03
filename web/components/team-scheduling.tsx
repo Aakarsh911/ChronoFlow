@@ -450,12 +450,28 @@ export function TeamScheduling() {
   const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17]
 
   return (
-    <div className="space-y-6">
+    <div className="relative min-h-screen">
+      {/* Teal/Green Background */}
+      <div className="team-blob-bg">
+        <div className="team-blob team-blob-1"></div>
+        <div className="team-blob team-blob-2"></div>
+        <div className="team-blob team-blob-3"></div>
+      </div>
+
+      <div className="relative z-10 p-6 space-y-6">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-400 dark:to-emerald-400 bg-clip-text text-transparent mb-2">
+            Team Collaboration
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400">Schedule meetings and view team availability</p>
+        </div>
+
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Panel - Team Members (Narrower) */}
         <div className="lg:col-span-4">
-          <Card className="h-full">
+          <Card className="glass-card !bg-transparent border-0 shadow-xl h-full">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -634,7 +650,7 @@ export function TeamScheduling() {
 
         {/* Right Panel - Team Availability Heat Map */}
         <div className="lg:col-span-8">
-          <Card>
+          <Card className="glass-card !bg-transparent border-0 shadow-xl">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -1019,6 +1035,7 @@ export function TeamScheduling() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   )
 }

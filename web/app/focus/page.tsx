@@ -6,13 +6,7 @@ export default function FocusPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="p-6">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Focus Time</h1>
-            <p className="text-muted-foreground">Deep work sessions and productivity tracking</p>
-          </div>
-          <FocusTimeControls />
-        </div>
+        <FocusTimeControls />
       </MainLayout>
     </ProtectedRoute>
   )
