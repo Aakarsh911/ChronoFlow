@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { chatWithTools } from '@/lib/ai'
+import { requireAIConsent } from '@/lib/ai-consent'
 
 // Define available tools for the AI using Bedrock's tool calling (JSON Schema)
 const tools = [
@@ -121,6 +122,20 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check AI consent
+    try {
+      await requireAIConsent(session.user.email)
+    } catch (error) {
+      return NextResponse.json(
+        { 
+          error: 'AI consent required',
+          code: 'AI_CONSENT_REQUIRED',
+          message: 'You must grant consent to use AI features. Please enable AI features in Settings.'
+        },
+        { status: 403 }
+      )
     }
 
     const { messages, selectedEmail } = await request.json()

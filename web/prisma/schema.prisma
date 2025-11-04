@@ -8,18 +8,20 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  name         String?
-  googleId     String?       @unique
-  image        String?
-  accessToken  String?
-  refreshToken String?
-  createdAt    DateTime      @default(now())
-  onboarding   Boolean       @default(false)
-  integrations Integration[]
-  tasks        Task[]
-  taskEvents   TaskEvent[]
+  id             String        @id @default(uuid())
+  email          String        @unique
+  name           String?
+  googleId       String?       @unique
+  image          String?
+  accessToken    String?
+  refreshToken   String?
+  createdAt      DateTime      @default(now())
+  onboarding     Boolean       @default(false)
+  aiConsent      Boolean       @default(false)
+  aiConsentDate  DateTime?
+  integrations   Integration[]
+  tasks          Task[]
+  taskEvents     TaskEvent[]
 }
 
 enum Provider {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -13,6 +13,7 @@ import {
   Settings2,
   PlugZap,
   RefreshCcw,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +22,16 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ProtectedRoute } from "@/components/protected-route"
 import { MainLayout } from "@/components/main-layout"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 type Service = "GOOGLE" | "JIRA" | "SLACK" | "TEAMS"
 
@@ -36,6 +47,8 @@ export default function SettingsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [integrations, setIntegrations] = useState<Record<string, boolean>>({
     GOOGLE: false,
     JIRA: false,
@@ -130,6 +143,26 @@ export default function SettingsPage() {
     }
   }
 
+  const handleDeleteAccount = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/user/delete-account', {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        await signOut({ callbackUrl: '/login' })
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to delete account')
+      }
+    } catch (error) {
+      alert('Failed to delete account. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <ProtectedRoute>
       <MainLayout>
@@ -190,9 +223,9 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-3">
                   {s.provider === "JIRA" ? (
                     s.connected ? (
-                      <Button variant="outline" disabled={loading} onClick={() => disconnect("JIRA")}>Disable</Button>
+                      <Button variant="outline" disabled={loading} onClick={() => disconnect("JIRA")} className="cursor-pointer">Disable</Button>
                     ) : (
-                      <Button className="gradient-primary text-white" onClick={connectJira}>Connect</Button>
+                      <Button className="gradient-primary text-white cursor-pointer" onClick={connectJira}>Connect</Button>
                     )
                   ) : s.provider === "GOOGLE" ? (
                     <Button variant="outline" disabled={true}>
@@ -200,9 +233,9 @@ export default function SettingsPage() {
                     </Button>
                   ) : s.provider === "TEAMS" ? (
                     s.connected ? (
-                      <Button variant="outline" disabled={loading} onClick={() => disconnect("TEAMS")}>Disable</Button>
+                      <Button variant="outline" disabled={loading} onClick={() => disconnect("TEAMS")} className="cursor-pointer">Disable</Button>
                     ) : (
-                      <Button className="gradient-primary text-white" onClick={connectMicrosoft}>Connect</Button>
+                      <Button className="gradient-primary text-white cursor-pointer" onClick={connectMicrosoft}>Connect</Button>
                     )
                   ) : (
                     <Button variant="outline" disabled>
@@ -218,10 +251,59 @@ export default function SettingsPage() {
 
       <Separator />
 
+      <Card className="border-red-200 bg-red-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-600">
+            <Trash2 className="w-5 h-5" />
+            Danger Zone
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Permanently delete your ChronoFlow account and all associated data. This action cannot be undone.
+          </p>
+          <Button 
+            variant="destructive" 
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={deleting}
+            className="cursor-pointer"
+          >
+            Delete Account
+          </Button>
+        </CardContent>
+      </Card>
+
       <div className="text-xs text-muted-foreground">
         Need another service? Tell us what to build next.
       </div>
     </div>
+
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete your account and remove all your data from our servers, including:
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>All tasks and events</li>
+              <li>All integration connections</li>
+              <li>All settings and preferences</li>
+              <li>All cached data</li>
+            </ul>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {deleting ? 'Deleting...' : 'Yes, delete my account'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
       </MainLayout>
     </ProtectedRoute>
   )

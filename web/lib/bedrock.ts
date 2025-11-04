@@ -1,7 +1,7 @@
 import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandInput } from '@aws-sdk/client-bedrock-runtime'
 
-// Model ID for Meta Llama 3.2 1B (cheapest available with system message support) on Bedrock; can be overridden via env
-const DEFAULT_BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'us.meta.llama3-2-1b-instruct-v1:0'
+// Model ID for OpenAI GPT on Bedrock; can be overridden via env
+const DEFAULT_BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'openai.gpt-oss-120b-1:0'
 
 function assertEnv(name: string, optional = false) {
   const v = process.env[name]

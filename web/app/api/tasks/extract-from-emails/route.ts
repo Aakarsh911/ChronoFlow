@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { extractTasksFromEmailsBatch } from '@/lib/gemini'
 import { deleteCache } from '@/lib/redis'
 import { prisma } from '@/lib/prisma'
+import { requireAIConsent } from '@/lib/ai-consent'
 
 /**
  * Extract actionable tasks from emails using AI (Gemini)
@@ -30,6 +31,20 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Check AI consent
+    try {
+      await requireAIConsent(session.user.email)
+    } catch (error) {
+      return NextResponse.json(
+        { 
+          error: 'AI consent required',
+          code: 'AI_CONSENT_REQUIRED',
+          message: 'You must grant consent to use AI features. Please enable AI features in Settings.'
+        },
+        { status: 403 }
+      )
     }
 
     const startTime = Date.now()

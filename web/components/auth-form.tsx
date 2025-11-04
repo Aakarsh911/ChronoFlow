@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 
 export function AuthForm() {
   const searchParams = useSearchParams()
@@ -65,9 +66,9 @@ export function AuthForm() {
           {/* Footer */}
           <div className="text-sm text-slate-500 text-center leading-relaxed">
             By continuing, you agree to ChronoFlow's{" "}
-            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium underline">Terms of Service</a>{" "}
+            <Link href="/terms" target="_blank" className="text-blue-600 hover:text-blue-700 font-medium underline">Terms of Service</Link>{" "}
             and{" "}
-            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium underline">Privacy Policy</a>
+            <Link href="/privacy" target="_blank" className="text-blue-600 hover:text-blue-700 font-medium underline">Privacy Policy</Link>
           </div>
         </div>
       </Card>

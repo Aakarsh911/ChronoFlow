@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { AIConsentDialog } from "./ai-consent-dialog"
 
 // Matches the Prisma Task model
 type UITask = {
@@ -85,6 +86,8 @@ export function TaskManagement() {
   const [isExtractingFromTeams, startTeamsExtractTransition] = useTransition()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
+  const [consentDialogOpen, setConsentDialogOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'email' | 'teams' | null>(null)
   const { toast } = useToast()
 
   const fetchTasks = async (silent = false) => {
@@ -148,7 +151,7 @@ export function TaskManagement() {
   const handleExtractFromTeams = () => {
     startTeamsExtractTransition(async () => {
       toast({ 
-        title: "🤖 Teams Extraction Started", 
+        title: "Teams Extraction Started", 
         description: "Analyzing saved Teams messages for actionable tasks..." 
       })
       
@@ -160,12 +163,20 @@ export function TaskManagement() {
         if (res.ok) {
           const result = await res.json()
           toast({
-            title: "✅ Teams Extraction Complete",
+            title: "Teams Extraction Complete",
             description: `Found ${result.extracted} tasks. Created ${result.created} new tasks.`,
           })
           await fetchTasks()
         } else {
           const error = await res.json()
+          
+          // Check if consent is required
+          if (error.code === 'AI_CONSENT_REQUIRED') {
+            setPendingAction('teams')
+            setConsentDialogOpen(true)
+            return
+          }
+          
           toast({
             variant: "destructive",
             title: "Teams Extraction Failed",
@@ -186,7 +197,7 @@ export function TaskManagement() {
   const handleExtractFromEmails = () => {
     startExtractTransition(async () => {
       toast({ 
-        title: "🤖 AI Extraction Started", 
+        title: "AI Extraction Started", 
         description: "Analyzing emails for actionable tasks..." 
       })
       
@@ -200,7 +211,7 @@ export function TaskManagement() {
           const result = await res.json()
           
           toast({
-            title: "✅ Extraction Complete",
+            title: "Extraction Complete",
             description: `Created ${result.tasksCreated} task(s) from ${result.emailsProcessed} email(s). ${result.duplicatesSkipped > 0 ? `Skipped ${result.duplicatesSkipped} duplicate(s).` : ''}`,
           })
           
@@ -208,16 +219,24 @@ export function TaskManagement() {
           await fetchTasks()
         } else {
           const error = await res.json()
+          
+          // Check if consent is required
+          if (error.code === 'AI_CONSENT_REQUIRED') {
+            setPendingAction('email')
+            setConsentDialogOpen(true)
+            return
+          }
+          
           toast({
             variant: "destructive",
-            title: "❌ Extraction Failed",
+            title: "Extraction Failed",
             description: error.error || "Could not extract tasks from emails.",
           })
         }
       } catch (error) {
         toast({
           variant: "destructive",
-          title: "❌ Network Error",
+          title: "Network Error",
           description: "Could not connect to the server.",
         })
       }
@@ -759,6 +778,25 @@ export function TaskManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AI Consent Dialog */}
+      <AIConsentDialog 
+        isOpen={consentDialogOpen} 
+        onConsent={() => {
+          setConsentDialogOpen(false)
+          // Retry the action that triggered consent
+          if (pendingAction === 'email') {
+            handleExtractFromEmails()
+          } else if (pendingAction === 'teams') {
+            handleExtractFromTeams()
+          }
+          setPendingAction(null)
+        }}
+        onDecline={() => {
+          setConsentDialogOpen(false)
+          setPendingAction(null)
+        }}
+      />
     </div>
   )
 }

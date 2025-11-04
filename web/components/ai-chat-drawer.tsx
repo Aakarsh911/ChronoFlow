@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import EmailSelectorModal from '@/components/email-selector-modal'
 import EmailDraftComponent from '@/components/email-draft-component'
 import JiraTicketCreator from '@/components/jira-ticket-creator'
+import { AIConsentDialog } from '@/components/ai-consent-dialog'
 
 interface Email {
   id: string
@@ -72,6 +73,8 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
   const [isTyping, setIsTyping] = useState(false)
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null)
   const [showEmailSelector, setShowEmailSelector] = useState(false)
+  const [consentDialogOpen, setConsentDialogOpen] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -122,6 +125,15 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
       })
 
       if (!response.ok) {
+        const error = await response.json()
+        
+        // Check if consent is required
+        if (error.code === 'AI_CONSENT_REQUIRED') {
+          setPendingMessage(input)
+          setConsentDialogOpen(true)
+          return
+        }
+        
         throw new Error('AI request failed')
       }
 
@@ -714,6 +726,24 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
               setIsTyping(false)
             }
           }, 300)
+        }}
+      />
+
+      {/* AI Consent Dialog */}
+      <AIConsentDialog 
+        isOpen={consentDialogOpen} 
+        onConsent={() => {
+          setConsentDialogOpen(false)
+          if (pendingMessage) {
+            setInput(pendingMessage)
+            setPendingMessage(null)
+            // Auto-send after consent
+            setTimeout(() => handleSend(), 100)
+          }
+        }}
+        onDecline={() => {
+          setConsentDialogOpen(false)
+          setPendingMessage(null)
         }}
       />
     </>
