@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Slider } from "@/components/ui/slider"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +44,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { AIConsentDialog } from "./ai-consent-dialog"
@@ -88,6 +98,13 @@ export function TaskManagement() {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
   const [consentDialogOpen, setConsentDialogOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<'email' | 'teams' | null>(null)
+  const [focusTimeDialogOpen, setFocusTimeDialogOpen] = useState(false)
+  const [taskToSchedule, setTaskToSchedule] = useState<UITask | null>(null)
+  const [focusDate, setFocusDate] = useState("")
+  const [focusHour, setFocusHour] = useState("09")
+  const [focusMinute, setFocusMinute] = useState("00")
+  const [focusDuration, setFocusDuration] = useState(60) // Duration in minutes, default 60
+  const [isScheduling, setIsScheduling] = useState(false)
   const { toast } = useToast()
 
   const fetchTasks = async (silent = false) => {
@@ -315,6 +332,109 @@ export function TaskManagement() {
       setTaskToDelete(null)
     }
   }
+
+  const handleScheduleFocusTime = async () => {
+    if (!taskToSchedule || !focusDate || !focusHour || !focusMinute) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+      })
+      return
+    }
+
+    const focusTime = getFocusTimeString()
+
+    // Validate that the selected time is not in the past
+    const selectedDateTime = new Date(`${focusDate}T${focusTime}`)
+    const now = new Date()
+    
+    if (selectedDateTime < now) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Time",
+        description: "Cannot schedule focus time in the past. Please select a future time.",
+      })
+      return
+    }
+
+    setIsScheduling(true)
+
+    try {
+      const res = await fetch("/api/calendar/create-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId: taskToSchedule.id,
+          taskTitle: taskToSchedule.title,
+          taskDescription: taskToSchedule.description,
+          date: focusDate,
+          time: focusTime,
+          duration: focusDuration,
+        }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        toast({
+          variant: "destructive",
+          title: "Scheduling Failed",
+          description: error.error || "Could not schedule focus time in Google Calendar.",
+        })
+      } else {
+        const result = await res.json()
+        toast({
+          title: "✅ Focus Time Scheduled",
+          description: `Focus session scheduled for ${new Date(selectedDateTime).toLocaleString()}`,
+        })
+        setFocusTimeDialogOpen(false)
+        resetFocusTimeForm()
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Network Error",
+        description: "Could not connect to the server.",
+      })
+    } finally {
+      setIsScheduling(false)
+    }
+  }
+
+  // Format duration in hours and minutes
+  const formatDuration = (minutes: number): string => {
+    if (minutes < 60) {
+      return `${minutes} min`
+    }
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (mins === 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''}`
+    }
+    return `${hours}h ${mins}m`
+  }
+
+  const resetFocusTimeForm = () => {
+    setTaskToSchedule(null)
+    setFocusDate("")
+    setFocusHour("09")
+    setFocusMinute("00")
+    setFocusDuration(60)
+  }
+
+  // Get full time string from hour and minute
+  const getFocusTimeString = () => {
+    return `${focusHour}:${focusMinute}`
+  }
+
+  // Check if selected focus time is in the past
+  const isTimeInPast = React.useMemo(() => {
+    if (!focusDate || !focusHour || !focusMinute) return false
+    const timeString = `${focusHour}:${focusMinute}`
+    const selectedDateTime = new Date(`${focusDate}T${timeString}`)
+    const now = new Date()
+    return selectedDateTime < now
+  }, [focusDate, focusHour, focusMinute])
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
@@ -676,7 +796,19 @@ export function TaskManagement() {
                                   </a>
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setTaskToSchedule(task)
+                                  // Set default date to today and time to next hour
+                                  const now = new Date()
+                                  const nextHour = new Date(now.getTime() + 60 * 60 * 1000)
+                                  nextHour.setMinutes(0, 0, 0)
+                                  setFocusDate(now.toISOString().split('T')[0])
+                                  setFocusHour(nextHour.getHours().toString().padStart(2, '0'))
+                                  setFocusMinute('00')
+                                  setFocusTimeDialogOpen(true)
+                                }}
+                              >
                                 <Calendar className="w-4 h-4 mr-2" />
                                 Schedule Focus Time
                               </DropdownMenuItem>
@@ -778,6 +910,173 @@ export function TaskManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Schedule Focus Time Dialog */}
+      <Dialog open={focusTimeDialogOpen} onOpenChange={(open) => {
+        setFocusTimeDialogOpen(open)
+        if (!open) resetFocusTimeForm()
+      }}>
+        <DialogContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              Schedule Focus Time
+            </DialogTitle>
+            <DialogDescription className="text-slate-600 dark:text-slate-400">
+              Schedule a dedicated focus session for: <span className="font-semibold text-slate-900 dark:text-slate-100">{taskToSchedule?.title}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Date Input */}
+            <div className="space-y-2">
+              <Label htmlFor="focus-date" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Date
+              </Label>
+              <Input
+                id="focus-date"
+                type="date"
+                value={focusDate}
+                onChange={(e) => setFocusDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                required
+              />
+            </div>
+
+            {/* Time Selection - Hour and Minute */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Start Time
+              </Label>
+              <div className="flex gap-2">
+                {/* Hour Dropdown */}
+                <Select value={focusHour} onValueChange={setFocusHour}>
+                  <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600">
+                    <SelectValue placeholder="Hour" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 max-h-[300px]">
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hourValue = i.toString().padStart(2, '0')
+                      const displayHour = i === 0 ? 12 : i > 12 ? i - 12 : i
+                      const period = i >= 12 ? 'PM' : 'AM'
+                      return (
+                        <SelectItem key={hourValue} value={hourValue}>
+                          {displayHour} {period}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+
+                {/* Minute Dropdown */}
+                <Select value={focusMinute} onValueChange={setFocusMinute}>
+                  <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600">
+                    <SelectValue placeholder="Min" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 max-h-[300px]">
+                    {Array.from({ length: 60 }, (_, i) => {
+                      const minute = i.toString().padStart(2, '0')
+                      return (
+                        <SelectItem key={minute} value={minute}>
+                          {minute}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              {focusDate === new Date().toISOString().split('T')[0] && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Current time: {new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                </p>
+              )}
+            </div>
+
+            {/* Duration Slider */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Duration
+                </Label>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {formatDuration(focusDuration)}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Slider
+                  value={[focusDuration]}
+                  onValueChange={(value) => setFocusDuration(value[0])}
+                  min={15}
+                  max={480} // 8 hours
+                  step={15} // 15-minute intervals
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>15 min</span>
+                  <span>2 hrs</span>
+                  <span>4 hrs</span>
+                  <span>6 hrs</span>
+                  <span>8 hrs</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Warning for past time */}
+            {isTimeInPast && focusDate && (
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                <p className="text-sm text-red-900 dark:text-red-100 font-medium">
+                  ⚠️ The selected time is in the past. Please choose a future date and time.
+                </p>
+              </div>
+            )}
+
+            {/* Preview */}
+            {focusDate && focusHour && focusMinute && !isTimeInPast && (
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  <span className="font-semibold">Focus session will be scheduled for:</span>
+                  <br />
+                  {new Date(`${focusDate}T${getFocusTimeString()}`).toLocaleString()}
+                  <br />
+                  <span className="text-xs">Duration: {formatDuration(focusDuration)}</span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFocusTimeDialogOpen(false)
+                resetFocusTimeForm()
+              }}
+              className="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleScheduleFocusTime}
+              disabled={isScheduling || !focusDate || isTimeInPast}
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isScheduling ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Scheduling...
+                </>
+              ) : (
+                <>
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Schedule in Google Calendar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* AI Consent Dialog */}
       <AIConsentDialog 

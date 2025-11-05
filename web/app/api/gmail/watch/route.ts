@@ -106,10 +106,13 @@ export async function POST(request: NextRequest) {
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
     // Set up watch on user's mailbox using your existing Pub/Sub
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID || 'chronoflow-474012';
+    const topicName = process.env.GOOGLE_PUBSUB_TOPIC || 'gmail-notify';
+    
     const watchResponse = await gmail.users.watch({
       userId: 'me',
       requestBody: {
-        topicName: 'projects/chronoflow-472019/topics/gmail-notify',
+        topicName: `projects/${projectId}/topics/${topicName}`,
         labelIds: ['INBOX'],
         labelFilterAction: 'include',
       },
