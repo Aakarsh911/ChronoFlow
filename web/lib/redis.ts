@@ -195,4 +195,5 @@ export const cacheTTL = {
 export const getCache = cache.get
 export const setCache = cache.set
 export const deleteCache = cache.del
+export const invalidateCache = cache.del  // Alias for deleteCache
 export const deleteCachePattern = cache.delPattern

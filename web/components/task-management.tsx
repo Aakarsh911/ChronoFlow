@@ -105,6 +105,21 @@ export function TaskManagement() {
   const [focusMinute, setFocusMinute] = useState("00")
   const [focusDuration, setFocusDuration] = useState(60) // Duration in minutes, default 60
   const [isScheduling, setIsScheduling] = useState(false)
+  
+  // Quick add task (Todoist-style)
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [quickTaskTitle, setQuickTaskTitle] = useState("")
+  const [quickTaskDescription, setQuickTaskDescription] = useState("")
+  const [quickTaskPriority, setQuickTaskPriority] = useState("Medium")
+  const [quickTaskDueDate, setQuickTaskDueDate] = useState<string | null>(null)
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
+  const [parsedTaskPreview, setParsedTaskPreview] = useState<{
+    title: string
+    priority: string
+    dueDate: string | null
+    dueDateText: string | null
+  } | null>(null)
+  
   const { toast } = useToast()
 
   const fetchTasks = async (silent = false) => {
@@ -436,6 +451,222 @@ export function TaskManagement() {
     return selectedDateTime < now
   }, [focusDate, focusHour, focusMinute])
 
+  // NLP Parser for task input (Todoist-style)
+  const parseTaskInput = (input: string) => {
+    let cleanTitle = input
+    let priority = "Medium"
+    let dueDate: string | null = null
+    let dueDateText: string | null = null
+
+    // Priority patterns: #high, #p1, !high, !!
+    const priorityPatterns = [
+      { regex: /#(high|p1|urgent|!!)/gi, value: "High" },
+      { regex: /#(medium|p2|!)/gi, value: "Medium" },
+      { regex: /#(low|p3)/gi, value: "Low" },
+    ]
+
+    for (const pattern of priorityPatterns) {
+      if (pattern.regex.test(input)) {
+        priority = pattern.value
+        cleanTitle = cleanTitle.replace(pattern.regex, "").trim()
+        break
+      }
+    }
+
+    // Date patterns
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const nextWeek = new Date(today)
+    nextWeek.setDate(nextWeek.getDate() + 7)
+
+    const datePatterns = [
+      // "today" or "@today"
+      {
+        regex: /(@today|today)\b/gi,
+        date: today.toISOString().split('T')[0],
+        text: "Today"
+      },
+      // "tomorrow" or "@tomorrow"
+      {
+        regex: /(@tomorrow|tomorrow)\b/gi,
+        date: tomorrow.toISOString().split('T')[0],
+        text: "Tomorrow"
+      },
+      // "next week" or "@next week"
+      {
+        regex: /(@next week|next week)\b/gi,
+        date: nextWeek.toISOString().split('T')[0],
+        text: "Next Week"
+      },
+      // Monday, Tuesday, etc.
+      {
+        regex: /(@monday|monday)\b/gi,
+        date: getNextDayOfWeek(1).toISOString().split('T')[0],
+        text: "Monday"
+      },
+      {
+        regex: /(@tuesday|tuesday)\b/gi,
+        date: getNextDayOfWeek(2).toISOString().split('T')[0],
+        text: "Tuesday"
+      },
+      {
+        regex: /(@wednesday|wednesday)\b/gi,
+        date: getNextDayOfWeek(3).toISOString().split('T')[0],
+        text: "Wednesday"
+      },
+      {
+        regex: /(@thursday|thursday)\b/gi,
+        date: getNextDayOfWeek(4).toISOString().split('T')[0],
+        text: "Thursday"
+      },
+      {
+        regex: /(@friday|friday)\b/gi,
+        date: getNextDayOfWeek(5).toISOString().split('T')[0],
+        text: "Friday"
+      },
+      {
+        regex: /(@saturday|saturday)\b/gi,
+        date: getNextDayOfWeek(6).toISOString().split('T')[0],
+        text: "Saturday"
+      },
+      {
+        regex: /(@sunday|sunday)\b/gi,
+        date: getNextDayOfWeek(0).toISOString().split('T')[0],
+        text: "Sunday"
+      },
+      // Date formats: 12/25, Dec 25, 2024-12-25
+      {
+        regex: /(\d{1,2})\/(\d{1,2})\b/gi,
+        handler: (match: RegExpMatchArray) => {
+          const month = parseInt(match[1]) - 1
+          const day = parseInt(match[2])
+          const year = today.getFullYear()
+          const date = new Date(year, month, day)
+          if (date < today) {
+            date.setFullYear(year + 1)
+          }
+          return {
+            date: date.toISOString().split('T')[0],
+            text: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
+        }
+      }
+    ]
+
+    for (const pattern of datePatterns) {
+      const match = input.match(pattern.regex)
+      if (match) {
+        if (pattern.handler) {
+          const result = pattern.handler(match)
+          dueDate = result.date
+          dueDateText = result.text
+        } else {
+          dueDate = pattern.date
+          dueDateText = pattern.text
+        }
+        cleanTitle = cleanTitle.replace(pattern.regex, "").trim()
+        break
+      }
+    }
+
+    // Clean up extra spaces
+    cleanTitle = cleanTitle.replace(/\s+/g, ' ').trim()
+
+    return { title: cleanTitle, priority, dueDate, dueDateText }
+  }
+
+  // Helper function to get next occurrence of a day of week
+  function getNextDayOfWeek(dayOfWeek: number): Date {
+    const today = new Date()
+    const currentDay = today.getDay()
+    let daysUntil = dayOfWeek - currentDay
+    
+    if (daysUntil <= 0) {
+      daysUntil += 7
+    }
+    
+    const nextDate = new Date(today)
+    nextDate.setDate(today.getDate() + daysUntil)
+    return nextDate
+  }
+
+  // Parse task input as user types
+  React.useEffect(() => {
+    if (quickTaskTitle) {
+      const parsed = parseTaskInput(quickTaskTitle)
+      setParsedTaskPreview(parsed)
+      setQuickTaskPriority(parsed.priority)
+      setQuickTaskDueDate(parsed.dueDate)
+    } else {
+      setParsedTaskPreview(null)
+    }
+  }, [quickTaskTitle])
+
+  // Quick add task handler
+  const handleQuickAddTask = async () => {
+    const parsed = parsedTaskPreview || parseTaskInput(quickTaskTitle)
+    
+    if (!parsed.title.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Task title required",
+        description: "Please enter a task title",
+      })
+      return
+    }
+
+    setIsCreatingTask(true)
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: parsed.title.trim(),
+          description: quickTaskDescription.trim() || null,
+          priority: parsed.priority,
+          source: 'MANUAL',
+          status: 'To Do',
+          dueDate: parsed.dueDate,
+        }),
+      })
+
+      if (response.ok) {
+        const dueDateInfo = parsed.dueDateText ? ` (Due: ${parsed.dueDateText})` : ''
+        toast({
+          title: "✅ Task created",
+          description: `"${parsed.title}"${dueDateInfo}`,
+        })
+        
+        // Reset form
+        setQuickTaskTitle("")
+        setQuickTaskDescription("")
+        setQuickTaskPriority("Medium")
+        setQuickTaskDueDate(null)
+        setParsedTaskPreview(null)
+        setShowQuickAdd(false)
+        
+        // Refresh tasks
+        fetchTasks(true)
+      } else {
+        const error = await response.json()
+        toast({
+          variant: "destructive",
+          title: "Failed to create task",
+          description: error.error || "Something went wrong",
+        })
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Network error",
+        description: "Could not create task",
+      })
+    } finally {
+      setIsCreatingTask(false)
+    }
+  }
+
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -629,7 +860,7 @@ export function TaskManagement() {
               <Button 
                 size="sm"
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
-                onClick={() => {/* Add Task flow */}}
+                onClick={() => setShowQuickAdd(true)}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Task
@@ -691,6 +922,130 @@ export function TaskManagement() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Quick Add Task Form (Todoist-style with NLP) */}
+          {showQuickAdd && (
+            <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-2 border-blue-200 dark:border-blue-800 rounded-xl shadow-lg">
+              <div className="space-y-3">
+                <div>
+                  <Input
+                    placeholder="e.g., Review design mockups tomorrow #high"
+                    value={quickTaskTitle}
+                    onChange={(e) => setQuickTaskTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleQuickAddTask()
+                      } else if (e.key === 'Escape') {
+                        setShowQuickAdd(false)
+                        setQuickTaskTitle("")
+                        setQuickTaskDescription("")
+                        setParsedTaskPreview(null)
+                      }
+                    }}
+                    className="font-medium border-slate-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-500"
+                    autoFocus
+                  />
+                  
+                  {/* Real-time NLP Preview */}
+                  {parsedTaskPreview && parsedTaskPreview.title !== quickTaskTitle && (
+                    <div className="mt-2 p-2 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-blue-200 dark:border-blue-700">
+                      <div className="flex items-start gap-2">
+                        <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Smart Parse:</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {parsedTaskPreview.title}
+                            </span>
+                            {parsedTaskPreview.dueDateText && (
+                              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                {parsedTaskPreview.dueDateText}
+                              </Badge>
+                            )}
+                            {parsedTaskPreview.priority !== "Medium" && (
+                              <Badge 
+                                variant="outline" 
+                                className={cn(
+                                  "text-xs",
+                                  parsedTaskPreview.priority === "High" && "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-400",
+                                  parsedTaskPreview.priority === "Low" && "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400"
+                                )}
+                              >
+                                {parsedTaskPreview.priority}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <Input
+                  placeholder="Description (optional)"
+                  value={quickTaskDescription}
+                  onChange={(e) => setQuickTaskDescription(e.target.value)}
+                  className="text-sm border-slate-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-500"
+                />
+                
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                    <p className="font-medium">Try:</p>
+                    <p>• "Buy groceries tomorrow" → Sets due date</p>
+                    <p>• "Review PR #high" → Sets high priority</p>
+                    <p>• "Team meeting friday #p1" → Date + priority</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowQuickAdd(false)
+                        setQuickTaskTitle("")
+                        setQuickTaskDescription("")
+                        setQuickTaskPriority("Medium")
+                        setParsedTaskPreview(null)
+                      }}
+                      disabled={isCreatingTask}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleQuickAddTask}
+                      disabled={isCreatingTask || !quickTaskTitle.trim()}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      {isCreatingTask ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Task
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    <kbd className="px-1.5 py-0.5 text-xs bg-slate-200 dark:bg-slate-700 rounded">Enter</kbd> to add • <kbd className="px-1.5 py-0.5 text-xs bg-slate-200 dark:bg-slate-700 rounded">Esc</kbd> to cancel
+                  </p>
+                  <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                    <Sparkles className="w-3 h-3" />
+                    <span className="font-medium">Smart parsing enabled</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Task List */}
           <div className="space-y-3">
