@@ -1,4 +1,4 @@
-import { WeeklyCalendarView } from "@/components/weekly-calendar-view"
+import { WeeklyCalendarView } from "@/components/weekly-calendar-view-updated"
 import { ProtectedRoute } from "@/components/protected-route"
 import { MainLayout } from "@/components/main-layout"
 

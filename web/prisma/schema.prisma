@@ -8,20 +8,22 @@ datasource db {
 }
 
 model User {
-  id             String        @id @default(uuid())
-  email          String        @unique
+  id             String          @id @default(uuid())
+  email          String          @unique
   name           String?
-  googleId       String?       @unique
+  googleId       String?         @unique
   image          String?
   accessToken    String?
   refreshToken   String?
-  createdAt      DateTime      @default(now())
-  onboarding     Boolean       @default(false)
-  aiConsent      Boolean       @default(false)
+  createdAt      DateTime        @default(now())
+  onboarding     Boolean         @default(false)
+  aiConsent      Boolean         @default(false)
   aiConsentDate  DateTime?
   integrations   Integration[]
   tasks          Task[]
   taskEvents     TaskEvent[]
+  calendarEvents CalendarEvent[]
+  calendarSyncs  CalendarSync[]
 }
 
 enum Provider {
@@ -81,4 +83,111 @@ model TaskEvent {
 
   @@index([taskId])
   @@index([userId])
+}
+
+// Calendar Event Types
+enum EventType {
+  MEETING        // External meetings with attendees (cannot be moved)
+  TASK           // Work tasks that can be rescheduled
+  FOCUS_TIME     // Dedicated focus blocks (can be moved)
+  PERSONAL       // Personal events
+}
+
+enum EventSource {
+  GOOGLE
+  MICROSOFT
+  CHRONOFLOW     // Events created directly in ChronoFlow
+}
+
+enum SyncStatus {
+  SYNCED         // Successfully synced with external calendar
+  PENDING        // Waiting to be pushed to external calendar
+  CONFLICT       // Conflict detected between local and external
+  ERROR          // Sync failed
+}
+
+// Calendar Events - stores all calendar events from all sources
+model CalendarEvent {
+  id                String      @id @default(uuid())
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  
+  // Event Details
+  title             String
+  description       String?
+  startTime         DateTime
+  endTime           DateTime
+  isAllDay          Boolean     @default(false)
+  location          String?
+  timeZone          String?     @default("UTC")
+  
+  // Attendees and Meeting Info
+  attendees         Json?       // Array of attendee objects
+  organizerEmail    String?
+  meetingUrl        String?
+  htmlLink          String?
+  
+  // Classification
+  eventType         EventType   @default(PERSONAL)
+  isManaged         Boolean     @default(false)  // Can the algorithm move this event?
+  
+  // External Calendar Sync
+  source            EventSource
+  sourceId          String?     // External calendar event ID (Google/Microsoft)
+  sourceCalendarId  String?     // Which calendar it belongs to
+  sourceData        Json?       // Full external event object for round-trip sync
+  
+  // Optional Task Linkage (for task-based events)
+  taskId            String?
+  
+  // Sync Metadata
+  lastSyncedAt      DateTime?
+  modifiedLocally   Boolean     @default(false)  // Has the algorithm or user modified this?
+  syncStatus        SyncStatus  @default(SYNCED)
+  syncError         String?
+  
+  // Timestamps
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([userId, startTime])
+  @@index([userId, eventType, isManaged])
+  @@index([source, sourceId])
+  @@index([syncStatus, modifiedLocally])
+  @@unique([userId, source, sourceId])
+}
+
+// Calendar Sync State - tracks sync status per calendar per user
+model CalendarSync {
+  id                String      @id @default(uuid())
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  
+  // Calendar Info
+  source            EventSource
+  calendarId        String      // External calendar ID
+  calendarName      String?
+  
+  // Sync State
+  lastSyncedAt      DateTime?
+  lastSuccessfulSync DateTime?
+  syncEnabled       Boolean     @default(true)
+  syncFrequency     Int         @default(300)   // Sync frequency in seconds (default: 5 min)
+  
+  // Error Tracking
+  lastSyncError     String?
+  consecutiveErrors Int         @default(0)
+  
+  // Sync Token (for incremental sync)
+  syncToken         String?     // Used for Google Calendar incremental sync
+  deltaLink         String?     // Used for Microsoft Graph incremental sync
+  
+  // Timestamps
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@unique([userId, source, calendarId])
+  @@index([userId, source])
+  @@index([syncEnabled, lastSyncedAt])
 }
