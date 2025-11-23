@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils"
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, isToday, addDays } from "date-fns"
 import { CalendarLoadingSkeleton } from "./calendar-loading-skeleton"
 import { getCalendarColorFromId, getContrastTextColor } from "@/lib/calendar-colors"
+import { EventCreationDialog } from "./event-creation-dialog"
 
 interface CalendarEvent {
   id: string
@@ -93,6 +94,14 @@ export function WeeklyCalendarView() {
   const [scrollbarWidth, setScrollbarWidth] = useState(0)
   const hasLoadedRef = useRef(false)
   const fetchingRangesRef = useRef<Set<string>>(new Set())
+  
+  // Drag-to-create state
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState<{ day: Date; position: number } | null>(null)
+  const [dragEnd, setDragEnd] = useState<{ day: Date; position: number } | null>(null)
+  const [showEventDialog, setShowEventDialog] = useState(false)
+  const [newEventTime, setNewEventTime] = useState<{ start: Date; end: Date; day: Date } | null>(null)
+  const calendarGridRef = useRef<HTMLDivElement>(null)
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek])
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek])
@@ -441,6 +450,99 @@ export function WeeklyCalendarView() {
     return (minutes / 60) * 60
   }
 
+  // Drag-to-create handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>, day: Date, dayIndex: number) => {
+    if (e.button !== 0) return // Only left click
+    
+    // Get position relative to the calendar grid
+    const gridElement = calendarGridRef.current
+    if (!gridElement) return
+    
+    const gridRect = gridElement.getBoundingClientRect()
+    const y = e.clientY - gridRect.top + gridElement.scrollTop
+    const position = Math.floor(y / 15) * 15 // Snap to 15-minute increments
+    
+    setIsDragging(true)
+    setDragStart({ day, position })
+    setDragEnd({ day, position })
+    
+    e.preventDefault() // Prevent text selection
+  }, [])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !dragStart || !calendarGridRef.current) return
+    
+    // Get position relative to the calendar grid
+    const gridElement = calendarGridRef.current
+    const gridRect = gridElement.getBoundingClientRect()
+    const y = e.clientY - gridRect.top + gridElement.scrollTop
+    
+    // Snap to 15-minute increments and clamp to 24 hours
+    const position = Math.max(0, Math.min(24 * 60, Math.floor(y / 15) * 15))
+    
+    // Determine which day column we're over
+    const x = e.clientX - gridRect.left
+    const dayColumnWidth = (gridRect.width - 50) / 5 // 50px for time column, 5 workdays
+    const dayIndex = Math.floor((x - 50) / dayColumnWidth)
+    
+    // Only update if we're still in the same day as drag start
+    if (dayIndex >= 0 && dayIndex < 5) {
+      const day = workDays[dayIndex]
+      if (isSameDay(day, dragStart.day)) {
+        setDragEnd({ day: dragStart.day, position })
+      }
+    }
+  }, [isDragging, dragStart, workDays])
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDragging || !dragStart || !dragEnd) {
+      setIsDragging(false)
+      setDragStart(null)
+      setDragEnd(null)
+      return
+    }
+    
+    // Calculate start and end times
+    const startMinutes = Math.min(dragStart.position, dragEnd.position)
+    const endMinutes = Math.max(dragStart.position, dragEnd.position)
+    
+    // Ensure minimum 15 minutes
+    const finalEndMinutes = endMinutes - startMinutes < 15 ? startMinutes + 30 : endMinutes
+    
+    const startHour = Math.floor(startMinutes / 60)
+    const startMinute = startMinutes % 60
+    const endHour = Math.floor(finalEndMinutes / 60)
+    const endMinute = finalEndMinutes % 60
+    
+    const start = new Date(dragStart.day)
+    start.setHours(startHour, startMinute, 0, 0)
+    
+    const end = new Date(dragStart.day)
+    end.setHours(endHour, endMinute, 0, 0)
+    
+    console.log('🎯 Creating event:', {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      startTime: `${startHour}:${startMinute}`,
+      endTime: `${endHour}:${endMinute}`,
+    })
+    
+    // Reset drag state
+    setIsDragging(false)
+    setDragStart(null)
+    setDragEnd(null)
+    
+    // Set event time and open dialog
+    const eventTime = { start, end, day: dragStart.day }
+    setNewEventTime(eventTime)
+    setShowEventDialog(true)
+  }, [isDragging, dragStart, dragEnd])
+
+  const handleEventCreated = useCallback(() => {
+    // Refresh calendar data without syncing
+    fetchCalendarEvents(false, false)
+  }, [fetchCalendarEvents])
+
   if (loading && !hasLoadedRef.current) {
     return <CalendarLoadingSkeleton />
   }
@@ -706,7 +808,21 @@ export function WeeklyCalendarView() {
 
           {/* Time slots and events */}
           <div className="relative">
-            <div className="relative h-96 overflow-y-auto scroll-smooth" id="calendar-grid">
+            <div 
+              ref={calendarGridRef}
+              className={cn(
+                "relative h-96 overflow-y-auto scroll-smooth select-none",
+                isDragging ? "cursor-ns-resize" : ""
+              )}
+              id="calendar-grid"
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={() => {
+                if (isDragging) {
+                  handleMouseUp()
+                }
+              }}
+            >
               {/* Time grid */}
               {Array.from({ length: 24 }, (_, i) => (
                 <div key={i} className="grid border-b last:border-b-0 relative" style={{ gridTemplateColumns: '50px repeat(5, 1fr)', height: '60px' }}>
@@ -716,17 +832,56 @@ export function WeeklyCalendarView() {
                     </span>
                   </div>
                   
-                  {workDays.map((day) => (
+                  {workDays.map((day, dayIndex) => (
                     <div 
                       key={`${day.toISOString()}-${i}`}
                       className={cn(
-                        "border-r last:border-r-0 relative",
-                        isToday(day) && "bg-primary/5"
+                        "border-r last:border-r-0 relative cursor-crosshair hover:bg-primary/5 transition-colors",
+                        isToday(day) && "bg-primary/5",
+                        isDragging && "pointer-events-none"
                       )}
+                      onMouseDown={(e) => handleMouseDown(e, day, dayIndex)}
                     />
                   ))}
                 </div>
               ))}
+
+              {/* Drag selection preview */}
+              {isDragging && dragStart && dragEnd && (
+                (() => {
+                  const dayIndex = workDays.findIndex(d => isSameDay(d, dragStart.day))
+                  if (dayIndex === -1) return null
+                  
+                  const startPos = Math.min(dragStart.position, dragEnd.position)
+                  const endPos = Math.max(dragStart.position, dragEnd.position)
+                  const height = Math.max(15, endPos - startPos) // Minimum 15 minutes
+                  
+                  // Convert to pixels (1 minute = 1 pixel in our 60px/hour grid)
+                  const topPx = startPos
+                  const heightPx = height
+                  
+                  return (
+                    <div
+                      className="absolute z-20 pointer-events-none"
+                      style={{
+                        left: `calc(50px + ${dayIndex} * (100% - 50px) / 5)`,
+                        width: `calc((100% - 50px) / 5)`,
+                        top: `${topPx}px`,
+                        height: `${heightPx}px`,
+                      }}
+                    >
+                      <div className="h-full bg-blue-500/20 border-2 border-blue-500 border-dashed rounded-md mx-0.5 flex items-center justify-center">
+                        <span className="text-xs font-medium text-blue-700 bg-white/80 px-1 rounded">
+                          {Math.floor(startPos / 60).toString().padStart(2, '0')}:
+                          {(startPos % 60).toString().padStart(2, '0')} - 
+                          {Math.floor(endPos / 60).toString().padStart(2, '0')}:
+                          {(endPos % 60).toString().padStart(2, '0')}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })()
+              )}
 
               {/* Events overlay */}
               {workDays.map((day, dayIndex) => {
@@ -886,6 +1041,19 @@ export function WeeklyCalendarView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Event Creation Dialog */}
+      {newEventTime && (
+        <EventCreationDialog
+          key={`${newEventTime.start.getTime()}-${newEventTime.end.getTime()}`}
+          open={showEventDialog}
+          onOpenChange={setShowEventDialog}
+          startTime={newEventTime.start}
+          endTime={newEventTime.end}
+          dayDate={newEventTime.day}
+          onEventCreated={handleEventCreated}
+        />
+      )}
     </div>
   )
 }
