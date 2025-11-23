@@ -77,6 +77,15 @@ export async function GET(request: NextRequest) {
     const googleIntegration = user.integrations.find((i: any) => i.provider === 'GOOGLE')
     const microsoftIntegration = user.integrations.find((i: any) => i.provider === 'MICROSOFT')
 
+    // Build calendars list from synced calendars
+    const calendars = calendarSyncs.map((sync: any) => ({
+      id: sync.calendarId,
+      name: sync.calendarName || `${sync.source} Calendar`,
+      source: sync.source.toLowerCase(),
+      backgroundColor: sync.source === 'GOOGLE' ? '#4285f4' : '#0078d4',
+      syncEnabled: sync.syncEnabled,
+    }))
+
     // Format events for frontend (similar to old format)
     const formattedEvents = events.map(event => ({
       id: event.id,
@@ -129,6 +138,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       events: formattedEvents,
+      calendars,
       stats,
       needsSync,
       message: needsSync ? 'Calendar data may be stale. Consider refreshing.' : undefined,

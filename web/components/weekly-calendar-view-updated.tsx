@@ -70,9 +70,19 @@ interface CalendarStats {
 const workHoursStart = 0
 const workHoursEnd = 24
 
+interface CalendarInfo {
+  id: string
+  name: string
+  source: string
+  primary?: boolean
+  backgroundColor?: string
+}
+
 export function WeeklyCalendarView() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>([]) // Store all fetched events
+  const [calendars, setCalendars] = useState<CalendarInfo[]>([])
+  const [enabledCalendars, setEnabledCalendars] = useState<Set<string>>(new Set())
   const [stats, setStats] = useState<CalendarStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -82,6 +92,7 @@ export function WeeklyCalendarView() {
   const [showUnmanaged, setShowUnmanaged] = useState(true)
   const [scrollbarWidth, setScrollbarWidth] = useState(0)
   const hasLoadedRef = useRef(false)
+  const fetchingRangesRef = useRef<Set<string>>(new Set())
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek])
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek])
@@ -91,6 +102,11 @@ export function WeeklyCalendarView() {
   // Filter events for current week from all events
   const events = useMemo(() => {
     return allEvents.filter(event => {
+      // Filter by calendar if calendars are loaded
+      if (enabledCalendars.size > 0 && event.calendarId && !enabledCalendars.has(event.calendarId)) {
+        return false
+      }
+      
       const eventStart = event.start.dateTime 
         ? new Date(event.start.dateTime)
         : event.start.date 
@@ -101,7 +117,7 @@ export function WeeklyCalendarView() {
       
       return eventStart >= weekStart && eventStart <= weekEnd
     })
-  }, [allEvents, weekStart, weekEnd])
+  }, [allEvents, weekStart, weekEnd, enabledCalendars])
 
   // Detect scrollbar width
   useEffect(() => {
@@ -133,7 +149,7 @@ export function WeeklyCalendarView() {
   }, [events])
 
   // Fetch calendar events from database
-  const fetchCalendarEvents = useCallback(async (forceSync = false) => {
+  const fetchCalendarEvents = useCallback(async (forceSync = false, autoSync = false) => {
     try {
       if (forceSync) {
         setSyncing(true)
@@ -142,24 +158,35 @@ export function WeeklyCalendarView() {
       }
       setError(null)
 
-      // If force sync, first sync from external calendars
-      if (forceSync) {
-        console.log('🔄 Syncing from external calendars...')
-        const syncResponse = await fetch('/api/calendar/sync-from-external', {
-          method: 'POST',
-        })
-        
-        if (!syncResponse.ok) {
-          console.error('Sync from external failed:', syncResponse.statusText)
-        } else {
-          const syncData = await syncResponse.json()
-          console.log('✅ Sync complete:', syncData)
-        }
-      }
-
       // Fetch 3 months of events (6 weeks before and 6 weeks after current week)
       const rangeStart = startOfWeek(subWeeks(currentWeek, 6), { weekStartsOn: 1 })
       const rangeEnd = endOfWeek(addWeeks(currentWeek, 6), { weekStartsOn: 1 })
+
+      // If force sync or auto sync, first sync from external calendars
+      if (forceSync || autoSync) {
+        console.log('🔄 Syncing from external calendars...')
+        try {
+          const syncResponse = await fetch(
+            `/api/calendar/sync-from-external?` + new URLSearchParams({
+              startDate: rangeStart.toISOString(),
+              endDate: rangeEnd.toISOString(),
+            }), 
+            {
+              method: 'POST',
+            }
+          )
+          
+          if (!syncResponse.ok) {
+            console.error('Sync from external failed:', syncResponse.statusText)
+          } else {
+            const syncData = await syncResponse.json()
+            console.log('✅ Sync complete:', syncData)
+          }
+        } catch (syncErr) {
+          console.error('Sync error:', syncErr)
+          // Continue even if sync fails
+        }
+      }
 
       // Fetch events from database with wider range
       const response = await fetch(
@@ -178,15 +205,16 @@ export function WeeklyCalendarView() {
       }
 
       const data = await response.json()
-      console.log('📅 Fetched events for 3 month range:', data)
+      console.log('📅 Fetched events for 3 month range:', data.events.length, 'events')
 
       setAllEvents(data.events || [])
+      setCalendars(data.calendars || [])
       setStats(data.stats || null)
       hasLoadedRef.current = true
 
-      // Show warning if sync is needed
-      if (data.needsSync && !forceSync) {
-        console.warn('⚠️ Calendar data may be stale')
+      // Initialize enabled calendars if not set
+      if (enabledCalendars.size === 0 && data.calendars?.length > 0) {
+        setEnabledCalendars(new Set(data.calendars.map((cal: CalendarInfo) => cal.id)))
       }
 
     } catch (err) {
@@ -196,12 +224,23 @@ export function WeeklyCalendarView() {
       setLoading(false)
       setSyncing(false)
     }
-  }, [currentWeek, showManaged, showUnmanaged])
+  }, [currentWeek, showManaged, showUnmanaged, enabledCalendars.size])
 
-  // Initial load and week changes
+  // Sync and load events when week changes or on initial load
   useEffect(() => {
-    fetchCalendarEvents()
-  }, [fetchCalendarEvents])
+    const isInitialLoad = !hasLoadedRef.current
+    // Sync on initial load and every week change for fresh data
+    fetchCalendarEvents(false, isInitialLoad || true) // Always sync for now to ensure fresh data
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentWeek]) // Only re-run when currentWeek changes, not when filters change
+  
+  // Re-fetch when filters change (without syncing, just fetch from DB)
+  useEffect(() => {
+    if (hasLoadedRef.current) {
+      fetchCalendarEvents(false, false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showManaged, showUnmanaged])
 
   // Manual refresh with external sync
   const handleRefresh = useCallback(async () => {
@@ -234,11 +273,92 @@ export function WeeklyCalendarView() {
     return () => clearTimeout(timer)
   }, [events])
 
+  // Background fetch for additional weeks - syncs from external then fetches from DB
+  const backgroundFetch = useCallback(async (rangeStart: Date, rangeEnd: Date, shouldSync = true) => {
+    const key = `${rangeStart.toISOString()}_${rangeEnd.toISOString()}`
+    
+    // Skip if already fetching this range
+    if (fetchingRangesRef.current.has(key)) {
+      return
+    }
+    
+    fetchingRangesRef.current.add(key)
+    
+    try {
+      // First sync from external calendars for this range
+      if (shouldSync) {
+        console.log(`🔄 Syncing range: ${format(rangeStart, 'MMM d')} - ${format(rangeEnd, 'MMM d')}`)
+        try {
+          const syncResponse = await fetch(
+            `/api/calendar/sync-from-external?` + new URLSearchParams({
+              startDate: rangeStart.toISOString(),
+              endDate: rangeEnd.toISOString(),
+            }), 
+            {
+              method: 'POST',
+            }
+          )
+          
+          if (syncResponse.ok) {
+            const syncData = await syncResponse.json()
+            console.log(`✅ Synced ${syncData.synced} events for range`)
+          }
+        } catch (syncErr) {
+          console.error('Sync error:', syncErr)
+          // Continue to fetch from DB even if sync fails
+        }
+      }
+      
+      // Then fetch from database
+      const response = await fetch(
+        `/api/calendar/events?` + new URLSearchParams({
+          startDate: rangeStart.toISOString(),
+          endDate: rangeEnd.toISOString(),
+          includeManaged: String(showManaged),
+          includeUnmanaged: String(showUnmanaged),
+        }),
+        { cache: 'no-store' }
+      )
+      
+      if (response.ok) {
+        const data = await response.json()
+        // Merge with existing events, avoiding duplicates
+        setAllEvents(prevEvents => {
+          const existingIds = new Set(prevEvents.map(e => e.id))
+          const newEvents = (data.events || []).filter((e: any) => !existingIds.has(e.id))
+          return [...prevEvents, ...newEvents]
+        })
+        console.log(`📅 Background fetched: ${format(rangeStart, 'MMM d')} - ${format(rangeEnd, 'MMM d')} (${data.events?.length || 0} events)`)
+      }
+    } catch (err) {
+      console.error('Background fetch error:', err)
+    } finally {
+      fetchingRangesRef.current.delete(key)
+    }
+  }, [showManaged, showUnmanaged])
+
   // Navigate weeks instantly - events are pre-loaded for 3 month range
+  // Also trigger background fetch for additional weeks
   const navigateWeek = useCallback((direction: "prev" | "next") => {
     const newWeek = direction === "next" ? addWeeks(currentWeek, 1) : subWeeks(currentWeek, 1)
     setCurrentWeek(newWeek)
-  }, [currentWeek])
+    
+    // Immediately trigger sync for additional weeks when navigating
+    // This ensures we always have fresh data as user navigates
+    setTimeout(() => {
+      if (direction === "next") {
+        // Sync and fetch 4 weeks ahead (weeks 7-10 from new position)
+        const futureStart = startOfWeek(addWeeks(newWeek, 7), { weekStartsOn: 1 })
+        const futureEnd = endOfWeek(addWeeks(newWeek, 10), { weekStartsOn: 1 })
+        backgroundFetch(futureStart, futureEnd, true)
+      } else {
+        // Sync and fetch 4 weeks behind (weeks 7-10 before new position)
+        const pastStart = startOfWeek(subWeeks(newWeek, 10), { weekStartsOn: 1 })
+        const pastEnd = endOfWeek(subWeeks(newWeek, 7), { weekStartsOn: 1 })
+        backgroundFetch(pastStart, pastEnd, true)
+      }
+    }, 100)
+  }, [currentWeek, backgroundFetch])
 
   const getEventsForDay = (day: Date) => {
     return events.filter(event => {
@@ -402,6 +522,44 @@ export function WeeklyCalendarView() {
                     </div>
                   </div>
                 </div>
+
+                {/* Calendars List */}
+                {calendars.length > 0 && (
+                  <div className="pt-3 border-t">
+                    <h4 className="font-semibold text-sm mb-3">Calendars</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {calendars.map((calendar) => (
+                        <div key={calendar.id} className="flex items-center justify-between">
+                          <Label 
+                            htmlFor={`cal-${calendar.id}`} 
+                            className="text-sm cursor-pointer flex items-center gap-2 flex-1 min-w-0"
+                          >
+                            <div 
+                              className="w-3 h-3 rounded-sm flex-shrink-0" 
+                              style={{ backgroundColor: calendar.backgroundColor || '#6b7280' }}
+                            />
+                            <span className="truncate">{calendar.name}</span>
+                          </Label>
+                          <Switch
+                            id={`cal-${calendar.id}`}
+                            checked={enabledCalendars.has(calendar.id)}
+                            onCheckedChange={() => {
+                              setEnabledCalendars(prev => {
+                                const newSet = new Set(prev)
+                                if (newSet.has(calendar.id)) {
+                                  newSet.delete(calendar.id)
+                                } else {
+                                  newSet.add(calendar.id)
+                                }
+                                return newSet
+                              })
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {stats && (
                   <div className="pt-3 border-t">
