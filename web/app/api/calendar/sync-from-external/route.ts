@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     const endDate = searchParams.get('endDate') || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
     console.log(`🔄 Syncing calendar events from external sources...`)
+    console.log(`📅 Date range: ${new Date(startDate).toISOString()} to ${new Date(endDate).toISOString()}`)
 
     // Get user with integrations
     const user = await prisma.user.findUnique({
@@ -75,13 +76,20 @@ export async function POST(request: NextRequest) {
         
         const externalEventIds = googleEvents.map(e => e.id)
         const syncResult = await syncEventsToDatabase(user.id, user.email, googleEvents)
-        const deleted = await cleanupDeletedEvents(user.id, 'GOOGLE' as any, externalEventIds)
+        const deleted = await cleanupDeletedEvents(
+          user.id, 
+          'GOOGLE' as any, 
+          externalEventIds,
+          new Date(startDate),
+          new Date(endDate)
+        )
         
         totalSynced += googleEvents.length
         totalCreated += syncResult.created
         totalUpdated += syncResult.updated
         
-        console.log(`✅ Google: ${syncResult.created} created, ${syncResult.updated} updated, ${deleted} deleted`)
+        console.log(`✅ Google: ${syncResult.created} created, ${syncResult.updated} updated, ${syncResult.unchanged} unchanged, ${deleted} deleted`)
+        console.log(`📊 Total Google events fetched: ${googleEvents.length}`)
         
         // Update sync state for each calendar
         const calendars = [...new Set(googleEvents.map(e => e.calendarId))]
@@ -112,13 +120,20 @@ export async function POST(request: NextRequest) {
         
         const externalEventIds = microsoftEvents.map(e => e.id)
         const syncResult = await syncEventsToDatabase(user.id, user.email, microsoftEvents)
-        const deleted = await cleanupDeletedEvents(user.id, 'MICROSOFT' as any, externalEventIds)
+        const deleted = await cleanupDeletedEvents(
+          user.id, 
+          'MICROSOFT' as any, 
+          externalEventIds,
+          new Date(startDate),
+          new Date(endDate)
+        )
         
         totalSynced += microsoftEvents.length
         totalCreated += syncResult.created
         totalUpdated += syncResult.updated
         
-        console.log(`✅ Microsoft: ${syncResult.created} created, ${syncResult.updated} updated, ${deleted} deleted`)
+        console.log(`✅ Microsoft: ${syncResult.created} created, ${syncResult.updated} updated, ${syncResult.unchanged} unchanged, ${deleted} deleted`)
+        console.log(`📊 Total Microsoft events fetched: ${microsoftEvents.length}`)
         
         // Update sync state for each calendar
         const calendars = [...new Set(microsoftEvents.map(e => e.calendarId))]

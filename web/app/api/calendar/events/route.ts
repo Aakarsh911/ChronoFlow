@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const includeUnmanaged = searchParams.get('includeUnmanaged') !== 'false'
 
     console.log(`📅 Fetching calendar events from ${startDate.toISOString()} to ${endDate.toISOString()}`)
+    console.log(`📊 Filters: includeManaged=${includeManaged}, includeUnmanaged=${includeUnmanaged}`)
 
     // Get user
     const user = await prisma.user.findUnique({
@@ -65,6 +66,9 @@ export async function GET(request: NextRequest) {
         startTime: 'asc',
       },
     })
+    
+    console.log(`📊 Found ${events.length} events in database`)
+    console.log(`   - By source: Google=${events.filter(e => e.source === 'GOOGLE').length}, Microsoft=${events.filter(e => e.source === 'MICROSOFT').length}, ChronoFlow=${events.filter(e => e.source === 'CHRONOFLOW').length}`)
 
     // Get sync status separately
     const calendarSyncs = await prisma.calendarSync.findMany({

@@ -210,6 +210,7 @@ export async function syncEventsToDatabase(
         await prisma.calendarEvent.create({
           data: eventData,
         })
+        console.log(`✅ Created event: ${eventData.title} (${eventData.startTime.toISOString()})`)
         created++
       }
     } catch (error) {
@@ -223,26 +224,45 @@ export async function syncEventsToDatabase(
 
 /**
  * Delete events that no longer exist in external calendar
+ * Only deletes events within the synced date range to avoid deleting events
+ * outside the current sync window
  */
 export async function cleanupDeletedEvents(
   userId: string,
   source: EventSource,
-  externalEventIds: string[]
+  externalEventIds: string[],
+  startDate?: Date,
+  endDate?: Date
 ): Promise<number> {
-  // Get all events from this source
+  // Build where clause
+  const where: any = {
+    userId,
+    source,
+    modifiedLocally: false, // Don't delete locally modified events
+  }
+
+  // Only consider events within the synced date range
+  // This prevents deleting events outside the current sync window
+  if (startDate && endDate) {
+    where.AND = [
+      { startTime: { gte: startDate } },
+      { endTime: { lte: endDate } },
+    ]
+  }
+
+  // Get events from this source within the date range
   const dbEvents = await prisma.calendarEvent.findMany({
-    where: {
-      userId,
-      source,
-      modifiedLocally: false, // Don't delete locally modified events
-    },
+    where,
     select: {
       id: true,
       sourceId: true,
+      startTime: true,
+      endTime: true,
+      title: true,
     },
   })
 
-  // Find events that are in DB but not in external calendar
+  // Find events that are in DB but not in external calendar response
   const deletedEvents = dbEvents.filter(
     dbEvent => dbEvent.sourceId && !externalEventIds.includes(dbEvent.sourceId)
   )
@@ -250,6 +270,9 @@ export async function cleanupDeletedEvents(
   if (deletedEvents.length === 0) {
     return 0
   }
+
+  console.log(`🗑️  Deleting ${deletedEvents.length} events that no longer exist in external calendar:`, 
+    deletedEvents.map(e => e.title).slice(0, 5))
 
   // Delete them
   const result = await prisma.calendarEvent.deleteMany({
