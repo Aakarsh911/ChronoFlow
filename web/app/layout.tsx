@@ -10,9 +10,12 @@ import { Suspense } from "react"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
+  title: "ChronoFlow",
+  description: "ChronoFlow is an AI-powered productivity platform that unifies your calendar, email, and task management. Seamlessly integrate Google Calendar, Outlook, and Gmail to optimize your schedule, extract tasks from emails, and boost your focus with intelligent time blocking.",
   generator: "v0.app",
+  icons: {
+    icon: "/favicon.png",
+  },
 }
 
 export default function RootLayout({
