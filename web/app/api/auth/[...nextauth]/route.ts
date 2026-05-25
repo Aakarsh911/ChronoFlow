@@ -5,6 +5,7 @@ import GoogleProvider from "next-auth/providers/google";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import { Provider } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { hasBetaAccess } from "@/lib/access-list";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -43,6 +44,15 @@ export const authOptions: NextAuthOptions = {
       return baseUrl
     },
   async signIn({ user, account }: any) {
+      // Beta gate: only admins (ADMIN_EMAILS) and explicitly invited users
+      // (data/invited.json) can complete sign-in. Everyone else is bounced
+      // to /access-pending before any User row is created.
+      if (!user?.email) return false
+      const email = String(user.email).toLowerCase()
+      if (!(await hasBetaAccess(email))) {
+        return `/access-pending?email=${encodeURIComponent(email)}`
+      }
+
       // Store user info in User table if not already present
       if (account?.provider === "google" && user.email) {
         const savedUser = await prisma.user.upsert({

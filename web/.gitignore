@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# beta access lists (stored locally — swap for a real DB in production)
+/data/waitlist.json
+/data/invited.json
