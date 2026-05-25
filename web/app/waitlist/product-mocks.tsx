@@ -9,9 +9,12 @@
  */
 
 import {
+  ArrowUp,
+  Bot,
   CheckCircle2,
   Circle,
   Clock,
+  ExternalLink,
   Inbox,
   Sparkles,
   Star,
@@ -19,7 +22,7 @@ import {
   Users,
 } from "lucide-react"
 
-import { GmailLogo, OutlookLogo } from "./brand-logos"
+import { GmailLogo, JiraLogo, OutlookLogo } from "./brand-logos"
 
 /* ----------------------------- atoms ----------------------------- */
 
@@ -1090,6 +1093,142 @@ export function AnalyticsMock() {
             those mornings — your completion rate is 38% higher.
           </p>
         </div>
+      </div>
+    </MockChrome>
+  )
+}
+
+/* ----------------------------- 8. AskMock ----------------------------- */
+
+export function AskMock() {
+  return (
+    <MockChrome label="ask chronoflow">
+      <div className="flex flex-col gap-3 p-3.5 sm:p-4">
+        {/* User prompt */}
+        <div className="flex justify-end">
+          <div
+            className="max-w-[85%] rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-[13px] leading-relaxed text-white"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(var(--cf-accent-rgb), 1), rgba(var(--cf-primary-rgb), 1))",
+              boxShadow: "0 4px 18px -8px rgba(var(--cf-accent-rgb), 0.6)",
+            }}
+          >
+            Create a P1 Jira ticket for the login timeout on Safari, and reply
+            to Alex saying I&apos;ll review the rollback plan by Friday.
+          </div>
+        </div>
+
+        {/* Assistant header */}
+        <div className="flex items-start gap-2.5">
+          <span
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+            style={{
+              background: "rgba(var(--cf-accent-rgb), 0.12)",
+              border: "1px solid rgba(var(--cf-accent-rgb), 0.35)",
+              color: "rgba(var(--cf-accent-rgb), 1)",
+            }}
+          >
+            <Bot className="h-3.5 w-3.5" />
+          </span>
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="text-[13px] leading-relaxed text-[var(--cf-text-muted)]">
+              On it. Filing the ticket and drafting the reply now — both will
+              ask for confirmation before they go out.
+            </p>
+
+            {/* Tool call: Jira */}
+            <div className="rounded-lg border border-[var(--cf-border)] bg-[var(--cf-bg)] p-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                  <JiraLogo className="!h-4 !w-4" />
+                </span>
+                <span className="font-mono text-[10.5px] uppercase tracking-wider text-[var(--cf-text-dim)]">
+                  Jira · ticket created
+                </span>
+                <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10.5px] text-[rgb(74,222,128)]">
+                  <CheckCircle2 className="h-3 w-3" />
+                  done
+                </span>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="font-mono text-[11px] font-semibold text-[var(--cf-text)]">
+                  ENG-1284
+                </span>
+                <span className="truncate text-[12.5px] text-[var(--cf-text)]">
+                  Login times out on Safari after 60s idle
+                </span>
+                <ExternalLink className="ml-auto h-3 w-3 shrink-0 text-[var(--cf-text-dim)]" />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <Badge tone="accent">P1 · high</Badge>
+                <Badge tone="neutral">assigned to you</Badge>
+                <Badge tone="neutral">sprint 24</Badge>
+              </div>
+            </div>
+
+            {/* Tool call: Email draft */}
+            <div className="rounded-lg border border-[var(--cf-border)] bg-[var(--cf-bg)] p-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                  <GmailLogo className="!h-4 !w-4" />
+                </span>
+                <span className="font-mono text-[10.5px] uppercase tracking-wider text-[var(--cf-text-dim)]">
+                  Gmail · draft ready
+                </span>
+                <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10.5px] text-[rgba(var(--cf-accent-rgb),1)]">
+                  <Sparkles className="h-3 w-3" />
+                  awaiting send
+                </span>
+              </div>
+              <div className="mt-2 space-y-1">
+                <p className="font-mono text-[10.5px] text-[var(--cf-text-dim)]">
+                  To: alex@acme.dev · Re: Q2 roadmap review
+                </p>
+                <p className="text-[12.5px] leading-relaxed text-[var(--cf-text-muted)]">
+                  Hey Alex — taking a look now, I&apos;ll have feedback on the
+                  rollback plan by{" "}
+                  <span className="rounded bg-[var(--cf-accent-soft)] px-1 text-[var(--cf-text)]">
+                    Friday EOD
+                  </span>
+                  . Flagging anything blocking before then.
+                </p>
+              </div>
+              <div className="mt-2 flex items-center gap-1.5">
+                <span
+                  className="rounded-md px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-white"
+                  style={{ background: "rgba(var(--cf-accent-rgb), 1)" }}
+                >
+                  Send
+                </span>
+                <span className="rounded-md border border-[var(--cf-border-strong)] bg-[var(--cf-bg-elev)] px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-[var(--cf-text-muted)]">
+                  Edit
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Faux input bar */}
+      <div className="flex items-center gap-2 border-t border-[var(--cf-border)] bg-[var(--cf-bg-soft)] px-3.5 py-2.5">
+        <Sparkles
+          className="h-3.5 w-3.5 shrink-0"
+          style={{ color: "rgba(var(--cf-accent-rgb), 1)" }}
+        />
+        <span className="flex-1 truncate font-mono text-[12px] text-[var(--cf-text-dim)]">
+          Ask anything — schedule, draft, summarize, file a ticket…
+        </span>
+        <span
+          className="flex h-6 w-6 items-center justify-center rounded-md"
+          style={{
+            background: "rgba(var(--cf-accent-rgb), 1)",
+            color: "white",
+            boxShadow: "0 0 14px -4px rgba(var(--cf-accent-rgb), 0.7)",
+          }}
+        >
+          <ArrowUp className="h-3.5 w-3.5" />
+        </span>
       </div>
     </MockChrome>
   )

@@ -10,6 +10,7 @@ import {
   Layers,
   Link2,
   Lock,
+  MessageSquare,
   Server,
   Shield,
   Sparkles,
@@ -30,6 +31,7 @@ import {
 } from "./brand-logos"
 import {
   AnalyticsMock,
+  AskMock,
   CalendarMock,
   DashboardMock,
   FocusTimeMock,
@@ -362,6 +364,20 @@ function Features() {
       mock: <AnalyticsMock />,
       icon: <BarChart3 className="h-4 w-4" />,
     },
+    {
+      eyebrow: "Ask ChronoFlow",
+      title: "Type what you need. It happens across your tools.",
+      body:
+        "When clicking through the UI isn't the fastest way, just type. \"Draft a reply telling Sarah Thursday at 2 works.\" \"Create a P1 Jira ticket for the login timeout.\" \"What did I miss today?\" ChronoFlow runs the action in the right tool with the right context — pulling the email thread, the assignee, or the ticket history so you don't have to. Every write action confirms before it goes out.",
+      bullets: [
+        "Drafts email replies using the original thread for context",
+        "Creates Jira tickets with priority and assignee inferred",
+        "Summarizes unread mentions, new assignments, pending reviews",
+        "Confirms before sending or writing — you stay in control",
+      ],
+      mock: <AskMock />,
+      icon: <MessageSquare className="h-4 w-4" />,
+    },
   ]
 
   return (
@@ -369,7 +385,7 @@ function Features() {
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
         <SectionHeading
           eyebrow="What's inside"
-          title="Six things that work together."
+          title="Seven things that work together."
           subtitle="Each piece is good on its own. They're better when they share state."
         />
 
