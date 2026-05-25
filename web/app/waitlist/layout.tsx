@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next"
 import "./waitlist.css"
 
-const TITLE = "ChronoFlow — Say it. It's done."
+const TITLE = "ChronoFlow — Your calendar, emails, tasks, and team in one place."
 const DESCRIPTION =
-  "An AI teammate for software engineers. Executes tasks across Calendar, Gmail, GitHub, Jira, and Slack using voice or text. No context switching, no dropped tasks."
+  "ChronoFlow unifies your calendar, email, tasks, and team chat across Google, Microsoft, and Jira. AI pulls action items from your inbox automatically. Team scheduling without the back-and-forth."
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -11,12 +11,13 @@ export const metadata: Metadata = {
   applicationName: "ChronoFlow",
   keywords: [
     "ChronoFlow",
-    "AI assistant for engineers",
-    "developer productivity",
-    "voice AI",
-    "natural language tasks",
-    "Jira AI",
-    "GitHub AI",
+    "unified productivity platform",
+    "calendar email tasks",
+    "AI task extraction",
+    "team scheduling",
+    "focus time",
+    "Google Microsoft Jira",
+    "productivity analytics",
   ],
   openGraph: {
     title: TITLE,

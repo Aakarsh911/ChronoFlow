@@ -204,3 +204,75 @@ export function TeamsLogo({ className = "", dim = false }: LogoProps) {
     </svg>
   )
 }
+
+export function OutlookLogo({ className = "", dim = false }: LogoProps) {
+  // Simplified mark for Microsoft Outlook — blue rounded square with a
+  // stylized envelope. Used in a nominative-fair-use context to identify
+  // the integration partner.
+  const fill = dim ? "currentColor" : "#0078D4"
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`${sizeClass} ${className}`}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <rect x="2" y="2" width="20" height="20" rx="4.5" fill={fill} />
+      <path
+        d="M5.5 8.5h9v7h-9v-7z"
+        fill="#fff"
+      />
+      <path
+        d="M5.5 8.5l4.5 3.5 4.5-3.5"
+        stroke={fill}
+        strokeWidth="1"
+        fill="none"
+        strokeLinejoin="round"
+      />
+      <text
+        x="16.4"
+        y="16.4"
+        fontFamily="Arial, sans-serif"
+        fontSize="6"
+        fontWeight="700"
+        fill="#fff"
+        textAnchor="middle"
+      >
+        O
+      </text>
+    </svg>
+  )
+}
+
+export function MicrosoftLogo({ className = "", dim = false }: LogoProps) {
+  // Microsoft four-square mark, used to identify the umbrella vendor
+  // (Outlook + Teams + Calendar collectively).
+  if (dim) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className={`${sizeClass} ${className}`}
+        fill="currentColor"
+        aria-hidden
+      >
+        <rect x="2" y="2" width="9" height="9" />
+        <rect x="13" y="2" width="9" height="9" />
+        <rect x="2" y="13" width="9" height="9" />
+        <rect x="13" y="13" width="9" height="9" />
+      </svg>
+    )
+  }
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`${sizeClass} ${className}`}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <rect x="2" y="2" width="9" height="9" fill="#F25022" />
+      <rect x="13" y="2" width="9" height="9" fill="#7FBA00" />
+      <rect x="2" y="13" width="9" height="9" fill="#00A4EF" />
+      <rect x="13" y="13" width="9" height="9" fill="#FFB900" />
+    </svg>
+  )
+}
