@@ -325,17 +325,25 @@ export default async function AdminWaitlistPage() {
         </div>
 
         <div className="mt-10 rounded-lg border border-dashed border-[var(--cf-border)] bg-[var(--cf-bg-soft)] p-4 text-xs text-[var(--cf-text-muted)]">
-          <p className="font-medium text-[var(--cf-text)]">Heads up</p>
+          <p className="font-medium text-[var(--cf-text)]">Storage</p>
           <p className="mt-1">
-            Lists are stored as JSON files in{" "}
-            <code className="font-mono text-[var(--cf-text)]">web/data/</code>.
-            That works for local dev or a single-instance deploy, but on
-            serverless platforms (Vercel, Cloud Run) the filesystem is
-            ephemeral — swap the helpers in{" "}
+            Both lists are persisted in Postgres via Prisma — see the{" "}
             <code className="font-mono text-[var(--cf-text)]">
-              web/lib/access-list.ts
+              WaitlistSignup
             </code>{" "}
-            for Prisma calls before you ship to prod.
+            and{" "}
+            <code className="font-mono text-[var(--cf-text)]">
+              InvitedEmail
+            </code>{" "}
+            models in{" "}
+            <code className="font-mono text-[var(--cf-text)]">
+              prisma/schema.prisma
+            </code>
+            . Admin access is controlled by the{" "}
+            <code className="font-mono text-[var(--cf-text)]">
+              ADMIN_EMAILS
+            </code>{" "}
+            env var.
           </p>
         </div>
       </section>

@@ -40,6 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# beta access lists (stored locally — swap for a real DB in production)
+# beta access lists were briefly stored as JSON; now in Postgres via Prisma.
+# Keep these ignored so any leftover local files don't get committed.
 /data/waitlist.json
 /data/invited.json

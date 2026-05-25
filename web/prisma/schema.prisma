@@ -26,6 +26,30 @@ model User {
   calendarSyncs  CalendarSync[]
 }
 
+// Public waitlist queue. Anyone who fills out the /waitlist form lands here.
+// This is informational only — being on the waitlist does NOT grant login.
+model WaitlistSignup {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  source    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Explicit allowlist of emails that may complete sign-in. Managed by admins
+// from /admin/waitlist (or by direct SQL). Checked in the NextAuth signIn
+// callback alongside the ADMIN_EMAILS env var.
+model InvitedEmail {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  invitedAt DateTime @default(now())
+  invitedBy String?
+  notes     String?
+
+  @@index([invitedAt])
+}
+
 enum Provider {
   GOOGLE
   MICROSOFT
