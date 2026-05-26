@@ -37,15 +37,17 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
-  colorScheme: "dark",
+  themeColor: "#f7f8fa",
+  colorScheme: "light",
 }
 
-// Runs synchronously before any waitlist markup paints, so the theme is
-// already set when the CSS variables are read. Reads from localStorage
-// first, then falls back to the user's OS preference. Failures are
-// silently ignored so the page still renders in the default dark theme.
-const themeBootScript = `(function(){try{var s=localStorage.getItem('cf-theme');var t=s||((window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark');document.documentElement.setAttribute('data-cf-theme',t);}catch(e){document.documentElement.setAttribute('data-cf-theme','dark');}})();`
+// Runs synchronously before any waitlist markup paints. Light is the default
+// — the CSS itself defines light as the default state, so we only need to
+// set `data-cf-theme="dark"` when the user has explicitly toggled into dark
+// (stored in localStorage). OS dark-mode preference is intentionally NOT
+// honored here; the waitlist page is positioned as enterprise-feeling
+// (Stripe / Linear / Vercel style) and that reads better in light by default.
+const themeBootScript = `(function(){try{if(localStorage.getItem('cf-theme')==='dark'){document.documentElement.setAttribute('data-cf-theme','dark');}}catch(e){}})();`
 
 export default function WaitlistLayout({ children }: { children: React.ReactNode }) {
   return (

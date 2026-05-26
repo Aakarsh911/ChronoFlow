@@ -4,8 +4,61 @@
  */
 
 .cf-waitlist {
-  /* ---- Dark theme (default) ---- */
-  /* Mirrors the app's dark-mode tokens from globals.css */
+  /* ---- Light theme (default) ----
+   * Tuned for an enterprise / engineering-tool feel (Stripe, Linear, Vercel):
+   *   • soft slate page background, pure-white card surfaces
+   *   • slate-200/300 borders that are clearly visible (not hairlines)
+   *   • indigo/navy as the brand, not electric cyan
+   *   • aurora dialled down so it reads as a subtle wash, not a backdrop
+   *
+   * Light is the CSS default so the correct theme paints even if the
+   * boot script in layout.tsx hasn't executed yet (no JS race condition).
+   * Dark mode is an explicit opt-in via :root[data-cf-theme="dark"].
+   */
+  --cf-bg: #f7f8fa;
+  --cf-bg-elev: #ffffff;
+  --cf-bg-soft: #f1f3f7;
+
+  --cf-border: #e3e6ec;
+  --cf-border-strong: #cdd2dc;
+
+  --cf-text: #0f172a;
+  --cf-text-muted: #475569;
+  --cf-text-dim: #64748b;
+
+  --cf-primary: #1e3a8a;
+  --cf-primary-rgb: 30, 58, 138;
+  --cf-accent: #2563eb;
+  --cf-accent-rgb: 37, 99, 235;
+  --cf-aux: #6d28d9;
+  --cf-aux-rgb: 109, 40, 217;
+  --cf-accent-soft: rgba(37, 99, 235, 0.08);
+  --cf-accent-strong: rgba(37, 99, 235, 0.18);
+
+  --cf-danger: oklch(0.66 0.22 25);
+
+  /* Aurora kept visible on the light surface — light-mode-specific aurora
+   * gradients (below) use richer colours so the blobs actually read against
+   * a near-white background. */
+  --cf-aurora-opacity: 1;
+  --cf-grid-color: rgba(15, 23, 42, 0.05);
+  --cf-glow-strength: 0.1;
+
+  background: var(--cf-bg);
+  color: var(--cf-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+  color-scheme: light;
+  transition: background-color 320ms ease, color 320ms ease;
+}
+
+/* ---- Dark theme overrides ----
+ * Mirrors the app's dark-mode tokens from globals.css. Only activates when
+ * the user has explicitly toggled to dark mode (stored in localStorage and
+ * applied by the boot script in layout.tsx).
+ */
+:root[data-cf-theme="dark"] .cf-waitlist {
   --cf-bg: oklch(0.12 0.015 240);
   --cf-bg-elev: oklch(0.15 0.018 240);
   --cf-bg-soft: oklch(0.18 0.018 240);
@@ -25,60 +78,11 @@
   --cf-accent-soft: rgba(6, 182, 212, 0.12);
   --cf-accent-strong: rgba(6, 182, 212, 0.28);
 
-  --cf-danger: oklch(0.66 0.22 25);
-
-  /* Tunables used by light-mode aware effects */
   --cf-aurora-opacity: 1;
   --cf-grid-color: rgba(255, 255, 255, 0.04);
   --cf-glow-strength: 0.18;
 
-  background: var(--cf-bg);
-  color: var(--cf-text);
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  font-feature-settings: "ss01", "cv11";
   color-scheme: dark;
-  transition: background-color 320ms ease, color 320ms ease;
-}
-
-/* ---- Light theme overrides ----
- * Tuned for an enterprise / engineering-tool feel (Stripe, Linear, Vercel):
- *   • soft slate page background, pure-white card surfaces
- *   • slate-200/300 borders that are clearly visible (not hairlines)
- *   • indigo/navy as the brand, not electric cyan
- *   • aurora dialled down so it reads as a subtle wash, not a backdrop
- */
-:root[data-cf-theme="light"] .cf-waitlist {
-  /* Slate-50 page bg, white cards on top */
-  --cf-bg: #f7f8fa;
-  --cf-bg-elev: #ffffff;
-  --cf-bg-soft: #f1f3f7;
-
-  /* slate-200 / slate-300 */
-  --cf-border: #e3e6ec;
-  --cf-border-strong: #cdd2dc;
-
-  /* slate-900 / slate-600 / slate-500 */
-  --cf-text: #0f172a;
-  --cf-text-muted: #475569;
-  --cf-text-dim: #64748b;
-
-  /* Indigo + navy blue. Refined, not vibrant. */
-  --cf-primary: #1e3a8a;
-  --cf-primary-rgb: 30, 58, 138;
-  --cf-accent: #2563eb;
-  --cf-accent-rgb: 37, 99, 235;
-  --cf-aux: #6d28d9;
-  --cf-aux-rgb: 109, 40, 217;
-  --cf-accent-soft: rgba(37, 99, 235, 0.08);
-  --cf-accent-strong: rgba(37, 99, 235, 0.18);
-
-  /* Less aurora, less grid — keeps the page calm and document-like */
-  --cf-aurora-opacity: 0.22;
-  --cf-grid-color: rgba(15, 23, 42, 0.04);
-  --cf-glow-strength: 0.06;
-
-  color-scheme: light;
 }
 
 /* ---------- Backgrounds ---------- */
@@ -142,20 +146,137 @@
   animation: cf-drift-c 34s ease-in-out infinite alternate;
 }
 
+/* Light-mode aurora — vibrant indigo / cyan / violet that actually reads on
+ * a near-white surface. Brand RGB tokens in light mode are deep navy / royal
+ * which blur to almost nothing on white, so we use a richer palette here. */
+:root:not([data-cf-theme="dark"]) .cf-aurora {
+  filter: blur(70px);
+  opacity: calc(0.85 * var(--cf-aurora-opacity));
+}
+:root:not([data-cf-theme="dark"]) .cf-aurora-a {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.55), transparent 70%);
+}
+:root:not([data-cf-theme="dark"]) .cf-aurora-b {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.55), transparent 70%);
+}
+:root:not([data-cf-theme="dark"]) .cf-aurora-c {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.42), transparent 70%);
+}
+
+/* ---------- Scroll parallax ----------
+ * The <ScrollParallax /> client component writes the page's current scrollY
+ * (in pixels) into the `--cf-scroll-y` custom property on :root every animation
+ * frame. We translate the aurora layers at fractional rates so they appear to
+ * drift slower than the foreground, creating depth without any JS-driven
+ * layout work.
+ *
+ * Multipliers are negative because pages scroll DOWN but visual parallax wants
+ * elements to lag UP relative to the content. Each layer gets a different
+ * coefficient so they separate visually.
+ */
+.cf-parallax-host .cf-aurora-a {
+  transform: translate3d(0, calc(var(--cf-scroll-y, 0px) * -0.18), 0);
+}
+.cf-parallax-host .cf-aurora-b {
+  transform: translate3d(0, calc(var(--cf-scroll-y, 0px) * -0.28), 0);
+}
+.cf-parallax-host .cf-aurora-c {
+  transform: translate3d(0, calc(var(--cf-scroll-y, 0px) * -0.12), 0);
+}
+
+/* Depth orbs — softer, slower-moving glow blobs that live at fixed page-y
+ * coordinates and drift in counter to scroll. Three of them, spread between
+ * the Problem section and the FinalCTA, give the page a continuous sense of
+ * background motion without being distracting.
+ */
+.cf-depth-orb {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: calc(0.45 * var(--cf-aurora-opacity));
+  will-change: transform;
+  z-index: 0;
+}
+
+.cf-parallax-host .cf-depth-orb-1 {
+  top: 900px;
+  left: -10%;
+  width: 540px;
+  height: 540px;
+  background: radial-gradient(
+    circle,
+    rgba(var(--cf-primary-rgb), 0.45),
+    transparent 70%
+  );
+  transform: translate3d(0, calc(var(--cf-scroll-y, 0px) * -0.08), 0);
+}
+.cf-parallax-host .cf-depth-orb-2 {
+  top: 1800px;
+  right: -8%;
+  width: 620px;
+  height: 620px;
+  background: radial-gradient(
+    circle,
+    rgba(var(--cf-aux-rgb), 0.4),
+    transparent 70%
+  );
+  transform: translate3d(0, calc(var(--cf-scroll-y, 0px) * -0.14), 0);
+}
+.cf-parallax-host .cf-depth-orb-3 {
+  top: 3000px;
+  left: 30%;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(
+    circle,
+    rgba(var(--cf-accent-rgb), 0.35),
+    transparent 70%
+  );
+  transform: translate3d(0, calc(var(--cf-scroll-y, 0px) * -0.06), 0);
+}
+
+/* Light-mode depth orbs — same vibrant palette as the hero aurora so the
+ * scroll parallax actually shows through against the pale page bg. */
+:root:not([data-cf-theme="dark"]) .cf-parallax-host .cf-depth-orb-1 {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.42), transparent 70%);
+}
+:root:not([data-cf-theme="dark"]) .cf-parallax-host .cf-depth-orb-2 {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.38), transparent 70%);
+}
+:root:not([data-cf-theme="dark"]) .cf-parallax-host .cf-depth-orb-3 {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.4), transparent 70%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-parallax-host .cf-aurora-a,
+  .cf-parallax-host .cf-aurora-b,
+  .cf-parallax-host .cf-aurora-c,
+  .cf-parallax-host .cf-depth-orb-1,
+  .cf-parallax-host .cf-depth-orb-2,
+  .cf-parallax-host .cf-depth-orb-3 {
+    transform: none !important;
+  }
+}
+
+/* Drift keyframes use the individual `translate` / `scale` properties (not
+ * `transform`), so they can compose with the parallax `transform: translate3d`
+ * applied to the same elements via .cf-parallax-host rules. If both animated
+ * the same `transform` value, the keyframes would clobber the parallax. */
 @keyframes cf-drift-a {
-  0%   { transform: translate(0, 0) scale(1);     opacity: 0.55; }
-  50%  { transform: translate(8%, 6%) scale(1.08); opacity: 0.7;  }
-  100% { transform: translate(-4%, 10%) scale(0.95); opacity: 0.5; }
+  0%   { translate: 0 0;     scale: 1;    opacity: 0.55; }
+  50%  { translate: 8% 6%;   scale: 1.08; opacity: 0.7;  }
+  100% { translate: -4% 10%; scale: 0.95; opacity: 0.5;  }
 }
 @keyframes cf-drift-b {
-  0%   { transform: translate(0, 0) scale(1);     opacity: 0.5;  }
-  50%  { transform: translate(-6%, 8%) scale(1.1); opacity: 0.65; }
-  100% { transform: translate(4%, -6%) scale(0.96); opacity: 0.45; }
+  0%   { translate: 0 0;    scale: 1;    opacity: 0.5;  }
+  50%  { translate: -6% 8%; scale: 1.1;  opacity: 0.65; }
+  100% { translate: 4% -6%; scale: 0.96; opacity: 0.45; }
 }
 @keyframes cf-drift-c {
-  0%   { transform: translate(0, 0) scale(1);     opacity: 0.45; }
-  50%  { transform: translate(6%, -6%) scale(1.05); opacity: 0.6;  }
-  100% { transform: translate(-8%, 4%) scale(0.92); opacity: 0.4;  }
+  0%   { translate: 0 0;     scale: 1;    opacity: 0.45; }
+  50%  { translate: 6% -6%;  scale: 1.05; opacity: 0.6;  }
+  100% { translate: -8% 4%;  scale: 0.92; opacity: 0.4;  }
 }
 
 /* ---------- Text effects ---------- */
@@ -330,21 +451,23 @@
   opacity: 1;
 }
 
-/* Soft surface shadow on light theme — cards need elevation against pale bg */
-:root[data-cf-theme="light"] .cf-card-glow {
+/* Soft surface shadow on light theme — cards need elevation against pale bg.
+ * Matches both `data-cf-theme="light"` and the missing-attribute case so the
+ * light styling applies even before the boot script runs. */
+:root:not([data-cf-theme="dark"]) .cf-card-glow {
   box-shadow:
     0 1px 0 rgba(15, 23, 42, 0.02),
     0 1px 3px rgba(15, 23, 42, 0.04),
     0 1px 8px rgba(15, 23, 42, 0.03);
 }
-:root[data-cf-theme="light"] .cf-card-glow:hover {
+:root:not([data-cf-theme="dark"]) .cf-card-glow:hover {
   box-shadow:
     0 12px 28px -14px rgba(var(--cf-accent-rgb), 0.22),
     0 4px 12px -6px rgba(15, 23, 42, 0.06);
 }
 /* Subdue the soft blue halo on light theme so it reads as enterprise polish,
  * not a consumer marketing flourish. */
-:root[data-cf-theme="light"] .cf-card-glow::before {
+:root:not([data-cf-theme="dark"]) .cf-card-glow::before {
   background: linear-gradient(
     135deg,
     rgba(var(--cf-accent-rgb), 0) 0%,
@@ -379,6 +502,152 @@
 }
 .cf-row:hover::before {
   transform: translateX(100%);
+}
+
+/* ---------- Step cards (How It Works) ----------
+ * The aurora field from the hero bleeds into the next section, so step cards
+ * need a stronger surface treatment to stay readable in dark mode. A frosted
+ * backdrop + brighter elev bg + a touch more border contrast does it without
+ * looking out of place against the rest of the page.
+ */
+/* "How it works" step cards. Designed to look intentional — each card carries
+ * a coloured gradient accent bar at the top edge, a large watermarked step
+ * number behind the content, and a soft brand-tinted shadow on hover. The
+ * accent rotates per card via :nth-child so the four-card grid reads as a
+ * sequence rather than four identical tiles. */
+.cf-step-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-color: var(--cf-border-strong);
+  transition:
+    transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 320ms ease;
+}
+
+/* Gradient top stripe — the visual signature of each card. */
+.cf-step-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--cf-primary-rgb), 1) 0%,
+    rgba(var(--cf-accent-rgb), 1) 50%,
+    rgba(var(--cf-aux-rgb), 1) 100%
+  );
+  z-index: 1;
+  opacity: 0.9;
+}
+
+/* Large faded step-number watermark in the bottom-right of each card. The
+ * actual content sits at z-index 1 (default), and this watermark stays at 0.
+ * Populated via a CSS custom prop set per-card in the JSX so we don't need
+ * separate selectors per number. */
+.cf-step-card::after {
+  content: attr(data-step);
+  position: absolute;
+  bottom: -28px;
+  right: -8px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 140px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: rgba(var(--cf-primary-rgb), 1);
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cf-step-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--cf-accent-rgb), 0.45);
+}
+.cf-step-card:hover::after {
+  opacity: 0.09;
+}
+
+/* Per-card accent tint — rotates through primary / accent / aux / accent so
+ * the four-card row reads as a coloured sequence. */
+.cf-step-card:nth-child(1)::after { color: rgba(var(--cf-primary-rgb), 1); }
+.cf-step-card:nth-child(2)::after { color: rgba(var(--cf-accent-rgb), 1); }
+.cf-step-card:nth-child(3)::after { color: rgba(var(--cf-aux-rgb), 1); }
+.cf-step-card:nth-child(4)::after { color: rgba(var(--cf-accent-rgb), 1); }
+
+:root[data-cf-theme="dark"] .cf-step-card {
+  /* In dark mode pump the surface a notch above the page bg and add a faint
+   * inner sheen so the card edges read as elevated rather than washed-out. */
+  background:
+    linear-gradient(180deg, oklch(0.19 0.02 240) 0%, oklch(0.16 0.02 240) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 4px 16px -8px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-cf-theme="dark"] .cf-step-card:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 32px -16px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(var(--cf-accent-rgb), 0.18);
+}
+
+:root:not([data-cf-theme="dark"]) .cf-step-card {
+  background: var(--cf-bg-elev);
+  box-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.02),
+    0 1px 4px rgba(15, 23, 42, 0.03),
+    0 8px 24px -12px rgba(15, 23, 42, 0.08);
+}
+
+:root:not([data-cf-theme="dark"]) .cf-step-card:hover {
+  box-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.02),
+    0 8px 24px -10px rgba(var(--cf-accent-rgb), 0.18),
+    0 18px 40px -20px rgba(15, 23, 42, 0.1);
+}
+
+/* Step-number chip + icon chip — restyled so the header row of each card
+ * looks deliberate, not just two floating glyphs. */
+.cf-step-card .cf-step-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: rgba(var(--cf-accent-rgb), 1);
+  text-transform: uppercase;
+}
+.cf-step-card .cf-step-number::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 1px;
+  background: rgba(var(--cf-accent-rgb), 0.55);
+}
+
+.cf-step-card .cf-step-icon {
+  position: relative;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: rgba(var(--cf-accent-rgb), 1);
+  background: rgba(var(--cf-accent-rgb), 0.08);
+  border: 1px solid rgba(var(--cf-accent-rgb), 0.22);
+  transition: background 240ms ease, border-color 240ms ease;
+}
+.cf-step-card:hover .cf-step-icon {
+  background: rgba(var(--cf-accent-rgb), 0.14);
+  border-color: rgba(var(--cf-accent-rgb), 0.42);
 }
 
 /* ---------- AI Orb ---------- */

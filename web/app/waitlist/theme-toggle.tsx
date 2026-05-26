@@ -15,14 +15,19 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   const [theme, setTheme] = useState<Theme | null>(null)
 
   useEffect(() => {
-    const current = (document.documentElement.getAttribute("data-cf-theme") as Theme | null) ?? "dark"
-    setTheme(current)
+    // Light is the default; only "dark" is ever explicitly set.
+    const attr = document.documentElement.getAttribute("data-cf-theme")
+    setTheme(attr === "dark" ? "dark" : "light")
   }, [])
 
   const toggle = () => {
     const next: Theme = theme === "light" ? "dark" : "light"
     setTheme(next)
-    document.documentElement.setAttribute("data-cf-theme", next)
+    if (next === "dark") {
+      document.documentElement.setAttribute("data-cf-theme", "dark")
+    } else {
+      document.documentElement.removeAttribute("data-cf-theme")
+    }
     try {
       localStorage.setItem("cf-theme", next)
     } catch {

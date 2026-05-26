@@ -39,6 +39,7 @@ import {
   TeamSchedulingMock,
   UnifiedMailMock,
 } from "./product-mocks"
+import { ScrollParallax } from "./scroll-parallax"
 import { ScrollReveal } from "./scroll-reveal"
 import { ThemeToggle } from "./theme-toggle"
 import { TrackPageView } from "./track-pageview"
@@ -59,8 +60,9 @@ export default async function WaitlistPage() {
   const initialCount = await getWaitlistCount()
 
   return (
-    <main className="relative overflow-x-clip">
-      {/* Global aurora field — kept behind everything, masked at the top */}
+    <main className="cf-parallax-host relative overflow-x-clip">
+      {/* Global aurora field — kept behind everything, masked at the top.
+       * Translated by --cf-scroll-y via .cf-parallax-host rules in CSS. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1100px]" aria-hidden>
         <div className="cf-aurora-field absolute inset-0">
           <div className="cf-aurora cf-aurora-a" />
@@ -71,6 +73,16 @@ export default async function WaitlistPage() {
         <div className="absolute inset-0 cf-grid" />
       </div>
 
+      {/* Depth orbs — slow-drifting parallax blobs further down the page so
+       * the background motion doesn't stop at the hero. Positioned in absolute
+       * page coordinates; translation is driven by --cf-scroll-y in CSS. */}
+      <div className="pointer-events-none absolute inset-0 -z-0 overflow-hidden" aria-hidden>
+        <div className="cf-depth-orb cf-depth-orb-1" />
+        <div className="cf-depth-orb cf-depth-orb-2" />
+        <div className="cf-depth-orb cf-depth-orb-3" />
+      </div>
+
+      <ScrollParallax />
       <TrackPageView path="/waitlist" />
       <SiteHeader />
       <Hero />
@@ -79,7 +91,6 @@ export default async function WaitlistPage() {
       <HowItWorks />
       <Features />
       <Integrations />
-      <Founder />
       <FinalCTA initialCount={initialCount} />
       <SiteFooter />
     </main>
@@ -161,14 +172,6 @@ function Hero() {
 }
 
 function ProductPreview() {
-  // To replace the hand-built mock with a real product capture, drop a file at
-  // /public/demo.mp4 (preferred — autoplaying, muted, looping silent screencap)
-  // or /public/demo.gif. The component will pick it up automatically. Until
-  // then, the DashboardMock renders with a small "illustrative" badge so we're
-  // not implying it's a real screenshot.
-  const demoSrc = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL ?? "/demo.mp4"
-  const hasRealDemo = Boolean(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL)
-
   return (
     <section className="relative z-10 mx-auto max-w-6xl px-5 pb-20 sm:px-8 sm:pb-28">
       <ScrollReveal delay={120}>
@@ -181,31 +184,7 @@ function ProductPreview() {
                 "radial-gradient(ellipse at top, rgba(var(--cf-accent-rgb), 0.18), transparent 60%)",
             }}
           />
-          {hasRealDemo ? (
-            <div className="cf-card-glow overflow-hidden rounded-xl border border-[var(--cf-border)] bg-[var(--cf-bg-elev)]">
-              <video
-                src={demoSrc}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                className="block w-full"
-                aria-label="ChronoFlow product demo — silent screencap"
-              />
-            </div>
-          ) : (
-            <div className="relative">
-              <DashboardMock />
-              <span
-                className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-[var(--cf-border-strong)] bg-[var(--cf-bg)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-[var(--cf-text-muted)] shadow-lg"
-                aria-label="Illustrative preview, not a real screenshot"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--cf-text-dim)]" />
-                Illustrative · real demo soon
-              </span>
-            </div>
-          )}
+          <DashboardMock />
         </div>
       </ScrollReveal>
     </section>
@@ -323,22 +302,18 @@ function HowItWorks() {
         <div className="relative mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {steps.map((s, i) => (
             <ScrollReveal key={s.n} delay={i * 100}>
-              <article className="cf-card-glow relative flex h-full flex-col rounded-xl border border-[var(--cf-border)] bg-[var(--cf-bg-elev)] p-5">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] tracking-widest text-[var(--cf-text-dim)]">
-                    {s.n}
-                  </span>
-                  <span
-                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--cf-border-strong)] bg-[var(--cf-bg-soft)]"
-                    style={{ color: "rgba(var(--cf-accent-rgb), 1)" }}
-                  >
-                    {s.icon}
-                  </span>
+              <article
+                data-step={s.n}
+                className="cf-step-card relative flex h-full flex-col rounded-xl border p-5 pt-6"
+              >
+                <div className="relative z-[1] flex items-center justify-between">
+                  <span className="cf-step-number">Step {s.n}</span>
+                  <span className="cf-step-icon">{s.icon}</span>
                 </div>
-                <h3 className="mt-3 text-lg font-semibold text-[var(--cf-text)]">
+                <h3 className="relative z-[1] mt-4 text-lg font-semibold text-[var(--cf-text)]">
                   {s.title}
                 </h3>
-                <p className="mt-1.5 text-[14.5px] leading-relaxed text-[var(--cf-text-muted)]">
+                <p className="relative z-[1] mt-1.5 text-[14.5px] leading-relaxed text-[var(--cf-text-muted)]">
                   {s.body}
                 </p>
               </article>
@@ -459,8 +434,8 @@ function Features() {
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
         <SectionHeading
           eyebrow="What's shipped"
-          title="One headline feature. Six more that make it work."
-          subtitle="The lead piece is the AI that reads your inbox. Everything below it exists because action items alone don't help if your calendar, tasks, and team chat live in different worlds."
+          title="From inbox to ticket to calendar — without leaving the workspace."
+          subtitle="The AI that reads your inbox is the centerpiece. Everything else exists because action items alone don't help if your calendar, tasks, and team chat live in different worlds."
         />
 
         <div className="mt-14 space-y-20 sm:space-y-24">
@@ -708,63 +683,6 @@ function ServerIcon() {
       style={{ color: "var(--cf-text-muted)" }}
       aria-hidden
     />
-  )
-}
-
-function Founder() {
-  return (
-    <section className="relative z-10 border-t border-[var(--cf-border)]">
-      <div className="mx-auto max-w-3xl px-5 py-20 sm:px-8 sm:py-24">
-        <ScrollReveal>
-          <Eyebrow>Who built this</Eyebrow>
-        </ScrollReveal>
-        <ScrollReveal delay={60}>
-          <h2 className="mt-5 text-balance text-2xl font-semibold leading-snug tracking-tight text-[var(--cf-text)] sm:text-3xl">
-            Hi — I&apos;m Aakarsh.
-          </h2>
-        </ScrollReveal>
-        <ScrollReveal delay={120}>
-          <div className="mt-5 space-y-4 text-[16px] leading-relaxed text-[var(--cf-text-muted)]">
-            <p>
-              I&apos;m a software engineer studying CS at Northeastern, with co-op
-              experience at Wood Mackenzie and JM. I built ChronoFlow because I kept
-              dropping the small stuff between Slack, Gmail, and Jira — PR reviews
-              forgotten, deadlines buried, tickets I&apos;d been assigned that I
-              didn&apos;t see until standup the next day.
-            </p>
-            <p>
-              The beta is honestly rough in places. The core works — calendar sync,
-              email + Teams task extraction, team free/busy, focus blocks, the chat
-              drawer — but you&apos;ll find sharp edges. If you do, email me directly
-              and I&apos;ll fix it. I built this because I needed it, and I&apos;d
-              rather have ten users I can talk to than ten thousand who churn quietly.
-            </p>
-            <p>
-              If the problem above sounds like your day, get on the list. I&apos;m
-              rolling invites every week.
-            </p>
-          </div>
-        </ScrollReveal>
-        <ScrollReveal delay={200}>
-          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[12.5px] text-[var(--cf-text-muted)]">
-            <a
-              href="mailto:team@chronoflow.app"
-              className="inline-flex items-center gap-1.5 underline decoration-[var(--cf-border-strong)] underline-offset-4 transition hover:text-[var(--cf-text)] hover:decoration-[rgba(var(--cf-accent-rgb),0.6)]"
-            >
-              team@chronoflow.app
-            </a>
-            <a
-              href="https://github.com/Aakarsh911/ChronoFlow"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 underline decoration-[var(--cf-border-strong)] underline-offset-4 transition hover:text-[var(--cf-text)] hover:decoration-[rgba(var(--cf-accent-rgb),0.6)]"
-            >
-              github.com/Aakarsh911/ChronoFlow
-            </a>
-          </div>
-        </ScrollReveal>
-      </div>
-    </section>
   )
 }
 
