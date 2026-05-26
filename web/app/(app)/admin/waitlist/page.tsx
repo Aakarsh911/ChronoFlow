@@ -11,7 +11,7 @@ import {
   type WaitlistEntry,
 } from "@/lib/access-list"
 import { ThemeToggle } from "@/app/waitlist/theme-toggle"
-import SignOutButton from "@/app/access-pending/sign-out-button"
+import SignOutButton from "@/app/(app)/access-pending/sign-out-button"
 import InviteForm from "./invite-form"
 import { VisitsPanel } from "./visits-panel"
 import { inviteFromWaitlistAction, revokeAction } from "./actions"

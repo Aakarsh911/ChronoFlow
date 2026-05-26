@@ -18,7 +18,6 @@ import {
   Workflow,
 } from "lucide-react"
 
-import { AnimatedCount } from "./animated-count"
 import {
   GitHubLogo,
   GmailLogo,
@@ -43,22 +42,10 @@ import { ScrollParallax } from "./scroll-parallax"
 import { ScrollReveal } from "./scroll-reveal"
 import { ThemeToggle } from "./theme-toggle"
 import { TrackPageView } from "./track-pageview"
+import { WaitlistCountLine } from "./waitlist-count-line"
 import { WaitlistForm } from "./waitlist-form"
-import { waitlistCount } from "@/lib/access-list"
 
-export const dynamic = "force-dynamic"
-
-async function getWaitlistCount(): Promise<number> {
-  try {
-    return await waitlistCount()
-  } catch {
-    return 0
-  }
-}
-
-export default async function WaitlistPage() {
-  const initialCount = await getWaitlistCount()
-
+export default function WaitlistPage() {
   return (
     <main className="cf-parallax-host relative overflow-x-clip">
       {/* Global aurora field — kept behind everything, masked at the top.
@@ -91,7 +78,7 @@ export default async function WaitlistPage() {
       <HowItWorks />
       <Features />
       <Integrations />
-      <FinalCTA initialCount={initialCount} />
+      <FinalCTA />
       <SiteFooter />
     </main>
   )
@@ -640,7 +627,7 @@ function FinalCTA({ initialCount }: { initialCount: number }) {
           </h2>
         </ScrollReveal>
         <ScrollReveal delay={80}>
-          <WaitlistCountLine initial={initialCount} />
+          <WaitlistCountLine />
         </ScrollReveal>
 
         <ScrollReveal delay={140}>
@@ -667,23 +654,6 @@ function FinalCTA({ initialCount }: { initialCount: number }) {
         </ScrollReveal>
       </div>
     </section>
-  )
-}
-
-function WaitlistCountLine({ initial }: { initial: number }) {
-  if (initial <= 0) {
-    return (
-      <p className="mt-3 font-mono text-[13px] text-[var(--cf-text-muted)]">
-        Be one of the first on the list.
-      </p>
-    )
-  }
-  return (
-    <p className="mt-3 font-mono text-[13px] text-[var(--cf-text-muted)]">
-      Join{" "}
-      <AnimatedCount target={initial} className="text-[var(--cf-text)]" />{" "}
-      others on the waitlist.
-    </p>
   )
 }
 

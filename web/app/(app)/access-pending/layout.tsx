@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import "../waitlist/waitlist.css"
+import "@/app/waitlist/waitlist.css"
 
 export const metadata: Metadata = {
   title: "Access pending — ChronoFlow",
