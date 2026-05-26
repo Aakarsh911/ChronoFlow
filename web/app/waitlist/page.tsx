@@ -79,6 +79,7 @@ export default async function WaitlistPage() {
       <HowItWorks />
       <Features />
       <Integrations />
+      <Founder />
       <FinalCTA initialCount={initialCount} />
       <SiteFooter />
     </main>
@@ -131,16 +132,19 @@ function Hero() {
 
       <ScrollReveal delay={60}>
         <h1 className="mt-6 text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--cf-text)] sm:text-5xl lg:text-[60px]">
-          Your calendar, emails, tasks, and team.{" "}
-          <span className="cf-gradient-text inline-block">Finally in one place.</span>
+          Tasks don&apos;t die because you&apos;re lazy.{" "}
+          <span className="cf-gradient-text inline-block">
+            They die between your tools.
+          </span>
         </h1>
       </ScrollReveal>
 
       <ScrollReveal delay={120}>
         <p className="mx-auto mt-6 max-w-2xl text-balance text-[17px] leading-relaxed text-[var(--cf-text-muted)] sm:text-lg">
-          ChronoFlow unifies your calendar, email, tasks, and team chat across Google,
-          Microsoft, and Jira. AI pulls action items from your inbox automatically. Team
-          scheduling without the back-and-forth.
+          ChronoFlow is the unified workspace for{" "}
+          <span className="text-[var(--cf-text)]">software engineers</span> buried in
+          Slack, Gmail, Jira, and Calendar. AI pulls action items out of your inbox
+          automatically. Team scheduling and focus blocks without the back-and-forth.
         </p>
       </ScrollReveal>
 
@@ -157,6 +161,14 @@ function Hero() {
 }
 
 function ProductPreview() {
+  // To replace the hand-built mock with a real product capture, drop a file at
+  // /public/demo.mp4 (preferred — autoplaying, muted, looping silent screencap)
+  // or /public/demo.gif. The component will pick it up automatically. Until
+  // then, the DashboardMock renders with a small "illustrative" badge so we're
+  // not implying it's a real screenshot.
+  const demoSrc = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL ?? "/demo.mp4"
+  const hasRealDemo = Boolean(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL)
+
   return (
     <section className="relative z-10 mx-auto max-w-6xl px-5 pb-20 sm:px-8 sm:pb-28">
       <ScrollReveal delay={120}>
@@ -169,7 +181,31 @@ function ProductPreview() {
                 "radial-gradient(ellipse at top, rgba(var(--cf-accent-rgb), 0.18), transparent 60%)",
             }}
           />
-          <DashboardMock />
+          {hasRealDemo ? (
+            <div className="cf-card-glow overflow-hidden rounded-xl border border-[var(--cf-border)] bg-[var(--cf-bg-elev)]">
+              <video
+                src={demoSrc}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                className="block w-full"
+                aria-label="ChronoFlow product demo — silent screencap"
+              />
+            </div>
+          ) : (
+            <div className="relative">
+              <DashboardMock />
+              <span
+                className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-[var(--cf-border-strong)] bg-[var(--cf-bg)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-[var(--cf-text-muted)] shadow-lg"
+                aria-label="Illustrative preview, not a real screenshot"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--cf-text-dim)]" />
+                Illustrative · real demo soon
+              </span>
+            </div>
+          )}
         </div>
       </ScrollReveal>
     </section>
@@ -177,30 +213,65 @@ function ProductPreview() {
 }
 
 function Problem() {
+  const scenarios: Array<{ tool: string; what: string; outcome: string }> = [
+    {
+      tool: "Slack",
+      what: "A PR review request lands at 4pm.",
+      outcome: "You'll do it after lunch tomorrow. You don't.",
+    },
+    {
+      tool: "Gmail",
+      what: "A client deadline is buried mid-thread.",
+      outcome: "You see it on Friday. The deadline was Thursday.",
+    },
+    {
+      tool: "Jira",
+      what: "A ticket gets assigned to you in standup.",
+      outcome: "You never open Jira that day. It's still 'To Do' next sprint.",
+    },
+    {
+      tool: "Calendar",
+      what: "A meeting drops on top of your focus block.",
+      outcome: "Your deep-work morning is gone before you notice.",
+    },
+  ]
+
   return (
     <section className="relative z-10 border-t border-[var(--cf-border)]">
-      <div className="mx-auto max-w-4xl px-5 py-20 sm:px-8 sm:py-28">
+      <div className="mx-auto max-w-5xl px-5 py-20 sm:px-8 sm:py-28">
         <ScrollReveal>
           <Eyebrow>Why this exists</Eyebrow>
         </ScrollReveal>
         <ScrollReveal delay={60}>
-          <p className="mt-5 text-balance text-2xl leading-snug text-[var(--cf-text)] sm:text-[28px] sm:leading-tight">
-            Tasks don&apos;t get dropped because people are lazy.{" "}
+          <h2 className="mt-5 max-w-3xl text-balance text-2xl leading-snug text-[var(--cf-text)] sm:text-[28px] sm:leading-tight">
+            Every engineer reading this knows the pattern.{" "}
             <span className="text-[var(--cf-text-muted)]">
-              They get dropped because there&apos;s no single place to see everything.
+              It&apos;s not that you&apos;re disorganized. It&apos;s that work shows up
+              in one tool and the action needs to happen in a different one.
             </span>
-          </p>
+          </h2>
         </ScrollReveal>
-        <ScrollReveal delay={120}>
-          <p className="mt-5 max-w-2xl text-[16.5px] leading-relaxed text-[var(--cf-text-muted)]">
-            A PR review request comes through Slack. A deadline gets buried in an email
-            thread. A meeting invite conflicts with your focus block but you don&apos;t
-            notice until it&apos;s too late. Knowledge workers live across five or six
-            tools every day, and things slip through the gaps between them.
-          </p>
-        </ScrollReveal>
-        <ScrollReveal delay={180}>
-          <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-[var(--cf-border-strong)] bg-[var(--cf-bg-soft)] px-3.5 py-1.5">
+
+        <div className="mt-10 grid gap-3 sm:grid-cols-2">
+          {scenarios.map((s, i) => (
+            <ScrollReveal key={s.tool} delay={120 + i * 70}>
+              <article className="rounded-xl border border-[var(--cf-border)] bg-[var(--cf-bg-elev)] p-4 sm:p-5">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--cf-border-strong)] bg-[var(--cf-bg-soft)] px-2.5 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-[var(--cf-text-muted)]">
+                  {s.tool}
+                </span>
+                <p className="mt-3 text-[14.5px] leading-relaxed text-[var(--cf-text)]">
+                  {s.what}
+                </p>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--cf-text-muted)]">
+                  {s.outcome}
+                </p>
+              </article>
+            </ScrollReveal>
+          ))}
+        </div>
+
+        <ScrollReveal delay={400}>
+          <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-[var(--cf-border-strong)] bg-[var(--cf-bg-soft)] px-3.5 py-1.5">
             <Zap className="h-3.5 w-3.5 text-[rgba(var(--cf-accent-rgb),1)]" />
             <span className="font-mono text-[12.5px] text-[var(--cf-text)]">
               ChronoFlow lives in those gaps.
@@ -289,34 +360,49 @@ function Features() {
     icon: React.ReactNode
   }> = [
     {
-      eyebrow: "Unified inbox",
-      title: "Gmail and Outlook, side by side.",
+      eyebrow: "AI task extraction · the headline feature",
+      title: "Stop hand-scanning your inbox for action items.",
       body:
-        "Read, star, and triage your email without bouncing between apps. When a message has an action item — a deadline, an approval, a deliverable — ChronoFlow's AI catches it and turns it into a task with the priority and due date already set.",
+        "ChronoFlow reads your Gmail, Outlook, and Teams messages in batches and uses Gemini to pull out the things you actually have to do. Newsletters, marketing, and CI notifications get filtered out. Confidence scoring means only real action items make it through to your task board — with priority and due date inferred from the message itself.",
       bullets: [
-        "Gmail + Outlook in a single inbox view",
-        "Star, flag, and track without switching apps",
-        "Source labels keep every task traceable",
-      ],
-      mock: <UnifiedMailMock />,
-      icon: <Inbox className="h-4 w-4" />,
-    },
-    {
-      eyebrow: "AI task extraction",
-      title: "Action items, captured automatically.",
-      body:
-        "ChronoFlow scans your emails and Teams messages in batches and uses Gemini to pull out the things you actually have to do. Newsletters, marketing, and notifications get filtered out. Confidence scoring means only real action items make it through to your task board.",
-      bullets: [
-        "Batched processing — no rate-limit failures on busy inboxes",
-        "Filters out newsletters, notifications, promotional noise",
+        "Batched LLM calls — no rate-limit failures on a 200-email morning",
+        "Filters out newsletters, promotions, GitHub notification noise",
         "Priority and due date inferred from the message itself",
+        "Source link back to the original thread on every task",
       ],
       mock: <TaskExtractionMock />,
       icon: <Sparkles className="h-4 w-4" />,
     },
     {
+      eyebrow: "Ask ChronoFlow",
+      title: "Type what you need. It happens across your tools.",
+      body:
+        "When clicking through the UI isn't the fastest way, just type. \"Draft a reply telling Sarah Thursday at 2 works.\" \"Create a P1 Jira ticket for the login timeout.\" \"What did I miss today?\" ChronoFlow runs the action in the right tool with the right context — pulling the email thread, the assignee, or the ticket history so you don't have to. Every write action confirms before it goes out.",
+      bullets: [
+        "Drafts email replies using the original thread for context",
+        "Creates Jira tickets with priority and assignee inferred",
+        "Summarizes unread mentions, new assignments, pending reviews",
+        "Confirms before sending or writing — you stay in control",
+      ],
+      mock: <AskMock />,
+      icon: <MessageSquare className="h-4 w-4" />,
+    },
+    {
+      eyebrow: "Team scheduling",
+      title: "Find time without the back-and-forth.",
+      body:
+        "Pull up your teammates' availability across Microsoft Teams, find a common open slot in seconds, and create the meeting in place. No more \"what time works for everyone\" email chains. Free/busy only — nobody's actual events get exposed.",
+      bullets: [
+        "Multi-person availability across the week",
+        "Common-slot detection across selected teammates",
+        "Create the meeting from the same UI",
+      ],
+      mock: <TeamSchedulingMock />,
+      icon: <Users className="h-4 w-4" />,
+    },
+    {
       eyebrow: "Smart calendar",
-      title: "A calendar that plans for you.",
+      title: "A calendar that knows what's movable.",
       body:
         "Google Calendar and Outlook synced via incremental sync — changes show up in seconds. Events are classified as meetings, focus blocks, tasks, or personal, so the system knows what it can move and what it can't. When conflicts appear, your protected time stays protected.",
       bullets: [
@@ -328,17 +414,17 @@ function Features() {
       icon: <CalendarIcon className="h-4 w-4" />,
     },
     {
-      eyebrow: "Team scheduling",
-      title: "Find time without the back-and-forth.",
+      eyebrow: "Unified inbox",
+      title: "Gmail and Outlook, side by side.",
       body:
-        "Pull up your teammates' availability across Microsoft Teams, find a common open slot in seconds, and create the meeting in place. No more 'what time works for everyone' email chains. Free/busy only — nobody's actual events get exposed.",
+        "Read, star, and triage your email without bouncing between apps. The AI extraction layer runs on top of this view — when a message has an action item, the task lands on your board with a link back to the original thread.",
       bullets: [
-        "Multi-person availability across the week",
-        "Common-slot detection across selected teammates",
-        "Create the meeting from the same UI",
+        "Gmail + Outlook in a single inbox view",
+        "Star, flag, and track without switching apps",
+        "Source labels keep every task traceable",
       ],
-      mock: <TeamSchedulingMock />,
-      icon: <Users className="h-4 w-4" />,
+      mock: <UnifiedMailMock />,
+      icon: <Inbox className="h-4 w-4" />,
     },
     {
       eyebrow: "Focus time",
@@ -366,29 +452,15 @@ function Features() {
       mock: <AnalyticsMock />,
       icon: <BarChart3 className="h-4 w-4" />,
     },
-    {
-      eyebrow: "Ask ChronoFlow",
-      title: "Type what you need. It happens across your tools.",
-      body:
-        "When clicking through the UI isn't the fastest way, just type. \"Draft a reply telling Sarah Thursday at 2 works.\" \"Create a P1 Jira ticket for the login timeout.\" \"What did I miss today?\" ChronoFlow runs the action in the right tool with the right context — pulling the email thread, the assignee, or the ticket history so you don't have to. Every write action confirms before it goes out.",
-      bullets: [
-        "Drafts email replies using the original thread for context",
-        "Creates Jira tickets with priority and assignee inferred",
-        "Summarizes unread mentions, new assignments, pending reviews",
-        "Confirms before sending or writing — you stay in control",
-      ],
-      mock: <AskMock />,
-      icon: <MessageSquare className="h-4 w-4" />,
-    },
   ]
 
   return (
     <section className="relative z-10 border-t border-[var(--cf-border)]">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
         <SectionHeading
-          eyebrow="What's inside"
-          title="Seven things that work together."
-          subtitle="Each piece is good on its own. They're better when they share state."
+          eyebrow="What's shipped"
+          title="One headline feature. Six more that make it work."
+          subtitle="The lead piece is the AI that reads your inbox. Everything below it exists because action items alone don't help if your calendar, tasks, and team chat live in different worlds."
         />
 
         <div className="mt-14 space-y-20 sm:space-y-24">
@@ -636,6 +708,63 @@ function ServerIcon() {
       style={{ color: "var(--cf-text-muted)" }}
       aria-hidden
     />
+  )
+}
+
+function Founder() {
+  return (
+    <section className="relative z-10 border-t border-[var(--cf-border)]">
+      <div className="mx-auto max-w-3xl px-5 py-20 sm:px-8 sm:py-24">
+        <ScrollReveal>
+          <Eyebrow>Who built this</Eyebrow>
+        </ScrollReveal>
+        <ScrollReveal delay={60}>
+          <h2 className="mt-5 text-balance text-2xl font-semibold leading-snug tracking-tight text-[var(--cf-text)] sm:text-3xl">
+            Hi — I&apos;m Aakarsh.
+          </h2>
+        </ScrollReveal>
+        <ScrollReveal delay={120}>
+          <div className="mt-5 space-y-4 text-[16px] leading-relaxed text-[var(--cf-text-muted)]">
+            <p>
+              I&apos;m a software engineer studying CS at Northeastern, with co-op
+              experience at Wood Mackenzie and JM. I built ChronoFlow because I kept
+              dropping the small stuff between Slack, Gmail, and Jira — PR reviews
+              forgotten, deadlines buried, tickets I&apos;d been assigned that I
+              didn&apos;t see until standup the next day.
+            </p>
+            <p>
+              The beta is honestly rough in places. The core works — calendar sync,
+              email + Teams task extraction, team free/busy, focus blocks, the chat
+              drawer — but you&apos;ll find sharp edges. If you do, email me directly
+              and I&apos;ll fix it. I built this because I needed it, and I&apos;d
+              rather have ten users I can talk to than ten thousand who churn quietly.
+            </p>
+            <p>
+              If the problem above sounds like your day, get on the list. I&apos;m
+              rolling invites every week.
+            </p>
+          </div>
+        </ScrollReveal>
+        <ScrollReveal delay={200}>
+          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[12.5px] text-[var(--cf-text-muted)]">
+            <a
+              href="mailto:team@chronoflow.app"
+              className="inline-flex items-center gap-1.5 underline decoration-[var(--cf-border-strong)] underline-offset-4 transition hover:text-[var(--cf-text)] hover:decoration-[rgba(var(--cf-accent-rgb),0.6)]"
+            >
+              team@chronoflow.app
+            </a>
+            <a
+              href="https://github.com/Aakarsh911/ChronoFlow"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 underline decoration-[var(--cf-border-strong)] underline-offset-4 transition hover:text-[var(--cf-text)] hover:decoration-[rgba(var(--cf-accent-rgb),0.6)]"
+            >
+              github.com/Aakarsh911/ChronoFlow
+            </a>
+          </div>
+        </ScrollReveal>
+      </div>
+    </section>
   )
 }
 
