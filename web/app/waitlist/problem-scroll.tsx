@@ -61,9 +61,10 @@ function ProblemCard({ scenario, index }: { scenario: Scenario; index: number })
       >
         <div className="cf-problem-card-accent" aria-hidden />
         <div className="cf-problem-card-inner">
-          <div className="cf-problem-logo-chip" aria-hidden>
+          <div className="cf-problem-logo-chip">
             <Logo className="h-6 w-6" />
           </div>
+          <p className="sr-only">{TOOL_LABELS[scenario.id]}</p>
           <p className="cf-problem-setup">{scenario.what}</p>
           <div className="cf-problem-arrow" aria-hidden>
             <ArrowRight className="h-3.5 w-3.5" />

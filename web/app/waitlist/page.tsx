@@ -144,7 +144,7 @@ function Hero() {
       <ScrollReveal delay={60}>
         <h1 className="mt-6 text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--cf-text)] sm:text-5xl lg:text-[60px]">
           Tasks don&apos;t die because you&apos;re lazy.{" "}
-          <span className="cf-gradient-text inline-block">
+          <span className="text-[rgba(var(--cf-accent-rgb),1)]">
             They die between your tools.
           </span>
         </h1>

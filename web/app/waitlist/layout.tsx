@@ -1,40 +1,13 @@
-import type { Metadata, Viewport } from "next"
+import type { Viewport } from "next"
 import "./waitlist.css"
 
-const TITLE =
-  "ChronoFlow — Where engineering tasks stop falling through the cracks."
-const DESCRIPTION =
-  "The unified workspace for software engineers buried in Slack, Gmail, Jira, and Calendar. AI extracts action items from your inbox automatically. Team scheduling, focus blocks, and a chat drawer that runs actions across your tools."
+import {
+  getSiteUrl,
+  waitlistJsonLd,
+  waitlistPageMetadata,
+} from "@/lib/waitlist-seo"
 
-export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
-  applicationName: "ChronoFlow",
-  keywords: [
-    "ChronoFlow",
-    "productivity for software engineers",
-    "AI task extraction from email",
-    "Gmail Outlook task manager",
-    "unified workspace for engineers",
-    "team scheduling Microsoft Teams",
-    "focus blocks for developers",
-    "Jira GitHub Slack integration",
-  ],
-  openGraph: {
-    title: TITLE,
-    description: DESCRIPTION,
-    siteName: "ChronoFlow",
-    type: "website",
-    locale: "en_US",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: TITLE,
-    description: DESCRIPTION,
-  },
-  robots: { index: true, follow: true },
-  icons: { icon: "/favicon.png" },
-}
+export const metadata = waitlistPageMetadata(getSiteUrl())
 
 export const viewport: Viewport = {
   themeColor: "#f7f8fa",
@@ -50,9 +23,15 @@ export const viewport: Viewport = {
 const themeBootScript = `(function(){try{if(localStorage.getItem('cf-theme')==='dark'){document.documentElement.setAttribute('data-cf-theme','dark');}}catch(e){}})();`
 
 export default function WaitlistLayout({ children }: { children: React.ReactNode }) {
+  const jsonLd = waitlistJsonLd(getSiteUrl())
+
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="cf-waitlist" suppressHydrationWarning>
         {children}
       </div>
