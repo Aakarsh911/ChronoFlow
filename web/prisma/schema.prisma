@@ -50,6 +50,30 @@ model InvitedEmail {
   @@index([invitedAt])
 }
 
+// First-party visit tracking for the public marketing pages (waitlist + any
+// future top-of-funnel surfaces). Fired client-side from a tiny tracker that
+// reads UTM params and document.referrer; the server skips writes when the
+// `cf_no_track` cookie is set or when a known bot User-Agent is detected.
+//
+// IPs are not stored raw — only a daily-rotating SHA-256 hash, so we can do
+// rough unique-visitor counts without persisting PII.
+model PageVisit {
+  id          String   @id @default(uuid())
+  path        String   // e.g. "/waitlist"
+  source      String?  // utm_source (e.g. "reddit")
+  medium      String?  // utm_medium (e.g. "social")
+  campaign    String?  // utm_campaign (e.g. "saas-launch")
+  referrer    String?  // document.referrer host (e.g. "reddit.com")
+  ipHash      String?  // sha256(ip + daily_salt) — rotates every day
+  userAgent   String?  // truncated to 256 chars
+  country     String?  // from x-vercel-ip-country if present
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([source])
+  @@index([path, createdAt])
+}
+
 enum Provider {
   GOOGLE
   MICROSOFT

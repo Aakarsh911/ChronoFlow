@@ -13,6 +13,7 @@ import {
 import { ThemeToggle } from "@/app/waitlist/theme-toggle"
 import SignOutButton from "@/app/access-pending/sign-out-button"
 import InviteForm from "./invite-form"
+import { VisitsPanel } from "./visits-panel"
 import { inviteFromWaitlistAction, revokeAction } from "./actions"
 
 export const dynamic = "force-dynamic"
@@ -162,6 +163,9 @@ export default async function AdminWaitlistPage() {
             invited · only invited users + admins can sign in.
           </p>
         </div>
+
+        {/* Visits */}
+        <VisitsPanel />
 
         {/* Manual invite */}
         <div className="mt-8 rounded-xl border border-[var(--cf-border-strong)] bg-[var(--cf-bg-elev)] p-5 sm:p-6">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ArrowRight, Check, Loader2 } from "lucide-react"
 
 type Variant = "hero" | "footer"
@@ -13,11 +13,50 @@ type Props = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
+/**
+ * Reads utm_source / utm_campaign from the URL on mount and stores them in
+ * sessionStorage so the value survives the user navigating between hero and
+ * footer forms or scrolling without remounting. Returns the captured source.
+ */
+function useUtmSource(): { utmSource: string | null; utmCampaign: string | null } {
+  const [state, setState] = useState<{ utmSource: string | null; utmCampaign: string | null }>(
+    { utmSource: null, utmCampaign: null },
+  )
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const fromUrlSource = params.get("utm_source")
+      const fromUrlCampaign = params.get("utm_campaign")
+
+      if (fromUrlSource) {
+        window.sessionStorage.setItem("cf_utm_source", fromUrlSource)
+      }
+      if (fromUrlCampaign) {
+        window.sessionStorage.setItem("cf_utm_campaign", fromUrlCampaign)
+      }
+
+      setState({
+        utmSource:
+          fromUrlSource ?? window.sessionStorage.getItem("cf_utm_source") ?? null,
+        utmCampaign:
+          fromUrlCampaign ?? window.sessionStorage.getItem("cf_utm_campaign") ?? null,
+      })
+    } catch {
+      // private mode / blocked storage — no-op
+    }
+  }, [])
+
+  return state
+}
+
 export function WaitlistForm({ variant = "hero", source, onJoined }: Props) {
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [message, setMessage] = useState<string | null>(null)
   const [alreadyOnList, setAlreadyOnList] = useState(false)
+  const { utmSource, utmCampaign } = useUtmSource()
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,11 +70,17 @@ export function WaitlistForm({ variant = "hero", source, onJoined }: Props) {
     setStatus("loading")
     setMessage(null)
 
+    // Source priority: explicit prop > utm_source > variant.
+    // Campaign is appended when present so we can tell "reddit-saas-launch"
+    // apart from "reddit-organic" later in admin.
+    const baseSource = source ?? utmSource ?? variant
+    const fullSource = utmCampaign ? `${baseSource}/${utmCampaign}` : baseSource
+
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed, source: source ?? variant }),
+        body: JSON.stringify({ email: trimmed, source: fullSource }),
       })
       const data = await res.json().catch(() => ({}))
 

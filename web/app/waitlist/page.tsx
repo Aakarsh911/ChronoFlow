@@ -41,6 +41,7 @@ import {
 } from "./product-mocks"
 import { ScrollReveal } from "./scroll-reveal"
 import { ThemeToggle } from "./theme-toggle"
+import { TrackPageView } from "./track-pageview"
 import { WaitlistForm } from "./waitlist-form"
 import { waitlistCount } from "@/lib/access-list"
 
@@ -70,6 +71,7 @@ export default async function WaitlistPage() {
         <div className="absolute inset-0 cf-grid" />
       </div>
 
+      <TrackPageView path="/waitlist" />
       <SiteHeader />
       <Hero />
       <ProductPreview />
