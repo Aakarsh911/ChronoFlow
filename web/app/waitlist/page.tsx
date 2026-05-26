@@ -16,7 +16,6 @@ import {
   Sparkles,
   Users,
   Workflow,
-  Zap,
 } from "lucide-react"
 
 import { AnimatedCount } from "./animated-count"
@@ -39,6 +38,7 @@ import {
   TeamSchedulingMock,
   UnifiedMailMock,
 } from "./product-mocks"
+import { ProblemScroll } from "./problem-scroll"
 import { ScrollParallax } from "./scroll-parallax"
 import { ScrollReveal } from "./scroll-reveal"
 import { ThemeToggle } from "./theme-toggle"
@@ -87,7 +87,7 @@ export default async function WaitlistPage() {
       <SiteHeader />
       <Hero />
       <ProductPreview />
-      <Problem />
+      <ProblemScroll />
       <HowItWorks />
       <Features />
       <Integrations />
@@ -187,77 +187,6 @@ function ProductPreview() {
           <DashboardMock />
         </div>
       </ScrollReveal>
-    </section>
-  )
-}
-
-function Problem() {
-  const scenarios: Array<{ tool: string; what: string; outcome: string }> = [
-    {
-      tool: "Slack",
-      what: "A PR review request lands at 4pm.",
-      outcome: "You'll do it after lunch tomorrow. You don't.",
-    },
-    {
-      tool: "Gmail",
-      what: "A client deadline is buried mid-thread.",
-      outcome: "You see it on Friday. The deadline was Thursday.",
-    },
-    {
-      tool: "Jira",
-      what: "A ticket gets assigned to you in standup.",
-      outcome: "You never open Jira that day. It's still 'To Do' next sprint.",
-    },
-    {
-      tool: "Calendar",
-      what: "A meeting drops on top of your focus block.",
-      outcome: "Your deep-work morning is gone before you notice.",
-    },
-  ]
-
-  return (
-    <section className="relative z-10 border-t border-[var(--cf-border)]">
-      <div className="mx-auto max-w-5xl px-5 py-20 sm:px-8 sm:py-28">
-        <ScrollReveal>
-          <Eyebrow>Why this exists</Eyebrow>
-        </ScrollReveal>
-        <ScrollReveal delay={60}>
-          <h2 className="mt-5 max-w-3xl text-balance text-2xl leading-snug text-[var(--cf-text)] sm:text-[28px] sm:leading-tight">
-            Every engineer reading this knows the pattern.{" "}
-            <span className="text-[var(--cf-text-muted)]">
-              It&apos;s not that you&apos;re disorganized. It&apos;s that work shows up
-              in one tool and the action needs to happen in a different one.
-            </span>
-          </h2>
-        </ScrollReveal>
-
-        <div className="mt-10 grid gap-3 sm:grid-cols-2">
-          {scenarios.map((s, i) => (
-            <ScrollReveal key={s.tool} delay={120 + i * 70}>
-              <article className="rounded-xl border border-[var(--cf-border)] bg-[var(--cf-bg-elev)] p-4 sm:p-5">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--cf-border-strong)] bg-[var(--cf-bg-soft)] px-2.5 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-[var(--cf-text-muted)]">
-                  {s.tool}
-                </span>
-                <p className="mt-3 text-[14.5px] leading-relaxed text-[var(--cf-text)]">
-                  {s.what}
-                </p>
-                <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--cf-text-muted)]">
-                  {s.outcome}
-                </p>
-              </article>
-            </ScrollReveal>
-          ))}
-        </div>
-
-        <ScrollReveal delay={400}>
-          <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-[var(--cf-border-strong)] bg-[var(--cf-bg-soft)] px-3.5 py-1.5">
-            <Zap className="h-3.5 w-3.5 text-[rgba(var(--cf-accent-rgb),1)]" />
-            <span className="font-mono text-[12.5px] text-[var(--cf-text)]">
-              ChronoFlow lives in those gaps.
-            </span>
-          </div>
-        </ScrollReveal>
-      </div>
     </section>
   )
 }

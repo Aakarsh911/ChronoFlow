@@ -48,7 +48,7 @@ interface MainLayoutProps {
 const navigationItems = [
   {
     title: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: Home,
     badge: null
   },

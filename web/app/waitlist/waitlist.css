@@ -526,22 +526,20 @@
     border-color 320ms ease;
 }
 
-/* Gradient top stripe — the visual signature of each card. */
+/* Subtle top edge — a quiet accent, not a loud rainbow stripe */
 .cf-step-card::before {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 2px;
   background: linear-gradient(
     90deg,
-    rgba(var(--cf-primary-rgb), 1) 0%,
-    rgba(var(--cf-accent-rgb), 1) 50%,
-    rgba(var(--cf-aux-rgb), 1) 100%
+    rgba(var(--cf-accent-rgb), 0.22) 0%,
+    rgba(var(--cf-accent-rgb), 0.12) 100%
   );
   z-index: 1;
-  opacity: 0.9;
 }
 
 /* Large faded step-number watermark in the bottom-right of each card. The
@@ -648,6 +646,168 @@
 .cf-step-card:hover .cf-step-icon {
   background: rgba(var(--cf-accent-rgb), 0.14);
   border-color: rgba(var(--cf-accent-rgb), 0.42);
+}
+
+/* ---------- Problem section ----------
+ * Two-column layout on desktop: headline beside a 2×2 grid of scenario cards.
+ * Each card carries a brand logo, setup line, and punchline outcome with
+ * tool-specific accent colours.
+ */
+.cf-problem-layout {
+  display: grid;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .cf-problem-layout {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 3.5rem;
+    /* Vertically centre the headline block against the 2×2 card grid */
+    align-items: center;
+  }
+}
+
+.cf-problem-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .cf-problem-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.125rem;
+  }
+}
+
+.cf-problem-card {
+  position: relative;
+  height: 100%;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--cf-border-strong);
+  background: var(--cf-bg-elev);
+  transition:
+    transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 320ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 320ms ease;
+}
+
+.cf-problem-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--cf-problem-accent, rgba(var(--cf-accent-rgb), 0.35));
+  box-shadow:
+    0 16px 40px -20px var(--cf-problem-glow, rgba(var(--cf-accent-rgb), 0.2)),
+    0 0 0 1px var(--cf-problem-accent-soft, rgba(var(--cf-accent-rgb), 0.12));
+}
+
+/* Left accent stripe — colour comes from data-tool */
+.cf-problem-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--cf-problem-accent, rgba(var(--cf-accent-rgb), 1)) 0%,
+    transparent 100%
+  );
+  opacity: 0.85;
+}
+
+.cf-problem-card-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+}
+
+.cf-problem-logo-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--cf-problem-accent-soft, rgba(var(--cf-accent-rgb), 0.15));
+  background: var(--cf-problem-chip-bg, rgba(var(--cf-accent-rgb), 0.06));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.cf-problem-setup {
+  margin-top: 1rem;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--cf-text);
+}
+
+.cf-problem-arrow {
+  display: flex;
+  align-items: center;
+  margin-top: 0.85rem;
+  color: var(--cf-problem-accent, rgba(var(--cf-accent-rgb), 0.7));
+  opacity: 0.65;
+}
+
+.cf-problem-outcome {
+  margin-top: 0.35rem;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--cf-text-muted);
+  font-style: italic;
+}
+
+/* Tool-specific accent tokens */
+.cf-problem-card[data-tool="slack"] {
+  --cf-problem-accent: #e01e5a;
+  --cf-problem-accent-soft: rgba(224, 30, 90, 0.18);
+  --cf-problem-chip-bg: rgba(224, 30, 90, 0.08);
+  --cf-problem-glow: rgba(224, 30, 90, 0.22);
+}
+
+.cf-problem-card[data-tool="gmail"] {
+  --cf-problem-accent: #ea4335;
+  --cf-problem-accent-soft: rgba(234, 67, 53, 0.18);
+  --cf-problem-chip-bg: rgba(234, 67, 53, 0.08);
+  --cf-problem-glow: rgba(234, 67, 53, 0.2);
+}
+
+.cf-problem-card[data-tool="jira"] {
+  --cf-problem-accent: #0052cc;
+  --cf-problem-accent-soft: rgba(0, 82, 204, 0.18);
+  --cf-problem-chip-bg: rgba(0, 82, 204, 0.08);
+  --cf-problem-glow: rgba(0, 82, 204, 0.2);
+}
+
+.cf-problem-card[data-tool="calendar"] {
+  --cf-problem-accent: #4285f4;
+  --cf-problem-accent-soft: rgba(66, 133, 244, 0.18);
+  --cf-problem-chip-bg: rgba(66, 133, 244, 0.08);
+  --cf-problem-glow: rgba(66, 133, 244, 0.2);
+}
+
+:root[data-cf-theme="dark"] .cf-problem-card {
+  background:
+    linear-gradient(145deg, oklch(0.19 0.02 240) 0%, oklch(0.15 0.018 240) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 24px -16px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-cf-theme="dark"] .cf-problem-card:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 44px -20px rgba(0, 0, 0, 0.65),
+    0 0 0 1px var(--cf-problem-accent-soft);
+}
+
+:root:not([data-cf-theme="dark"]) .cf-problem-card {
+  box-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.02),
+    0 4px 16px -10px rgba(15, 23, 42, 0.08);
 }
 
 /* ---------- AI Orb ---------- */

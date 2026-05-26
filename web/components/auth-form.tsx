@@ -8,7 +8,7 @@ import Link from "next/link"
 
 export function AuthForm() {
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || "/"
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
   
   return (
     <div className="w-full max-w-md mx-auto">
