@@ -43,8 +43,7 @@ Create a `.env.local` in the `web/` folder. Required:
 - GOOGLE_CLIENT_SECRET=
 - NEXTAUTH_URL=http://localhost:3000
 - NEXTAUTH_SECRET=
-- DATABASE_URL=          # Neon pooled URL (hostname contains `-pooler`) — used by the app at runtime
-- DIRECT_URL=            # Neon direct URL (same user/pass/db, hostname without `-pooler`) — used by `prisma migrate`
+- DATABASE_URL=
 
 Optional (Atlassian Jira OAuth 2.0):
 
