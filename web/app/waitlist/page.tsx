@@ -5,6 +5,7 @@ import {
   Bot,
   Calendar as CalendarIcon,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Inbox,
   Layers,
@@ -15,7 +16,6 @@ import {
   Shield,
   Sparkles,
   Users,
-  Workflow,
 } from "lucide-react"
 
 import {
@@ -75,9 +75,11 @@ export default function WaitlistPage() {
       <Hero />
       <ProductPreview />
       <ProblemScroll />
+      <WorkflowExample />
       <HowItWorks />
       <Features />
       <Integrations />
+      <FAQ />
       <FinalCTA />
       <SiteFooter />
     </main>
@@ -124,37 +126,60 @@ function Hero() {
       <ScrollReveal>
         <div className="inline-flex items-center gap-2 rounded-full border border-[var(--cf-border-strong)] bg-[var(--cf-bg-soft)] px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-[var(--cf-text-muted)]">
           <Sparkles className="h-3 w-3 text-[rgba(var(--cf-accent-rgb),1)]" />
-          <span>Private beta · invites rolling weekly</span>
+          <span>Invite-only beta · waitlist gets priority access</span>
         </div>
       </ScrollReveal>
 
       <ScrollReveal delay={60}>
         <h1 className="mt-6 text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--cf-text)] sm:text-5xl lg:text-[60px]">
-          Tasks don&apos;t die because you&apos;re lazy.{" "}
+          Turn Teams, email, and Jira into{" "}
           <span className="text-[rgba(var(--cf-accent-rgb),1)]">
-            They die between your tools.
+            one actionable plan.
           </span>
         </h1>
       </ScrollReveal>
 
       <ScrollReveal delay={120}>
         <p className="mx-auto mt-6 max-w-2xl text-balance text-[17px] leading-relaxed text-[var(--cf-text-muted)] sm:text-lg">
-          ChronoFlow is the unified workspace for{" "}
-          <span className="text-[var(--cf-text)]">software engineers</span> buried in
-          Slack, Gmail, Jira, and Calendar. AI pulls action items out of your inbox
-          automatically. Team scheduling and focus blocks without the back-and-forth.
+          ChronoFlow connects your inbox, calendar, and tickets for{" "}
+          <span className="text-[var(--cf-text)]">software engineers</span>.
+          AI extracts action items with due dates. You see your whole day in one
+          workspace — not five tabs.
         </p>
       </ScrollReveal>
 
       <ScrollReveal delay={180}>
         <div id="join" className="mx-auto mt-8 max-w-lg">
           <WaitlistForm variant="hero" source="hero" />
-          <p className="mt-3 font-mono text-[12px] text-[var(--cf-text-dim)]">
-            Free during beta. Uses your own OAuth. No subscriptions required.
-          </p>
+          <WaitlistPerks className="mt-4" />
         </div>
       </ScrollReveal>
     </section>
+  )
+}
+
+function WaitlistPerks({ className = "" }: { className?: string }) {
+  const perks = [
+    "Free full beta — no credit card",
+    "Priority onboarding for waitlist members",
+    "Locked-in pricing when paid tiers launch",
+  ]
+
+  return (
+    <ul
+      className={`mx-auto grid max-w-md gap-2 text-left sm:grid-cols-1 ${className}`}
+      aria-label="Waitlist benefits"
+    >
+      {perks.map((perk) => (
+        <li
+          key={perk}
+          className="flex items-start gap-2 font-mono text-[11.5px] leading-snug text-[var(--cf-text-dim)] sm:text-[12px]"
+        >
+          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[rgba(var(--cf-accent-rgb),1)]" />
+          {perk}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -178,30 +203,86 @@ function ProductPreview() {
   )
 }
 
+function WorkflowExample() {
+  const beats: Array<{ time: string; trigger: string; result: string }> = [
+    {
+      time: "9:02am",
+      trigger: "Standup assigns you a Jira ticket.",
+      result: "It lands on your ChronoFlow task board with priority and a link back to the issue.",
+    },
+    {
+      time: "11:14am",
+      trigger: "A client deadline hides mid-thread in Gmail.",
+      result: "AI extracts it — due Thursday, P1 — without you re-reading the whole chain.",
+    },
+    {
+      time: "1:45pm",
+      trigger: "Your manager pings you on Teams about a PR review.",
+      result: "The action item syncs alongside your email and Jira tasks in one list.",
+    },
+    {
+      time: "4:00pm",
+      trigger: "You block 90 minutes before tomorrow's deadline.",
+      result: "A focus block hits your calendar, marked busy so meetings can't overlap it.",
+    },
+  ]
+
+  return (
+    <section id="workflow" className="relative z-10 border-t border-[var(--cf-border)]">
+      <div className="mx-auto max-w-3xl px-5 py-20 sm:px-8 sm:py-28">
+        <SectionHeading
+          eyebrow="See the workflow"
+          title="One Tuesday. Four tools. Zero dropped balls."
+          subtitle="This is the loop ChronoFlow is built around — work arrives scattered, action happens in one place."
+        />
+
+        <ol className="cf-workflow-list mt-12 space-y-0">
+          {beats.map((beat, i) => (
+            <ScrollReveal key={beat.time} delay={i * 70}>
+              <li className="cf-workflow-step">
+                <div className="cf-workflow-marker" aria-hidden>
+                  <span className="cf-workflow-dot" />
+                  {i < beats.length - 1 && <span className="cf-workflow-line" />}
+                </div>
+                <div className="cf-workflow-body">
+                  <p className="font-mono text-[11px] uppercase tracking-wider text-[rgba(var(--cf-accent-rgb),1)]">
+                    {beat.time}
+                  </p>
+                  <p className="mt-1 text-[15px] font-medium text-[var(--cf-text)]">
+                    {beat.trigger}
+                  </p>
+                  <p className="mt-2 flex items-start gap-2 text-[14.5px] leading-relaxed text-[var(--cf-text-muted)]">
+                    <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-[rgba(var(--cf-accent-rgb),0.8)]" />
+                    {beat.result}
+                  </p>
+                </div>
+              </li>
+            </ScrollReveal>
+          ))}
+        </ol>
+      </div>
+    </section>
+  )
+}
+
 function HowItWorks() {
   const steps: Array<{ n: string; title: string; body: string; icon: React.ReactNode }> = [
     {
       n: "01",
       title: "Connect your accounts",
-      body: "One-click OAuth for Google, Microsoft, and Jira. No admin permissions, no IT ticket. Your data goes directly from each provider to ChronoFlow.",
+      body: "One-click OAuth for Google, Microsoft, and Jira. Your data goes directly from each provider — no admin ticket, no rip-and-replace.",
       icon: <Link2 className="h-4 w-4" />,
     },
     {
       n: "02",
-      title: "Everything syncs",
-      body: "Calendar events, emails, tasks, team messages. Incremental sync via Google syncTokens and Microsoft deltaLinks keeps everything fast and current.",
-      icon: <Workflow className="h-4 w-4" />,
-    },
-    {
-      n: "03",
-      title: "AI extracts tasks",
-      body: "Gemini reads your inbox and Teams messages in batches and pulls out action items with priority and due dates. Newsletters and noise get filtered out.",
+      title: "AI extracts your tasks",
+      body: "Gemini reads Gmail, Outlook, and Teams in batches and pulls out action items with priority and due dates. Noise stays out of your task board.",
       icon: <Sparkles className="h-4 w-4" />,
     },
     {
-      n: "04",
-      title: "See your whole day",
-      body: "One view for calendar, email, tasks, and focus time. Schedule deep work, find time with your team, track productivity over time.",
+      n: "03",
+      title: "Plan and ship your day",
+      body: "One view for tasks, calendar, focus blocks, and team scheduling. Ask ChronoFlow to draft replies, create tickets, or find time with your team.",
       icon: <Layers className="h-4 w-4" />,
     },
   ]
@@ -211,11 +292,11 @@ function HowItWorks() {
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
         <SectionHeading
           eyebrow="How it works"
-          title="Four steps. No rip-and-replace."
+          title="Three steps. No new habits."
           subtitle="Use the tools you already pay for. ChronoFlow is the workspace that ties them together."
         />
 
-        <div className="relative mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <div className="relative mt-12 grid gap-5 md:grid-cols-3">
           {steps.map((s, i) => (
             <ScrollReveal key={s.n} delay={i * 100}>
               <article
@@ -602,7 +683,66 @@ function ServerIcon() {
   )
 }
 
-function FinalCTA({ initialCount }: { initialCount: number }) {
+function FAQ() {
+  const items: Array<{ q: string; a: string }> = [
+    {
+      q: "What is ChronoFlow?",
+      a: "A unified workspace for software engineers. It connects Gmail, Outlook, Microsoft Teams, Google Calendar, Outlook Calendar, and Jira — then uses AI to extract action items so tasks don't get lost between apps.",
+    },
+    {
+      q: "Who is it for?",
+      a: "Individual engineers and small teams who live across email, chat, tickets, and calendar. If you've missed a task because it landed in the wrong tool, this is for you.",
+    },
+    {
+      q: "Is it free?",
+      a: "Yes during the private beta. Waitlist members get full access at no cost and locked-in pricing when paid tiers launch later.",
+    },
+    {
+      q: "What integrations are supported?",
+      a: "Google (Gmail, Calendar), Microsoft (Outlook, Teams, Calendar), Jira, and GitHub are live today. Slack is coming soon.",
+    },
+    {
+      q: "Do you train AI on my data?",
+      a: "No. AI processing runs through AWS Bedrock. Your data is not used to train models. You connect via OAuth and can disconnect at any time.",
+    },
+    {
+      q: "When will I get access?",
+      a: "We're inviting waitlist members in weekly batches. Join with your work email — we'll reach out from team@chronoflow.app when your invite is ready.",
+    },
+  ]
+
+  return (
+    <section id="faq" className="relative z-10 border-t border-[var(--cf-border)]">
+      <div className="mx-auto max-w-3xl px-5 py-20 sm:px-8 sm:py-28">
+        <SectionHeading
+          eyebrow="FAQ"
+          title="Quick answers"
+          subtitle="Straight talk — no buzzwords."
+        />
+
+        <div className="mt-10 space-y-3">
+          {items.map((item, i) => (
+            <ScrollReveal key={item.q} delay={i * 50}>
+              <details className="cf-faq-item group rounded-xl border border-[var(--cf-border)] bg-[var(--cf-bg-elev)]">
+                <summary className="cursor-pointer list-none px-5 py-4 text-[15px] font-medium text-[var(--cf-text)] [&::-webkit-details-marker]:hidden">
+                  <span className="flex items-center justify-between gap-4">
+                    {item.q}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[var(--cf-text-dim)] transition group-open:rotate-90" />
+                  </span>
+                </summary>
+                <p className="border-t border-[var(--cf-border)] px-5 py-4 text-[14.5px] leading-relaxed text-[var(--cf-text-muted)]">
+                  {item.a}
+                </p>
+              </details>
+            </ScrollReveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FinalCTA() {
   return (
     <section
       id="join-bottom"
@@ -622,9 +762,13 @@ function FinalCTA({ initialCount }: { initialCount: number }) {
       <div className="relative z-10 mx-auto max-w-3xl px-5 py-20 text-center sm:px-8 sm:py-28">
         <ScrollReveal>
           <h2 className="text-balance text-3xl font-semibold tracking-tight text-[var(--cf-text)] sm:text-4xl">
-            Join the beta.{" "}
-            <span className="cf-gradient-text inline-block">It&apos;s free.</span>
+            Get early access.{" "}
+            <span className="cf-gradient-text inline-block">Join the waitlist.</span>
           </h2>
+          <p className="mx-auto mt-3 max-w-lg text-[15px] text-[var(--cf-text-muted)]">
+            Invites roll out weekly. Waitlist members get priority onboarding and free
+            beta access.
+          </p>
         </ScrollReveal>
         <ScrollReveal delay={80}>
           <WaitlistCountLine />
@@ -633,6 +777,7 @@ function FinalCTA({ initialCount }: { initialCount: number }) {
         <ScrollReveal delay={140}>
           <div className="mx-auto mt-7 max-w-lg text-left">
             <WaitlistForm variant="footer" source="footer-cta" />
+            <WaitlistPerks className="mt-4 justify-items-center sm:justify-items-start" />
           </div>
         </ScrollReveal>
 

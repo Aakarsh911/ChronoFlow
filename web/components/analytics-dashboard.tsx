@@ -37,6 +37,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts"
+import { PageHeader } from "@/components/page-header"
 import { cn } from "@/lib/utils"
 
 // Mock analytics data
@@ -58,11 +59,11 @@ const monthlyTrends = [
 ]
 
 const timeAllocation = [
-  { name: "Focus Time", value: 45, color: "hsl(var(--primary))" },
-  { name: "Meetings", value: 25, color: "hsl(var(--chart-4))" },
-  { name: "Email & Slack", value: 15, color: "hsl(var(--chart-2))" },
-  { name: "Admin Tasks", value: 10, color: "hsl(var(--chart-3))" },
-  { name: "Breaks", value: 5, color: "hsl(var(--muted-foreground))" },
+  { name: "Focus Time", value: 45, color: "var(--primary)" },
+  { name: "Meetings", value: 25, color: "var(--chart-4)" },
+  { name: "Email & Slack", value: 15, color: "var(--chart-2)" },
+  { name: "Admin Tasks", value: 10, color: "var(--chart-3)" },
+  { name: "Breaks", value: 5, color: "var(--muted-foreground)" },
 ]
 
 const meetingPatterns = [
@@ -136,29 +137,29 @@ export function AnalyticsDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Controls */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-foreground">Analytics Dashboard</h2>
-          <p className="text-muted-foreground mt-1">Insights into your productivity patterns and time management</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[140px]">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="quarter">This Quarter</SelectItem>
-              <SelectItem value="year">This Year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline">Export Report</Button>
-        </div>
-      </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        eyebrow="Analytics"
+        title="Productivity insights"
+        subtitle="Patterns in focus time, meetings, and task completion"
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[140px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="week">This Week</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
+                <SelectItem value="quarter">This Quarter</SelectItem>
+                <SelectItem value="year">This Year</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline">Export Report</Button>
+          </div>
+        }
+      />
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -251,24 +252,24 @@ export function AnalyticsDashboard() {
                     <YAxis className="text-muted-foreground" />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
+                        backgroundColor: "var(--card)",
+                        border: "1px solid var(--border)",
                         borderRadius: "8px",
                       }}
                     />
                     <Line
                       type="monotone"
                       dataKey="productivity"
-                      stroke="hsl(var(--accent))"
+                      stroke="var(--accent)"
                       strokeWidth={3}
-                      dot={{ fill: "hsl(var(--accent))", strokeWidth: 2, r: 4 }}
+                      dot={{ fill: "var(--accent)", strokeWidth: 2, r: 4 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="focusTime"
-                      stroke="hsl(var(--primary))"
+                      stroke="var(--primary)"
                       strokeWidth={2}
-                      dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 3 }}
+                      dot={{ fill: "var(--primary)", strokeWidth: 2, r: 3 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -299,8 +300,8 @@ export function AnalyticsDashboard() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
+                        backgroundColor: "var(--card)",
+                        border: "1px solid var(--border)",
                         borderRadius: "8px",
                       }}
                     />
@@ -324,8 +325,8 @@ export function AnalyticsDashboard() {
                     <YAxis className="text-muted-foreground" />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
+                        backgroundColor: "var(--card)",
+                        border: "1px solid var(--border)",
                         borderRadius: "8px",
                       }}
                     />
@@ -333,16 +334,16 @@ export function AnalyticsDashboard() {
                       type="monotone"
                       dataKey="focusTime"
                       stackId="1"
-                      stroke="hsl(var(--primary))"
-                      fill="hsl(var(--primary))"
+                      stroke="var(--primary)"
+                      fill="var(--primary)"
                       fillOpacity={0.6}
                     />
                     <Area
                       type="monotone"
                       dataKey="meetings"
                       stackId="2"
-                      stroke="hsl(var(--chart-4))"
-                      fill="hsl(var(--chart-4))"
+                      stroke="var(--chart-4)"
+                      fill="var(--chart-4)"
                       fillOpacity={0.6}
                     />
                   </AreaChart>
@@ -414,12 +415,12 @@ export function AnalyticsDashboard() {
                     <YAxis className="text-muted-foreground" />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
+                        backgroundColor: "var(--card)",
+                        border: "1px solid var(--border)",
                         borderRadius: "8px",
                       }}
                     />
-                    <Bar dataKey="meetings" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="meetings" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
@@ -481,12 +482,12 @@ export function AnalyticsDashboard() {
                     <YAxis className="text-muted-foreground" />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
+                        backgroundColor: "var(--card)",
+                        border: "1px solid var(--border)",
                         borderRadius: "8px",
                       }}
                     />
-                    <Bar dataKey="efficiency" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="efficiency" fill="var(--accent)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

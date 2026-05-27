@@ -370,102 +370,92 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
       {/* Drawer */}
       <div
         className={cn(
-          "fixed right-0 top-0 h-screen w-full md:w-[500px] lg:w-[600px] z-50 transition-transform duration-300 ease-out overflow-hidden",
+          "fixed right-0 top-0 z-50 h-screen w-full overflow-hidden transition-transform duration-300 ease-out md:w-[440px] lg:w-[520px]",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* Aurora Background */}
-        <div className="aurora-container absolute inset-0">
-          <div className="aurora aurora-1" />
-          <div className="aurora aurora-2" />
-          <div className="aurora aurora-3" />
-          <div className="aurora aurora-4" />
-        </div>
+        <div className="cf-ai-drawer relative flex h-full max-h-screen flex-col overflow-hidden">
+          <div className="cf-ai-drawer-scene" aria-hidden>
+            <div className="cf-aurora-field absolute inset-0">
+              <div className="cf-aurora cf-aurora-a" />
+              <div className="cf-aurora cf-aurora-b" />
+              <div className="cf-aurora cf-aurora-c" />
+            </div>
+            <div className="absolute inset-0 cf-glow opacity-90" />
+            <div className="absolute inset-0 cf-grid opacity-50" />
+          </div>
 
-        {/* Content */}
-        <div className="relative h-full flex flex-col glass-strong border-l border-white/20 dark:border-white/10 max-h-screen overflow-hidden">
+          <div className="cf-ai-drawer-content">
           {/* Header */}
-          <div className="flex-none px-6 py-4 border-b border-white/20 dark:border-white/10 glass-strong">
+          <div className="cf-ai-drawer-header">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-purple-500/50">
-                    <Sparkles className="h-5 w-5 text-white animate-pulse" />
-                  </div>
-                  <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse shadow-lg shadow-green-500/50" />
+                <div className="cf-ai-avatar cf-ai-avatar-assistant h-9 w-9">
+                  <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent tracking-tight">
-                    AI Actions
-                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0.5 font-bold bg-gradient-to-r from-purple-500 to-blue-500 text-white border-0">BETA</Badge>
+                  <h2 className="flex items-center gap-2 text-base font-semibold text-[var(--cf-text)]">
+                    AI Assistant
+                    <Badge variant="secondary" className="h-4 px-1.5 text-[9px] font-medium uppercase tracking-wide">
+                      Beta
+                    </Badge>
                   </h2>
+                  <p className="text-xs text-[var(--cf-text-muted)]">
+                    Draft emails, create tickets, extract tasks
+                  </p>
                 </div>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                className="h-8 w-8 p-0 glass-light hover:glass-strong hover:bg-red-500/20 hover:scale-110 transition-all cursor-pointer"
+                className="h-8 w-8 p-0 text-[var(--cf-text-muted)] hover:text-[var(--cf-text)]"
               >
-                <X className="h-4 w-4 text-slate-600 dark:text-slate-300 group-hover:text-red-500 transition-colors" />
+                <X className="h-4 w-4" />
               </Button>
             </div>
-
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0" ref={scrollRef}>
+          <div className="cf-ai-drawer-messages" ref={scrollRef}>
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={cn(
-                    "flex gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500",
+                    "flex gap-3",
                     message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                   )}
                 >
-                  {/* Avatar */}
                   <div className={cn(
-                    "flex-none h-8 w-8 rounded-full flex items-center justify-center",
-                    message.role === 'user' 
-                      ? "bg-gradient-to-br from-slate-600 to-slate-800" 
-                      : "bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500"
+                    "cf-ai-avatar",
+                    message.role === 'user' ? 'cf-ai-avatar-user' : 'cf-ai-avatar-assistant'
                   )}>
                     {message.role === 'user' ? (
-                      <User className="h-4 w-4 text-white" />
+                      <User className="h-4 w-4" />
                     ) : (
-                      <Bot className="h-4 w-4 text-white" />
+                      <Bot className="h-4 w-4" />
                     )}
                   </div>
 
-                  {/* Message Bubble */}
                   <div className={cn(
-                    "flex-1 max-w-[80%]",
-                    message.role === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'
+                    "flex min-w-0 flex-1 max-w-[85%] flex-col",
+                    message.role === 'user' ? 'items-end' : 'items-start'
                   )}>
                     <div className={cn(
-                      "px-4 py-3 rounded-2xl shadow-lg",
-                      message.role === 'user'
-                        ? "glass-strong bg-gradient-to-br from-blue-500/25 to-purple-500/25 border border-blue-500/40 shadow-blue-500/20"
-                        : "glass-medium border border-white/20 dark:border-white/10"
+                      "cf-ai-bubble",
+                      message.role === 'user' ? 'cf-ai-bubble-user' : 'cf-ai-bubble-assistant'
                     )}>
-                      <p className={cn(
-                        "text-sm whitespace-pre-wrap leading-relaxed",
-                        message.role === 'user' 
-                          ? "font-semibold bg-gradient-to-br from-blue-700 via-blue-600 to-purple-600 dark:from-blue-300 dark:via-blue-200 dark:to-purple-300 bg-clip-text text-transparent" 
-                          : "text-white font-medium"
-                      )}>
-                        {message.content}
-                      </p>
+                      <p className="whitespace-pre-wrap">{message.content}</p>
                       
                       {message.toolCall && (
-                        <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-2">
-                          <Zap className="h-3.5 w-3.5 text-yellow-500 animate-pulse" />
-                          <span className="text-xs font-semibold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+                        <div className="mt-2 flex items-center gap-2 border-t border-[var(--cf-border)] pt-2">
+                          <Zap className="h-3.5 w-3.5 text-[rgba(var(--cf-accent-rgb),1)]" />
+                          <span className="text-xs font-medium text-[var(--cf-text-muted)]">
                             {message.toolCall.name}
                           </span>
                           {message.toolCall.status === 'pending' && (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-[rgba(var(--cf-accent-rgb),1)]" />
                           )}
                         </div>
                       )}
@@ -537,16 +527,16 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
                             }}
                           />
                         ) : (
-                          <div className="glass-strong border border-green-500/30 rounded-xl p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10">
-                            <div className="flex items-start justify-between mb-3">
+                          <div className="cf-surface-card mt-1 rounded-lg border border-green-500/25 bg-green-500/5 p-4">
+                            <div className="mb-3 flex items-start justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="p-2 rounded-lg bg-green-500/20">
-                                  <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                <div className="rounded-lg bg-green-500/15 p-2">
+                                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                                 </div>
                               <div>
-                                <h4 className="font-semibold text-slate-800 dark:text-white text-sm">Jira Ticket Created</h4>
+                                <h4 className="text-sm font-semibold text-[var(--cf-text)]">Jira Ticket Created</h4>
                                 {message.jiraTicket.key && (
-                                  <Badge variant="secondary" className="mt-1 bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30">
+                                  <Badge variant="secondary" className="mt-1 bg-green-500/10 text-green-700 dark:text-green-400">
                                     {message.jiraTicket.key}
                                   </Badge>
                                 )}
@@ -557,32 +547,32 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
                                   href={message.jiraTicket.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                  className="flex items-center gap-1 text-xs text-[rgba(var(--cf-accent-rgb),1)] hover:underline"
                                 >
                                   <span>Open in Jira</span>
-                                  <ExternalLink className="w-3 h-3" />
+                                  <ExternalLink className="h-3 w-3" />
                                 </a>
                               )}
                             </div>
                             
                             <div className="space-y-2">
                               <div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Title</div>
-                                <div className="text-sm font-medium text-slate-800 dark:text-white">{message.jiraTicket.title}</div>
+                                <div className="mb-1 text-xs text-[var(--cf-text-muted)]">Title</div>
+                                <div className="text-sm font-medium text-[var(--cf-text)]">{message.jiraTicket.title}</div>
                               </div>
                               
                               <div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Description</div>
-                                <div className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{message.jiraTicket.description}</div>
+                                <div className="mb-1 text-xs text-[var(--cf-text-muted)]">Description</div>
+                                <div className="whitespace-pre-wrap text-sm text-[var(--cf-text-muted)]">{message.jiraTicket.description}</div>
                               </div>
                               
-                              <div className="flex items-center gap-4 pt-2 border-t border-slate-200 dark:border-white/10">
-                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                              <div className="flex items-center gap-4 border-t border-[var(--cf-border)] pt-2">
+                                <div className="text-xs text-[var(--cf-text-muted)]">
                                   Priority: <span className={cn(
                                     "font-semibold",
-                                    message.jiraTicket.priority === 'High' && "text-red-500 dark:text-red-400",
-                                    message.jiraTicket.priority === 'Medium' && "text-yellow-600 dark:text-yellow-400",
-                                    message.jiraTicket.priority === 'Low' && "text-green-600 dark:text-green-400"
+                                    message.jiraTicket.priority === 'High' && "text-red-500",
+                                    message.jiraTicket.priority === 'Medium' && "text-amber-600",
+                                    message.jiraTicket.priority === 'Low' && "text-green-600"
                                   )}>{message.jiraTicket.priority}</span>
                                 </div>
                               </div>
@@ -592,25 +582,20 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
                       </div>
                     )}
 
-                    <span className="text-[10px] font-medium text-muted-foreground/80 mt-1 px-1">
+                    <span className="mt-1 px-1 text-[10px] text-[var(--cf-text-dim)]">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 </div>
               ))}
 
-              {/* Typing Indicator */}
               {isTyping && (
-                <div className="flex gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="flex-none h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-white" />
+                <div className="flex gap-3">
+                  <div className="cf-ai-avatar cf-ai-avatar-assistant">
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   </div>
-                  <div className="glass-medium border border-white/20 dark:border-white/10 px-4 py-3 rounded-2xl">
-                    <div className="flex gap-1">
-                      <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
+                  <div className="cf-ai-bubble cf-ai-bubble-assistant">
+                    <p className="text-sm text-[var(--cf-text-muted)]">Thinking…</p>
                   </div>
                 </div>
               )}
@@ -618,30 +603,31 @@ export default function AIChatDrawer({ isOpen, onClose }: AIChatDrawerProps) {
           </div>
 
           {/* Input */}
-          <div className="flex-none px-6 py-4 border-t border-white/20 dark:border-white/10 glass-strong">
-            <div className="relative group">
+          <div className="cf-ai-drawer-input">
+            <div className="relative">
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask AI to help with emails, tasks, or calendar..."
-                className="min-h-[80px] pr-12 glass-medium resize-none focus:glass-strong transition-all font-medium text-sm placeholder:text-muted-foreground/60 placeholder:font-normal"
+                className="min-h-[72px] resize-none border-[var(--cf-border)] bg-[color-mix(in_srgb,var(--cf-bg)_55%,transparent)] pr-12 text-sm backdrop-blur-sm"
                 rows={3}
               />
               <Button
                 onClick={handleSend}
                 disabled={!input.trim()}
                 size="sm"
-                className="absolute bottom-3 right-3 h-9 w-9 p-0 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500 hover:from-purple-600 hover:via-blue-600 hover:to-cyan-600 transition-all hover:scale-110 disabled:opacity-50 disabled:scale-100 shadow-lg shadow-purple-500/50 hover:shadow-xl hover:shadow-blue-500/50"
+                className="cf-btn-primary absolute bottom-2.5 right-2.5 h-8 w-8 rounded-md p-0 disabled:opacity-50"
               >
-                <Send className="h-4 w-4 text-white" />
+                <Send className="h-4 w-4" />
               </Button>
             </div>
-            <p className="text-[10px] font-semibold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mt-2 flex items-center gap-1.5">
-              <Sparkles className="h-3 w-3 text-purple-500 animate-pulse" />
-              Press Enter to send · Shift+Enter for new line
+            <p className="mt-2 flex items-center gap-1.5 text-[10px] text-[var(--cf-text-dim)]">
+              <Sparkles className="h-3 w-3 text-[rgba(var(--cf-accent-rgb),1)]" />
+              Enter to send · Shift+Enter for new line
             </p>
+          </div>
           </div>
         </div>
       </div>

@@ -6,7 +6,9 @@ export default function MailPage() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <UnifiedMailDashboard />
+        <div className="cf-mail-page">
+          <UnifiedMailDashboard />
+        </div>
       </MainLayout>
     </ProtectedRoute>
   )

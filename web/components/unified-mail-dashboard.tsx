@@ -1,18 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Mail, RefreshCw, Clock, User, Paperclip, Inbox, Star, AlertCircle, Filter, ExternalLink, ArrowLeft, Archive, Trash2, Reply, ReplyAll, Forward } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Mail, RefreshCw, Paperclip, Inbox, Star, AlertCircle, ExternalLink, ArrowLeft, Archive, Trash2, Reply, Square } from 'lucide-react'
 import { useSession } from 'next-auth/react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { format, isToday, isThisYear } from 'date-fns'
+import { MailProviderBadge } from '@/components/mail-provider-badge'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
 
 interface Email {
   id: string
@@ -50,12 +49,26 @@ interface EmailStats {
 type ProviderFilter = 'all' | 'gmail' | 'outlook'
 type StatusFilter = 'all' | 'unread' | 'starred' | 'important' | 'attachments'
 
+const EMAIL_HTML_CONTAIN_STYLE = `<style>
+  html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; overflow-x: hidden !important; }
+  table { max-width: 100% !important; width: auto !important; margin-left: auto !important; margin-right: auto !important; table-layout: fixed !important; }
+  td, th { word-break: break-word !important; overflow-wrap: anywhere !important; }
+  img, video, embed, object { max-width: 100% !important; height: auto !important; }
+  center { display: block !important; max-width: 100% !important; margin-left: auto !important; margin-right: auto !important; }
+  div, section, article { max-width: 100% !important; box-sizing: border-box !important; }
+</style>`
+
+function prepareEmailHtml(html: string) {
+  return `${EMAIL_HTML_CONTAIN_STYLE}${html}`
+}
+
 export default function UnifiedMailDashboard() {
   const { data: session } = useSession()
   const { toast } = useToast()
   
   const [emails, setEmails] = useState<Email[]>([])
-  const [selectedEmail, setSelectedEmail] = useState<FullEmail | null>(null)
+  const [activeEmail, setActiveEmail] = useState<Email | null>(null)
+  const [fullEmail, setFullEmail] = useState<FullEmail | null>(null)
   const [loadingEmail, setLoadingEmail] = useState(false)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
@@ -225,22 +238,17 @@ export default function UnifiedMailDashboard() {
 
   // Fetch full email content
   const fetchFullEmail = async (email: Email) => {
+    setActiveEmail(email)
+    setFullEmail(null)
     setLoadingEmail(true)
     try {
       const response = await fetch(`/api/mail/email?id=${email.id}&provider=${email.provider}`)
       if (!response.ok) throw new Error('Failed to fetch email')
-      
-      const fullEmail: FullEmail = await response.json()
-      setSelectedEmail(fullEmail)
-      
-      // Mark as read if unread
+
+      const loaded: FullEmail = await response.json()
+      setFullEmail(loaded)
+
       if (!email.isRead) {
-        // Update local state immediately
-        setEmails(prevEmails =>
-          prevEmails.map(e => e.id === email.id ? { ...e, isRead: true } : e)
-        )
-        
-        // Mark as read on the server (Gmail/Outlook)
         fetch('/api/mail/mark-read', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -250,10 +258,9 @@ export default function UnifiedMailDashboard() {
           }),
         }).catch(err => {
           console.error('Failed to mark email as read on server:', err)
-          // Don't show error to user, just log it
         })
       }
-    } catch (err) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to load email content',
@@ -356,6 +363,14 @@ export default function UnifiedMailDashboard() {
     }
   }, [session, toast])
 
+  const formatListTime = (dateString: string) => {
+    const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return ''
+    if (isToday(date)) return format(date, 'HH:mm')
+    if (isThisYear(date)) return format(date, 'MMM d')
+    return format(date, 'dd/MM/yy')
+  }
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -398,53 +413,32 @@ export default function UnifiedMailDashboard() {
     return true
   })
 
+  const closeReading = () => {
+    if (activeEmail && !activeEmail.isRead) {
+      setEmails(prevEmails =>
+        prevEmails.map(e =>
+          e.id === activeEmail.id && e.provider === activeEmail.provider
+            ? { ...e, isRead: true }
+            : e
+        )
+      )
+    }
+    setActiveEmail(null)
+    setFullEmail(null)
+  }
+
+  const displayEmail = fullEmail ?? activeEmail
+
   if (loading) {
     return (
-      <div className="h-screen w-full overflow-hidden flex">
-        {/* Email List Skeleton */}
-        <div className="w-1/2 border-r border-white/20 dark:border-white/10 flex flex-col">
-          {/* Header */}
-          <div className="flex-none px-4 py-2.5 border-b border-white/20 dark:border-white/10">
-            <Skeleton className="h-8 w-full mb-2" />
-          </div>
-          {/* Email items */}
-          <div className="flex-1 overflow-hidden p-3 space-y-2">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className="p-3 rounded-lg glass-medium border border-white/20">
-                <div className="flex gap-3">
-                  <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="flex justify-between">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-3 w-3/4" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="cf-mail-shell">
+        <div className="cf-mail-toolbar px-4 py-3">
+          <Skeleton className="h-8 w-72" />
         </div>
-        {/* Email Viewer Skeleton */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-none px-6 py-4 border-b border-white/20 dark:border-white/10">
-            <Skeleton className="h-6 w-3/4 mb-3" />
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-10 w-10 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-48" />
-                <Skeleton className="h-3 w-32" />
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 p-6 space-y-3">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-4/5" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
+        <div className="cf-gmail-list cf-mail-list-scroll">
+          {[...Array(12)].map((_, i) => (
+            <Skeleton key={i} className="cf-gmail-row h-10 rounded-none" />
+          ))}
         </div>
       </div>
     )
@@ -466,225 +460,193 @@ export default function UnifiedMailDashboard() {
   }
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
-      {/* Main Content */}
-      <div className="relative h-full flex flex-col">
-        {/* Header - Compact & Elegant */}
-        <div className="flex-none px-4 py-2.5 border-b border-white/20 dark:border-white/10 glass-strong">
-          <div className="flex items-center gap-3">
-            {/* Provider Filters */}
-            <Tabs value={providerFilter} onValueChange={(v) => setProviderFilter(v as ProviderFilter)} className="flex-none">
-              <TabsList className="glass-light h-8">
-                <TabsTrigger value="all" className="text-xs h-7 px-3">All</TabsTrigger>
-                <TabsTrigger value="gmail" className="text-xs h-7 px-3">Gmail</TabsTrigger>
-                <TabsTrigger value="outlook" className="text-xs h-7 px-3">Outlook</TabsTrigger>
-              </TabsList>
-            </Tabs>
+    <div className="cf-mail-shell">
+      {/* Toolbar */}
+      <div className="cf-mail-toolbar px-3 py-2 sm:px-4">
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
+          <Tabs value={providerFilter} onValueChange={(v) => setProviderFilter(v as ProviderFilter)}>
+            <TabsList className="h-8 bg-[var(--cf-bg-soft)]">
+              <TabsTrigger value="all" className="h-7 px-3 text-xs">All</TabsTrigger>
+              <TabsTrigger value="gmail" className="h-7 px-3 text-xs">Gmail</TabsTrigger>
+              <TabsTrigger value="outlook" className="h-7 px-3 text-xs">Outlook</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-            {/* Status Filters with Stats */}
-            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)} className="flex-none">
-              <TabsList className="glass-light h-8">
-                <TabsTrigger value="all" className="text-xs h-7 px-2.5">
-                  <Mail className="h-3.5 w-3.5 mr-1.5" />
-                  All
-                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.total}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="unread" className="text-xs h-7 px-2.5">
-                  <Inbox className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
-                  Unread
-                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.unread}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="starred" className="text-xs h-7 px-2.5">
-                  <Star className="h-3.5 w-3.5 mr-1.5 text-yellow-500" />
-                  Starred
-                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.starred}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="important" className="text-xs h-7 px-2.5">
-                  <AlertCircle className="h-3.5 w-3.5 mr-1.5 text-orange-500" />
-                  Important
-                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.important}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="attachments" className="text-xs h-7 px-2.5">
-                  <Paperclip className="h-3.5 w-3.5 mr-1.5" />
-                  Attachments
-                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px] font-semibold">{stats.withAttachments}</Badge>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+            <TabsList className="h-8 max-w-full overflow-x-auto bg-[var(--cf-bg-soft)]">
+              <TabsTrigger value="all" className="h-7 px-2.5 text-xs">
+                <Mail className="mr-1.5 h-3.5 w-3.5" />
+                All
+                <Badge variant="secondary" className="ml-1.5 h-4 min-w-[1.25rem] justify-center px-1.5 text-[10px]">{stats.total}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="unread" className="h-7 px-2.5 text-xs">
+                <Inbox className="mr-1.5 h-3.5 w-3.5" />
+                Unread
+                <Badge variant="secondary" className="ml-1.5 h-4 min-w-[1.25rem] justify-center px-1.5 text-[10px]">{stats.unread}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="starred" className="h-7 px-2.5 text-xs">
+                <Star className="mr-1.5 h-3.5 w-3.5" />
+                Starred
+                <Badge variant="secondary" className="ml-1.5 h-4 min-w-[1.25rem] justify-center px-1.5 text-[10px]">{stats.starred}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="important" className="h-7 px-2.5 text-xs">
+                <AlertCircle className="mr-1.5 h-3.5 w-3.5" />
+                Important
+                <Badge variant="secondary" className="ml-1.5 h-4 min-w-[1.25rem] justify-center px-1.5 text-[10px]">{stats.important}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="attachments" className="h-7 px-2.5 text-xs">
+                <Paperclip className="mr-1.5 h-3.5 w-3.5" />
+                Files
+                <Badge variant="secondary" className="ml-1.5 h-4 min-w-[1.25rem] justify-center px-1.5 text-[10px]">{stats.withAttachments}</Badge>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-            {/* Spacer */}
-            <div className="flex-1" />
+          <div className="flex-1" />
 
-            {/* Refresh Button & Status */}
-            <div className="flex items-center gap-2 flex-none">
-              {syncing && (
-                <Badge variant="outline" className="animate-pulse text-xs px-2 py-0.5">Syncing...</Badge>
-              )}
-              <Button
-                onClick={() => fetchAllEmails(true, true)}
-                disabled={syncing}
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 glass-light"
-                title="Refresh"
-              >
-                <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-              </Button>
-              {lastSync && (
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  {formatTime(lastSync.toISOString())}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Split View - Scrollable */}
-        <div className="flex-1 flex min-h-0">
-      {/* Email List */}
-          <div className="w-1/2 border-r border-white/20 dark:border-white/10 flex flex-col glass-light">
-            <div className="flex-none px-4 py-2 border-b border-white/20 dark:border-white/10">
-              <h3 className="text-sm font-semibold">Messages ({filteredEmails.length})</h3>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto">
-              {filteredEmails.length === 0 ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <Mail className="h-12 w-12 mx-auto mb-4 opacity-30 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">No emails match your filters</p>
-                  </div>
-            </div>
-          ) : (
-                <div className="p-2 space-y-1">
-                {filteredEmails.map((email) => (
-                    <div
-                    key={`${email.provider}-${email.id}`}
-                      onClick={() => fetchFullEmail(email)}
-                    className={cn(
-                        'p-3 rounded-lg cursor-pointer transition-all',
-                        'glass-medium border-white/30 dark:border-white/10',
-                        'hover:glass-strong hover:shadow-lg',
-                        !email.isRead && 'glass-strong border-l-4 border-l-blue-500 shadow-lg bg-gradient-to-r from-blue-500/20 to-transparent',
-                        selectedEmail?.id === email.id && 'glass-strong ring-2 ring-blue-500/50 shadow-xl'
-                      )}
-                    >
-                      <div className="flex gap-3">
-                        <Avatar className="h-10 w-10 flex-shrink-0">
-                            <AvatarImage src={`https://ui-avatars.com/api/?name=${encodeURIComponent(email.from.name || email.from.address)}&background=random`} />
-                          <AvatarFallback className="text-xs">
-                              {(email.from.name || email.from.address || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <span className={cn(
-                              "font-semibold text-sm truncate",
-                              !email.isRead && "text-blue-600 dark:text-blue-400 font-bold"
-                            )}>{email.from.name || email.from.address}</span>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              {!email.isRead && (
-                                <div className="relative flex items-center">
-                                  <div className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" />
-                                  <div className="absolute h-2.5 w-2.5 rounded-full bg-blue-400 animate-ping" />
-                                </div>
-                              )}
-                              {email.isStarred && <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />}
-                              {email.hasAttachments && <Paperclip className="h-3 w-3 text-muted-foreground" />}
-                              <span className="text-[10px] text-muted-foreground">{formatTime(email.receivedDateTime)}</span>
-                            </div>
-                          </div>
-                          <p className={cn(
-                            "text-sm font-medium mb-0.5 truncate",
-                            !email.isRead && "font-bold text-foreground"
-                          )}>{email.subject || '(No subject)'}</p>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{email.bodyPreview}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Email Viewer */}
-          <div className="w-1/2 flex flex-col glass-light">
-            {selectedEmail ? (
-              <>
-                <div className="flex-none px-6 py-4 border-b border-white/20 dark:border-white/10">
-                  <div className="flex items-start justify-between mb-3">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedEmail(null)}>
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Back
-                    </Button>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0"><Reply className="h-4 w-4" /></Button>
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0"><Archive className="h-4 w-4" /></Button>
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0"><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  </div>
-                  <h2 className="text-xl font-bold mb-2">{selectedEmail.subject || '(No subject)'}</h2>
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedEmail.from.name || selectedEmail.from.address)}&background=random`} />
-                      <AvatarFallback>
-                        {(selectedEmail.from.name || selectedEmail.from.address || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-sm">{selectedEmail.from.name || selectedEmail.from.address}</p>
-                          <p className="text-xs text-muted-foreground">{selectedEmail.from.address}</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{formatFullDate(selectedEmail.date)}</p>
-                      </div>
-                      {selectedEmail.to && (
-                        <div className="mt-2 text-xs">
-                          <span className="text-muted-foreground">To: </span>
-                          <span>{selectedEmail.to}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-6">
-                    {loadingEmail ? (
-                      <div className="space-y-4">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-3/4" />
-                      </div>
-                    ) : selectedEmail.bodyHtml ? (
-                      <div
-                        className="prose prose-sm dark:prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{ __html: selectedEmail.bodyHtml }}
-                      />
-                    ) : selectedEmail.bodyText ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                        {selectedEmail.bodyText}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground">{selectedEmail.bodyPreview}</p>
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <Mail className="h-16 w-16 mx-auto mb-4 opacity-20 text-muted-foreground" />
-                  <p className="text-lg font-semibold mb-2">Select an email to view</p>
-                  <p className="text-sm text-muted-foreground">Click on any email from the list to read it here</p>
-                </div>
-              </div>
-          )}
+          <div className="flex items-center gap-2">
+            {syncing && (
+              <Badge variant="outline" className="text-xs">Syncing…</Badge>
+            )}
+            <Button
+              onClick={() => fetchAllEmails(true, true)}
+              disabled={syncing}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Refresh"
+            >
+              <RefreshCw className={cn('h-4 w-4', syncing && 'animate-spin')} />
+            </Button>
           </div>
         </div>
       </div>
+
+      {displayEmail ? (
+        /* Full-width reading view — no split pane */
+        <div className="cf-mail-reading-full">
+          <div className="cf-mail-reading-toolbar">
+            <Button variant="ghost" size="sm" className="h-8" onClick={closeReading}>
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              Inbox
+            </Button>
+            <div className="flex flex-1 items-center gap-2">
+              <MailProviderBadge provider={displayEmail.provider} />
+              {displayEmail.webLink && (
+                <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
+                  <a href={displayEmail.webLink} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                    Open in {displayEmail.provider === 'gmail' ? 'Gmail' : 'Outlook'}
+                  </a>
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Reply"><Reply className="h-4 w-4" /></Button>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Archive"><Archive className="h-4 w-4" /></Button>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" title="Delete"><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          </div>
+
+          <div className="cf-mail-reading-header cf-mail-reading-header-full">
+            <div className="cf-mail-reading-column">
+              <h2 className="mb-2 line-clamp-2 text-xl font-medium text-[var(--cf-text)]">
+                {displayEmail.subject || '(No subject)'}
+              </h2>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <div>
+                  <p className="text-sm font-medium text-[var(--cf-text)]">
+                    {displayEmail.from.name || displayEmail.from.address}
+                  </p>
+                  <p className="text-xs text-[var(--cf-text-muted)]">{displayEmail.from.address}</p>
+                </div>
+                <p className="text-xs text-[var(--cf-text-muted)]">
+                  {formatFullDate(displayEmail.receivedDateTime)}
+                </p>
+              </div>
+              {fullEmail?.to && (
+                <p className="mt-2 text-xs text-[var(--cf-text-muted)]">
+                  <span className="text-[var(--cf-text-dim)]">To:</span> {fullEmail.to}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="cf-mail-reading-body">
+            <div className="cf-mail-reading-column">
+              {loadingEmail ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="mt-4 h-32 w-full" />
+                </div>
+              ) : fullEmail?.bodyHtml ? (
+                <div className="cf-mail-html-frame">
+                  <div
+                    className="cf-mail-html-content"
+                    dangerouslySetInnerHTML={{ __html: prepareEmailHtml(fullEmail.bodyHtml) }}
+                  />
+                </div>
+              ) : fullEmail?.bodyText ? (
+                <div className="cf-mail-html-frame">
+                  <div className="cf-mail-html-content whitespace-pre-wrap text-sm leading-relaxed text-[var(--cf-text)]">
+                    {fullEmail.bodyText}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm leading-relaxed text-[var(--cf-text-muted)]">
+                  {displayEmail.bodyPreview}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Gmail-style full-width inbox list */
+        <div className="cf-gmail-list cf-mail-list-scroll">
+          {filteredEmails.length === 0 ? (
+            <div className="flex h-full items-center justify-center p-8 text-center">
+              <div>
+                <Mail className="mx-auto mb-3 h-10 w-10 text-[var(--cf-text-dim)] opacity-40" />
+                <p className="text-sm text-[var(--cf-text-muted)]">No emails match your filters</p>
+              </div>
+            </div>
+          ) : (
+            filteredEmails.map((email) => (
+              <button
+                key={`${email.provider}-${email.id}`}
+                type="button"
+                onClick={() => fetchFullEmail(email)}
+                className={cn(
+                  'cf-gmail-row',
+                  email.isRead ? 'is-read' : 'is-unread',
+                )}
+              >
+                <span className="cf-gmail-check" aria-hidden>
+                  <Square className="h-4 w-4 text-[var(--cf-text-dim)]" />
+                </span>
+                <span className="cf-gmail-star" aria-hidden>
+                  <Star className={cn(
+                    'h-4 w-4',
+                    email.isStarred ? 'fill-amber-400 text-amber-400' : 'text-[var(--cf-text-dim)]',
+                  )} />
+                </span>
+                <span className="cf-gmail-sender">{email.from.name || email.from.address}</span>
+                <span className="cf-gmail-subject-line">
+                  <span className="cf-gmail-subject">{email.subject || '(No subject)'}</span>
+                  <span className="cf-gmail-sep"> — </span>
+                  <span className="cf-gmail-snippet">{email.bodyPreview}</span>
+                  {email.hasAttachments && (
+                    <Paperclip className="ml-1.5 inline h-3 w-3 shrink-0 text-[var(--cf-text-dim)]" />
+                  )}
+                </span>
+                <span className="cf-gmail-time">{formatListTime(email.receivedDateTime)}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }

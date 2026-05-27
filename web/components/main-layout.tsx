@@ -1,32 +1,30 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { 
-  Calendar, 
-  Clock, 
-  Target, 
-  Users, 
-  BarChart3, 
-  Settings, 
-  LogOut, 
-  Sparkles, 
-  Zap,
-  Menu,
-  X,
-  Home,
-  Plus,
-  ChevronRight,
-  Mail
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  BarChart3,
+  Calendar,
+  Clock,
+  Home,
+  LogOut,
+  Mail,
+  Menu,
+  Settings,
+  Target,
+  Users,
+  X,
+  Zap,
+} from "lucide-react"
+import { useSession, signOut } from "next-auth/react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+
+import { AppLogo } from "@/components/app-logo"
+import AIChatDrawer from "@/components/ai-chat-drawer"
+import { NotificationDropdown } from "@/components/notification-dropdown"
+import { ThemeToggle } from "@/app/waitlist/theme-toggle"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,66 +32,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useSession, signOut } from "next-auth/react"
-import { useRouter, usePathname } from "next/navigation"
-import Link from "next/link"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { NotificationDropdown } from "@/components/notification-dropdown"
-import AIChatDrawer from "@/components/ai-chat-drawer"
 
 interface MainLayoutProps {
   children: React.ReactNode
 }
 
 const navigationItems = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: Home,
-    badge: null
-  },
-  {
-    title: "Calendar",
-    href: "/calendar",
-    icon: Calendar,
-    badge: null
-  },
-  {
-    title: "Tasks",
-    href: "/tasks",
-    icon: Target,
-    badge: null
-  },
-  {
-    title: "Mail",
-    href: "/mail",
-    icon: Mail,
-    badge: null
-  },
-  {
-    title: "Focus",
-    href: "/focus",
-    icon: Clock,
-    badge: null
-  },
-  {
-    title: "Team",
-    href: "/team",
-    icon: Users,
-    badge: null
-  },
-  {
-    title: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-    badge: null
-  },
+  { title: "Dashboard", href: "/dashboard", icon: Home },
+  { title: "Calendar", href: "/calendar", icon: Calendar },
+  { title: "Tasks", href: "/tasks", icon: Target },
+  { title: "Mail", href: "/mail", icon: Mail },
+  { title: "Focus", href: "/focus", icon: Clock },
+  { title: "Team", href: "/team", icon: Users },
+  { title: "Analytics", href: "/analytics", icon: BarChart3 },
 ]
 
 export function MainLayout({ children }: MainLayoutProps) {
   const { data: session } = useSession()
   const user = session?.user
   const pathname = usePathname()
+  const currentPage = navigationItems.find(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  )
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [aiChatOpen, setAiChatOpen] = useState(false)
   const [taskCount, setTaskCount] = useState<number | null>(null)
@@ -109,7 +76,9 @@ export function MainLayout({ children }: MainLayoutProps) {
           return
         }
         const data = await res.json()
-        const count = Array.isArray(data) ? data.filter((t: any) => t.status !== "Done").length : 0
+        const count = Array.isArray(data)
+          ? data.filter((t: { status?: string }) => t.status !== "Done").length
+          : 0
         if (isMounted) setTaskCount(count)
       } catch {
         if (isMounted) setTaskCount(0)
@@ -124,186 +93,175 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="min-h-screen bg-background">
-        {/* Sidebar */}
-        <aside 
+      <div className="relative min-h-screen">
+        <div className="pointer-events-none fixed inset-0 cf-grid opacity-70" aria-hidden />
+        <div className="pointer-events-none fixed inset-x-0 top-0 h-[420px] cf-glow" aria-hidden />
+
+        <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-20 bg-white border-r border-border transition-transform duration-300 ease-in-out lg:translate-x-0",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            "cf-app-sidebar transition-transform duration-300 ease-out lg:translate-x-0",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <div className="flex flex-col h-full">
-            {/* Logo */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center justify-center h-[65px] border-b border-border cursor-pointer">
-                  <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-md">
-                    <Sparkles className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="font-semibold">
-                ChronoFlow
-              </TooltipContent>
-            </Tooltip>
+          <div className="flex h-full flex-col">
+            <Link
+              href="/dashboard"
+              className="flex h-[65px] flex-col items-center justify-center gap-1 border-b border-[var(--cf-border)] px-2"
+              aria-label="ChronoFlow home"
+            >
+              <AppLogo size="sm" />
+              <span className="font-mono text-[9px] font-semibold tracking-tight text-[var(--cf-text-muted)]">
+                chronoflow
+              </span>
+            </Link>
 
-            {/* Navigation */}
-            <nav className="flex-1 px-2 space-y-1 mt-6">
+            <nav className="mt-4 flex flex-1 flex-col gap-1 px-2">
               {navigationItems.map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon
-                const dynamicBadge = item.href === "/tasks" ? (taskCount && taskCount > 0 ? String(taskCount) : null) : item.badge
-                
+                const badge =
+                  item.href === "/tasks" && taskCount && taskCount > 0
+                    ? String(taskCount)
+                    : null
+
                 return (
                   <Tooltip key={item.href}>
                     <TooltipTrigger asChild>
-                      <Link href={item.href}>
-                        <div 
-                          className={cn(
-                            "sidebar-nav-item group flex flex-col items-center justify-center px-2 py-3 rounded-lg text-sm font-medium cursor-pointer relative",
-                            isActive 
-                              ? "active bg-primary/10 text-primary" 
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      <Link
+                        href={item.href}
+                        className={cn("cf-app-nav-item relative", isActive && "is-active")}
+                        onClick={() => setSidebarOpen(false)}
+                      >
+                        <div className="relative">
+                          <Icon className="h-5 w-5 shrink-0" />
+                          {badge && (
+                            <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[rgba(var(--cf-accent-rgb),1)] px-0.5 text-[9px] font-bold text-white">
+                              {badge}
+                            </span>
                           )}
-                          onClick={() => setSidebarOpen(false)}
-                        >
-                          <div className="relative">
-                            <Icon className={cn(
-                              "w-5 h-5 shrink-0", 
-                              isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                            )} />
-                            {dynamicBadge && (
-                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-accent rounded-full flex items-center justify-center shadow-sm">
-                                <span className="text-[9px] font-bold text-white">{dynamicBadge}</span>
-                              </div>
-                            )}
-                          </div>
-                          <span className="text-[10px] font-medium mt-1">
-                            {item.title}
-                          </span>
                         </div>
+                        <span>{item.title}</span>
                       </Link>
                     </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>{item.title}</p>
-                    </TooltipContent>
+                    <TooltipContent side="right">{item.title}</TooltipContent>
                   </Tooltip>
                 )
               })}
             </nav>
 
-            {/* AI Actions */}
-            <div className="px-2 py-4">
+            <div className="px-2 py-3">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    size="icon"
+                  <button
+                    type="button"
+                    className="cf-app-ai-btn"
                     onClick={() => setAiChatOpen(true)}
-                    className="w-full h-12 gradient-primary text-white shadow-md hover:shadow-lg transition-all duration-200 relative overflow-hidden group"
+                    aria-label="Ask ChronoFlow"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <Zap className="w-5 h-5 relative z-10" />
-                  </Button>
+                    <Zap className="h-5 w-5" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p>AI Actions</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Smart suggestions & automation</p>
+                  <p>Ask ChronoFlow</p>
+                  <p className="text-xs text-muted-foreground">Cross-tool actions</p>
                 </TooltipContent>
               </Tooltip>
             </div>
 
-            {/* User Profile */}
-            <div className="p-2 border-t border-border">
+            <div className="border-t border-[var(--cf-border)] p-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <div className="flex items-center justify-center p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
-                    <Avatar className="w-10 h-10">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-center rounded-lg p-2 transition hover:bg-[var(--cf-bg-soft)]"
+                    aria-label="Account menu"
+                  >
+                    <Avatar className="h-9 w-9 border border-[var(--cf-border)]">
                       <AvatarImage src={user?.image || "/placeholder-user.png"} />
-                      <AvatarFallback className="bg-primary text-white text-xs">
+                      <AvatarFallback className="bg-[var(--cf-accent-soft)] text-xs text-[var(--cf-text)]">
                         {user?.name?.charAt(0) || "U"}
                       </AvatarFallback>
                     </Avatar>
-                  </div>
+                  </button>
                 </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 elevated-card" align="start" sideOffset={8}>
-                <div className="p-2">
-                  <p className="text-sm font-medium">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/settings" className="flex items-center">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <DropdownMenuContent className="w-56" align="start" sideOffset={8}>
+                  <div className="p-2">
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/settings" className="flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => signOut()}
+                    className="cursor-pointer text-destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* Main Content */}
-      <div className="lg:pl-20">
-        {/* Top Header */}
-        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-border">
-          <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              >
-                {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-              </Button>
-              
-              {/* Breadcrumb could go here */}
-              <div className="hidden md:block">
-                <p className="text-sm text-muted-foreground">
-                  Welcome back, {user?.name?.split(" ")[0] || "there"}
+        <div className="relative lg:pl-20">
+          <header className="cf-app-header">
+            <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="lg:hidden"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  aria-label={sidebarOpen ? "Close menu" : "Open menu"}
+                >
+                  {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                </Button>
+                <p className="hidden text-sm text-[var(--cf-text-muted)] md:block">
+                  {currentPage ? (
+                    <span className="font-medium text-[var(--cf-text)]">{currentPage.title}</span>
+                  ) : (
+                    <>
+                      Welcome back,{" "}
+                      <span className="font-medium text-[var(--cf-text)]">
+                        {user?.name?.split(" ")[0] || "there"}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
+
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <NotificationDropdown />
+                <Link href="/settings">
+                  <Button variant="ghost" size="sm" aria-label="Settings">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
             </div>
+          </header>
 
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="hidden md:flex gap-2">
-                <Plus className="w-4 h-4" />
-                Quick Add
-              </Button>
-              
-              <NotificationDropdown />
+          <main className="cf-app-content min-h-[calc(100vh-57px)] overflow-x-hidden">{children}</main>
+        </div>
 
-              <Link href="/settings">
-                <Button variant="ghost" size="sm">
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </header>
+        {sidebarOpen && (
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            aria-label="Close sidebar overlay"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
-        {/* Page Content */}
-        <main className="min-h-screen bg-background">
-          {children}
-        </main>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden" 
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* AI Chat Drawer */}
-      <AIChatDrawer isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
+        <AIChatDrawer isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
       </div>
     </TooltipProvider>
   )

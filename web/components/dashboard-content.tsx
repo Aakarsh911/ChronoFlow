@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, CheckCircle, Timer, Mail, Loader2, Sparkles, BarChart3, Target, Activity, ArrowRight, Zap } from "lucide-react"
+import { Calendar, CheckCircle, Timer, Mail, BarChart3, Target, ArrowRight, Inbox } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +9,16 @@ import { useSession } from "next-auth/react"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { format, isToday, parseISO } from "date-fns"
+import { PageHeader } from "@/components/page-header"
 import { useAppSelector } from "@/store/store"
+
+const EVENT_BAR_COLORS = [
+  "rgba(var(--cf-accent-rgb), 1)",
+  "rgba(var(--cf-primary-rgb), 1)",
+  "#ea580c",
+  "#16a34a",
+  "#9333ea",
+] as const
 
 interface DashboardData {
   tasks: {
@@ -122,7 +131,7 @@ export function DashboardContent() {
           todayMinutes: 0, // Will be overridden by Redux state
         },
         calendar: {
-          todayEvents: todayEvents.slice(0, 3),
+          todayEvents: todayEvents.slice(0, 5),
           nextMeeting,
         },
         emails: {
@@ -151,213 +160,86 @@ export function DashboardContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Subtle Professional Background */}
-      <div className="blob-bg">
-        <div className="blob blob-1"></div>
-        <div className="blob blob-2"></div>
-        <div className="blob blob-3"></div>
-      </div>
-
-      <div className="relative z-10 p-6 space-y-8">
-        {/* Header Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              {getGreeting()}, {user?.name?.split(" ")[0] || "there"}
-            </h1>
-            {isLoading ? (
-              <Skeleton className="h-5 w-96 mt-2" />
+    <div className="cf-page-shell">
+      <div className="cf-page-inner space-y-5">
+        <PageHeader
+          title={`${getGreeting()}, ${user?.name?.split(" ")[0] || "there"}`}
+          subtitle={
+            isLoading ? (
+              <Skeleton className="h-5 w-80" />
             ) : (
-              <p className="text-muted-foreground mt-2 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-accent animate-pulse" />
-                {data?.tasks.completed || 0} tasks completed • {data?.calendar.todayEvents.length || 0} events today • {data?.emails.unread || 0} unread emails
-              </p>
-            )}
-          </div>
-          <Button 
-            className="gradient-primary text-white shadow-lg hover:shadow-xl transition-all duration-200 w-fit hover:scale-105"
-            onClick={fetchDashboardData}
-          >
-            <ArrowRight className="w-4 h-4 mr-2 animate-pulse" />
-            Refresh
-          </Button>
-        </div>
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5 text-[rgba(var(--cf-accent-rgb),1)]" />
+                  {data?.tasks.completed || 0} done
+                </span>
+                <span className="text-[var(--cf-text-dim)]">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-[rgba(var(--cf-primary-rgb),1)]" />
+                  {data?.calendar.todayEvents.length || 0} events
+                </span>
+                <span className="text-[var(--cf-text-dim)]">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-orange-500" />
+                  {data?.emails.unread || 0} unread
+                </span>
+              </span>
+            )
+          }
+          actions={
+            <Button variant="outline" size="sm" onClick={fetchDashboardData}>
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          }
+        />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Focus Time Card */}
-          <Card className="glass-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
-            <CardContent className="p-6">
-              {isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-3 w-32" />
+        {/* Quick actions */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { href: "/tasks", label: "Tasks", detail: `${data?.tasks.pending || 0} pending`, icon: Target, accent: "rgba(var(--cf-accent-rgb), 1)" },
+            { href: "/mail", label: "Mail", detail: `${data?.emails.unread || 0} unread`, icon: Inbox, accent: "#ea580c" },
+            { href: "/focus", label: "Focus", detail: focusTimer.isActive ? "Session active" : "Start session", icon: Timer, accent: "rgba(var(--cf-primary-rgb), 1)" },
+            { href: "/calendar", label: "Calendar", detail: `${data?.calendar.todayEvents.length || 0} today`, icon: Calendar, accent: "#9333ea" },
+          ].map((item) => (
+            <a key={item.href} href={item.href} className="cf-surface-card block p-3 transition-colors hover:border-[rgba(var(--cf-accent-rgb),0.35)]">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                  style={{ background: `color-mix(in srgb, ${item.accent} 12%, transparent)`, color: item.accent }}
+                >
+                  <item.icon className="h-4 w-4" />
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Active Focus</p>
-                      <p className="text-2xl font-bold text-foreground mt-2">
-                        {focusTimer.isActive && currentFocusMinutes > 0 ? formatTime(currentFocusMinutes) : '0m'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {focusTimer.isActive ? (focusTimer.title || 'Deep work in progress') : 'No active session'}
-                      </p>
-                    </div>
-                    <div className={`w-12 h-12 ${focusTimer.isActive ? 'gradient-primary animate-pulse' : 'bg-slate-100 dark:bg-slate-800'} rounded-xl flex items-center justify-center`}>
-                      <Timer className={`w-6 h-6 ${focusTimer.isActive ? 'text-white' : 'text-slate-400'}`} />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    {focusTimer.isActive ? (
-                      <Badge className="bg-green-100 text-green-700 border-green-200 animate-pulse">
-                        <Activity className="w-3 h-3 mr-1" />
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="border-slate-200 text-slate-600">
-                        Idle
-                      </Badge>
-                    )}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Tasks Card */}
-          <Card className="glass-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
-            <CardContent className="p-6">
-              {isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-2 w-full mt-4" />
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Tasks Today</p>
-                      <p className="text-2xl font-bold text-foreground mt-2">
-                        {data?.tasks.completed || 0}/{data?.tasks.total || 0}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {data?.tasks.pending || 0} remaining
-                        {data?.tasks.overdue ? ` • ${data.tasks.overdue} overdue` : ''}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                      <CheckCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <Progress 
-                      value={data?.tasks.total ? (data.tasks.completed / data.tasks.total) * 100 : 0} 
-                      className="h-2"
-                    />
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Next Meeting Card */}
-          <Card className="glass-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
-            <CardContent className="p-6">
-              {isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Next Meeting</p>
-                      {data?.calendar.nextMeeting ? (
-                        <>
-                          <p className="text-2xl font-bold text-foreground mt-2">
-                            {format(parseISO(data.calendar.nextMeeting.start.dateTime), 'h:mm a')}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1 truncate max-w-[140px]">
-                            {data.calendar.nextMeeting.summary}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-2xl font-bold text-foreground mt-2">—</p>
-                          <p className="text-xs text-muted-foreground mt-1">No meetings today</p>
-                        </>
-                      )}
-                    </div>
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    {data?.calendar.nextMeeting ? (
-                      <Badge variant="outline" className="border-purple-200 text-purple-700 dark:border-purple-800 dark:text-purple-400">
-                        {data.calendar.todayEvents.length} events today
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="border-slate-200 text-slate-600">
-                        Free day
-                      </Badge>
-                    )}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Analytics Card */}
-          <Card className="glass-card border-0 hover:shadow-2xl transition-all duration-300 hover:scale-105">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Analytics</p>
-                  <p className="text-lg font-bold text-foreground mt-2">Coming Soon</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Productivity insights
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-pink-100 dark:from-orange-900/30 dark:to-pink-900/30 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[var(--cf-text)]">{item.label}</p>
+                  <p className="truncate text-xs text-[var(--cf-text-muted)]">{isLoading ? "…" : item.detail}</p>
                 </div>
               </div>
-              <div className="mt-4">
-                <Badge className="bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  AI Powered
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+            </a>
+          ))}
         </div>
 
-        {/* Today's Schedule */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="glass-card border-0 hover:shadow-2xl transition-shadow duration-300">
-              <CardHeader className="pb-4">
+        {/* Schedule + sidebar */}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <div className="xl:col-span-2">
+            <Card className="cf-surface-card h-full border-0">
+              <CardHeader className="pb-3 pt-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2 text-foreground">
-                      <Calendar className="w-5 h-5 text-primary" />
-                      Today's Schedule
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      Today&apos;s Schedule
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                      {isLoading ? 'Loading events...' : data?.calendar.todayEvents.length ? `${data.calendar.todayEvents.length} events today` : 'No events scheduled'}
+                      {isLoading ? 'Loading events...' : data?.calendar.todayEvents.length ? `${data.calendar.todayEvents.length} events` : 'No events scheduled'}
                     </CardDescription>
                   </div>
+                  <a href="/calendar">
+                    <Button variant="ghost" size="sm" className="h-8 text-xs">View all</Button>
+                  </a>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-2 pb-5">
                 {isLoading ? (
                   <>
                     {[1, 2, 3].map((i) => (
@@ -373,12 +255,14 @@ export function DashboardContent() {
                   </>
                 ) : data?.calendar.todayEvents.length ? (
                   data.calendar.todayEvents.map((event: any, index: number) => {
-                    const colors = ['purple', 'blue', 'orange', 'green', 'pink']
-                    const color = colors[index % colors.length]
-                    
+                    const barColor = EVENT_BAR_COLORS[index % EVENT_BAR_COLORS.length]
+
                     return (
-                      <div key={event.id || index} className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                        <div className={`w-2 h-16 bg-${color}-500 rounded-full`}></div>
+                      <div key={event.id || index} className="flex items-start gap-3 rounded-lg bg-muted/30 p-3 transition-colors hover:bg-muted/50">
+                        <div
+                          className="mt-0.5 h-12 w-1.5 shrink-0 rounded-full"
+                          style={{ background: barColor }}
+                        />
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <h4 className="font-semibold text-foreground">{event.summary || 'Untitled Event'}</h4>
@@ -387,9 +271,9 @@ export function DashboardContent() {
                             </span>
                           </div>
                           {event.description && (
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{event.description}</p>
+                            <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{event.description}</p>
                           )}
-                          <Badge variant="outline" className={`mt-2 text-xs border-${color}-200 text-${color}-700 dark:border-${color}-800 dark:text-${color}-400`}>
+                          <Badge variant="outline" className="mt-2 text-xs">
                             {event.location || 'Meeting'}
                           </Badge>
                         </div>
@@ -397,24 +281,21 @@ export function DashboardContent() {
                     )
                   })
                 ) : (
-                  <div className="text-center py-12">
-                    <Calendar className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-                    <p className="text-muted-foreground">No events scheduled for today</p>
-                    <p className="text-sm text-muted-foreground mt-1">Enjoy your free time!</p>
+                  <div className="py-8 text-center">
+                    <Calendar className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No events scheduled for today</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Sidebar Cards */}
-          <div className="space-y-6">
-            {/* Today's Progress */}
-            <Card className="glass-card border-0 hover:shadow-2xl transition-shadow duration-300">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-foreground">Today's Progress</CardTitle>
+          <div className="space-y-4">
+            <Card className="cf-surface-card border-0">
+              <CardHeader className="pb-2 pt-5">
+                <CardTitle className="text-base font-semibold text-foreground">Today&apos;s Progress</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 pb-5">
                 {isLoading ? (
                   <>
                     {[1, 2, 3].map((i) => (
@@ -465,57 +346,33 @@ export function DashboardContent() {
               </CardContent>
             </Card>
 
-            {/* Quick Links */}
-            <Card className="glass-card border-0 hover:shadow-2xl transition-shadow duration-300">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <Zap className="w-5 h-5 text-accent" />
-                  Quick Links
+            <Card className="cf-surface-card border-0">
+              <CardHeader className="pb-2 pt-5">
+                <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                  <BarChart3 className="h-4 w-4 text-[rgba(var(--cf-accent-rgb),1)]" />
+                  Insights
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <a href="/tasks" className="block">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3 h-auto p-3 text-left hover:bg-primary/5 hover:border-primary/20 transition-all hover:scale-105"
-                  >
-                    <div className="w-8 h-8 gradient-accent rounded-lg flex items-center justify-center">
-                      <Target className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-foreground text-sm">View Tasks</div>
-                      <div className="text-xs text-muted-foreground">{data?.tasks.pending || 0} pending tasks</div>
-                    </div>
-                  </Button>
-                </a>
-
-                <a href="/focus" className="block">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3 h-auto p-3 text-left hover:bg-primary/5 hover:border-primary/20 transition-all hover:scale-105"
-                  >
-                    <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-                      <Timer className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-foreground text-sm">Start Focus</div>
-                      <div className="text-xs text-muted-foreground">Begin deep work session</div>
-                    </div>
-                  </Button>
-                </a>
-
-                <a href="/mail" className="block">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3 h-auto p-3 text-left hover:bg-primary/5 hover:border-primary/20 transition-all hover:scale-105"
-                  >
-                    <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                      <Mail className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-foreground text-sm">Check Mail</div>
-                      <div className="text-xs text-muted-foreground">{data?.emails.unread || 0} unread messages</div>
-                    </div>
+              <CardContent className="space-y-3 pb-5">
+                <div className="rounded-lg border border-[var(--cf-border)] bg-[var(--cf-bg-soft)] p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-[var(--cf-text-dim)]">Completion rate</p>
+                  <p className="mt-1 text-xl font-semibold text-[var(--cf-text)]">
+                    {data?.tasks.total ? Math.round(((data.tasks.completed / data.tasks.total) * 100)) : 0}%
+                  </p>
+                  <Progress value={data?.tasks.total ? (data.tasks.completed / data.tasks.total) * 100 : 0} className="mt-2 h-1.5" />
+                </div>
+                <div className="rounded-lg border border-[var(--cf-border)] bg-[var(--cf-bg-soft)] p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-[var(--cf-text-dim)]">Focus today</p>
+                  <p className="mt-1 text-xl font-semibold text-[var(--cf-text)]">
+                    {focusTimer.isActive && currentFocusMinutes > 0 ? formatTime(currentFocusMinutes) : '0m'}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--cf-text-muted)]">
+                    {focusTimer.isActive ? focusTimer.title || 'Deep work in progress' : 'No active session'}
+                  </p>
+                </div>
+                <a href="/analytics" className="block">
+                  <Button variant="outline" size="sm" className="w-full text-xs">
+                    View analytics
                   </Button>
                 </a>
               </CardContent>

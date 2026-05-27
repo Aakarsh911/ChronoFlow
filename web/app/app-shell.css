@@ -1,0 +1,911 @@
+/* Authenticated app shell — shares --cf-* tokens from waitlist.css (.cf-app) */
+
+.cf-app {
+  /* Bridge shadcn semantic vars so existing ui/* components inherit cf palette */
+  --background: var(--cf-bg);
+  --foreground: var(--cf-text);
+  --card: var(--cf-bg-elev);
+  --card-foreground: var(--cf-text);
+  --popover: var(--cf-bg-elev);
+  --popover-foreground: var(--cf-text);
+  --primary: var(--cf-accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--cf-bg-soft);
+  --secondary-foreground: var(--cf-text);
+  --muted: var(--cf-bg-soft);
+  --muted-foreground: var(--cf-text-muted);
+  --accent: var(--cf-accent-soft);
+  --accent-foreground: var(--cf-text);
+  --destructive: var(--cf-danger);
+  --border: var(--cf-border);
+  --input: var(--cf-border-strong);
+  --ring: rgba(var(--cf-accent-rgb), 0.45);
+  --sidebar: var(--cf-bg-elev);
+  --sidebar-foreground: var(--cf-text);
+  --sidebar-border: var(--cf-border);
+  --sidebar-accent: var(--cf-accent-soft);
+  --sidebar-accent-foreground: var(--cf-text);
+}
+
+.cf-app-host {
+  position: relative;
+  isolation: isolate;
+}
+
+.cf-app-content {
+  position: relative;
+  z-index: 1;
+}
+
+.cf-surface-card {
+  border-radius: 0.75rem;
+  background: var(--cf-bg-elev);
+  border: 1px solid var(--cf-border);
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.cf-surface-card:hover {
+  border-color: rgba(var(--cf-accent-rgb), 0.35);
+}
+
+:root:not([data-cf-theme="dark"]) .cf-surface-card {
+  box-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.02),
+    0 4px 16px -10px rgba(15, 23, 42, 0.08);
+}
+
+.cf-app-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.625rem 0.375rem;
+  border-radius: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--cf-text-muted);
+  transition:
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.cf-app-nav-item:hover {
+  color: var(--cf-text);
+  background: var(--cf-bg-soft);
+}
+
+.cf-app-nav-item.is-active {
+  color: rgba(var(--cf-accent-rgb), 1);
+  background: var(--cf-accent-soft);
+}
+
+.cf-app-nav-item.is-active svg {
+  color: rgba(var(--cf-accent-rgb), 1);
+}
+
+.cf-app-ai-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(var(--cf-accent-rgb), 0.35);
+  background: rgba(var(--cf-accent-rgb), 0.1);
+  color: rgba(var(--cf-accent-rgb), 1);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.cf-app-ai-btn:hover {
+  background: rgba(var(--cf-accent-rgb), 0.16);
+  border-color: rgba(var(--cf-accent-rgb), 0.5);
+}
+
+.cf-app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid var(--cf-border);
+  background: color-mix(in srgb, var(--cf-bg-elev) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.cf-app-sidebar {
+  position: fixed;
+  inset-block: 0;
+  left: 0;
+  z-index: 50;
+  width: 5rem;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--cf-border);
+  background: var(--cf-bg-elev);
+}
+
+.cf-btn-primary {
+  background: linear-gradient(
+    110deg,
+    rgba(var(--cf-accent-rgb), 1) 0%,
+    rgba(var(--cf-primary-rgb), 1) 100%
+  );
+  color: #fff;
+  border: none;
+}
+
+.cf-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+/* Login scene — animated aurora + depth (respects reduced motion via waitlist.css) */
+.cf-login-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 100%, rgba(var(--cf-primary-rgb), 0.12), transparent 55%),
+    var(--cf-bg);
+}
+
+.cf-login-scene .cf-aurora-field {
+  opacity: 1;
+}
+
+.cf-login-scene .cf-glow {
+  opacity: 0.95;
+}
+
+.cf-login-scene .cf-grid {
+  opacity: 0.55;
+}
+
+.cf-login-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 50% at 50% 50%, transparent 40%, color-mix(in srgb, var(--cf-bg) 35%, transparent) 100%);
+  pointer-events: none;
+}
+
+@keyframes cf-login-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -1.5%, 0) scale(1.04);
+  }
+}
+
+.cf-login-scene .cf-aurora-a {
+  animation: cf-login-drift 22s ease-in-out infinite;
+}
+
+.cf-login-scene .cf-aurora-b {
+  animation: cf-login-drift 28s ease-in-out infinite reverse;
+}
+
+.cf-login-scene .cf-aurora-c {
+  animation: cf-login-drift 34s ease-in-out infinite;
+  animation-delay: -8s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-surface-card,
+  .cf-app-nav-item,
+  .cf-app-ai-btn {
+    transition: none;
+  }
+
+  .cf-login-scene .cf-aurora-a,
+  .cf-login-scene .cf-aurora-b,
+  .cf-login-scene .cf-aurora-c {
+    animation: none;
+  }
+}
+
+/* Mail — Gmail-style full-width list + full-screen reading */
+.cf-mail-page {
+  overflow: hidden;
+  height: calc(100dvh - 57px);
+  max-height: calc(100dvh - 57px);
+  min-width: 0;
+  width: 100%;
+}
+
+.cf-mail-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  background: var(--cf-bg);
+}
+
+.cf-mail-toolbar {
+  flex-shrink: 0;
+  min-height: 48px;
+  border-bottom: 1px solid var(--cf-border);
+  background: var(--cf-bg-elev);
+}
+
+.cf-mail-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+/* Gmail inbox rows */
+.cf-gmail-list {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.cf-gmail-row {
+  display: grid;
+  grid-template-columns: 1.25rem 1.25rem minmax(120px, 11rem) minmax(0, 1fr) 3.25rem;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  max-height: 2.5rem;
+  padding: 0 0.75rem;
+  border: none;
+  border-bottom: 1px solid var(--cf-border);
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  box-sizing: border-box;
+  text-align: left;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  transition: background-color 140ms ease;
+}
+
+@media (min-width: 640px) {
+  .cf-gmail-row {
+    grid-template-columns: 1.25rem 1.25rem minmax(140px, 13rem) minmax(0, 1fr) 3.5rem;
+    padding: 0 1rem;
+  }
+}
+
+.cf-gmail-row:hover {
+  background: var(--cf-bg-soft);
+}
+
+.cf-gmail-row.is-unread {
+  background: color-mix(in srgb, var(--cf-accent-soft) 40%, var(--cf-bg));
+}
+
+.cf-gmail-row.is-unread:hover {
+  background: color-mix(in srgb, var(--cf-accent-soft) 55%, var(--cf-bg));
+}
+
+.cf-gmail-check,
+.cf-gmail-star {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cf-gmail-sender {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--cf-text-muted);
+}
+
+.cf-gmail-row.is-unread .cf-gmail-sender {
+  color: var(--cf-text);
+}
+
+.cf-gmail-subject-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--cf-text-muted);
+}
+
+.cf-gmail-subject {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--cf-text-muted);
+}
+
+.cf-gmail-row.is-unread .cf-gmail-subject {
+  color: var(--cf-text);
+}
+
+.cf-gmail-sep {
+  flex-shrink: 0;
+  color: var(--cf-text-dim);
+}
+
+.cf-gmail-snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 400;
+  color: var(--cf-text-dim);
+  overflow-wrap: anywhere;
+}
+
+.cf-gmail-time {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--cf-text-muted);
+}
+
+/* Full-screen reading (replaces list) */
+.cf-mail-reading-full {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cf-mail-reading-toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--cf-border);
+  background: var(--cf-bg-elev);
+  padding: 0.5rem 1rem;
+}
+
+.cf-mail-reading-header-full {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--cf-border);
+  background: var(--cf-bg-elev);
+  padding: 1.25rem 1.5rem;
+}
+
+.cf-mail-reading-column {
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.cf-mail-reading-body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 1.5rem;
+  overscroll-behavior: contain;
+}
+
+.cf-mail-html-frame {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  border-radius: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cf-mail-html-content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.cf-mail-html-content img,
+.cf-mail-html-content video,
+.cf-mail-html-content embed,
+.cf-mail-html-content object {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.cf-mail-html-content iframe {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.cf-mail-html-content table {
+  max-width: 100% !important;
+  width: auto !important;
+  margin-inline: auto !important;
+  table-layout: fixed;
+}
+
+.cf-mail-html-content td,
+.cf-mail-html-content th {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.cf-mail-html-content center {
+  display: block;
+  max-width: 100% !important;
+  margin-inline: auto;
+  overflow-x: auto;
+}
+
+.cf-mail-html-content > div,
+.cf-mail-html-content > table {
+  max-width: 100% !important;
+  margin-inline: auto !important;
+}
+
+.cf-mail-html-content pre {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.cf-mail-html-content a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* AI drawer — aurora background */
+.cf-ai-drawer {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--cf-bg);
+  border-left: 1px solid var(--cf-border);
+}
+
+.cf-ai-drawer-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 120% 70% at 50% 100%, rgba(var(--cf-primary-rgb), 0.14), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 100% 0%, rgba(var(--cf-accent-rgb), 0.1), transparent 50%);
+}
+
+.cf-ai-drawer-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 85% 70% at 50% 45%,
+    transparent 35%,
+    color-mix(in srgb, var(--cf-bg) 28%, transparent) 100%
+  );
+  pointer-events: none;
+}
+
+.cf-ai-drawer .cf-aurora-field {
+  opacity: 1;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+.cf-ai-drawer .cf-aurora {
+  filter: blur(72px);
+  opacity: calc(0.72 * var(--cf-aurora-opacity, 1));
+}
+
+.cf-ai-drawer .cf-aurora-a {
+  top: -12%;
+  left: -20%;
+  width: 85%;
+  height: 45%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.85), transparent 68%);
+  animation: cf-drift-a 24s ease-in-out infinite alternate;
+}
+
+.cf-ai-drawer .cf-aurora-b {
+  top: 18%;
+  right: -25%;
+  width: 75%;
+  height: 42%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.72), transparent 68%);
+  animation: cf-drift-b 28s ease-in-out infinite alternate;
+}
+
+.cf-ai-drawer .cf-aurora-c {
+  bottom: -8%;
+  left: -10%;
+  width: 80%;
+  height: 48%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.62), transparent 68%);
+  animation: cf-drift-c 32s ease-in-out infinite alternate;
+}
+
+:root:not([data-cf-theme="dark"]) .cf-ai-drawer .cf-aurora {
+  filter: blur(64px);
+  opacity: calc(0.88 * var(--cf-aurora-opacity, 1));
+}
+
+:root:not([data-cf-theme="dark"]) .cf-ai-drawer .cf-aurora-a {
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.58), transparent 68%);
+}
+
+:root:not([data-cf-theme="dark"]) .cf-ai-drawer .cf-aurora-b {
+  background: radial-gradient(circle, rgba(2, 132, 199, 0.5), transparent 68%);
+}
+
+:root:not([data-cf-theme="dark"]) .cf-ai-drawer .cf-aurora-c {
+  background: radial-gradient(circle, rgba(126, 34, 206, 0.44), transparent 68%);
+}
+
+.cf-ai-drawer-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  background: transparent;
+}
+
+.cf-ai-drawer-header {
+  flex-shrink: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--cf-border) 70%, transparent);
+  background: color-mix(in srgb, var(--cf-bg-elev) 52%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 1rem 1.25rem;
+}
+
+.cf-ai-drawer-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  background: transparent;
+}
+
+.cf-ai-drawer-input {
+  flex-shrink: 0;
+  border-top: 1px solid color-mix(in srgb, var(--cf-border) 70%, transparent);
+  background: color-mix(in srgb, var(--cf-bg-elev) 52%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 1rem 1.25rem;
+}
+
+.cf-ai-bubble {
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.cf-ai-bubble-user {
+  background: color-mix(in srgb, rgba(var(--cf-accent-rgb), 1) 14%, transparent);
+  border: 1px solid rgba(var(--cf-accent-rgb), 0.28);
+  color: var(--cf-text);
+}
+
+.cf-ai-bubble-assistant {
+  background: color-mix(in srgb, var(--cf-bg-elev) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cf-border) 80%, transparent);
+  color: var(--cf-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-ai-drawer .cf-aurora-a,
+  .cf-ai-drawer .cf-aurora-b,
+  .cf-ai-drawer .cf-aurora-c {
+    animation: none;
+  }
+}
+
+.cf-ai-avatar {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+.cf-ai-avatar-user {
+  background: var(--cf-bg-soft);
+  border: 1px solid var(--cf-border);
+  color: var(--cf-text-muted);
+}
+
+/* Shared page stat cards */
+.cf-stat-card {
+  border-radius: 0.75rem;
+  background: var(--cf-bg-elev);
+  border: 1px solid var(--cf-border);
+  padding: 1rem;
+}
+
+.cf-stat-card-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--cf-text-muted);
+}
+
+.cf-stat-card-value {
+  margin-top: 0.375rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cf-text);
+}
+
+.cf-stat-card-meta {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--cf-text-dim);
+}
+
+.cf-page-shell {
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .cf-page-shell {
+    padding: 1.25rem 1.5rem 2rem;
+  }
+}
+
+.cf-page-inner {
+  margin-inline: auto;
+  max-width: 1400px;
+}
+
+/* Workspace layouts */
+.cf-workspace-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .cf-workspace-grid {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    align-items: start;
+  }
+}
+
+.cf-panel {
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid var(--cf-border);
+  background: var(--cf-bg-elev);
+}
+
+.cf-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--cf-border);
+  padding: 0.875rem 1.25rem;
+}
+
+.cf-panel-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cf-text);
+}
+
+.cf-panel-subtitle {
+  font-size: 0.75rem;
+  color: var(--cf-text-muted);
+}
+
+.cf-panel-body {
+  padding: 1.25rem;
+}
+
+.cf-panel-body-flush {
+  padding: 0;
+}
+
+.cf-timer-ring-wrap {
+  position: relative;
+  width: 13rem;
+  height: 13rem;
+}
+
+.cf-timer-ring-wrap svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.cf-timer-ring-bg {
+  fill: none;
+  stroke: var(--cf-border);
+  stroke-width: 6;
+}
+
+.cf-timer-ring-progress {
+  fill: none;
+  stroke: rgba(var(--cf-accent-rgb), 1);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 300ms ease;
+}
+
+.cf-timer-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.cf-timer-display {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--cf-text);
+  line-height: 1;
+}
+
+.cf-preset-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--cf-border);
+  background: var(--cf-bg-soft);
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.cf-preset-btn:hover {
+  border-color: rgba(var(--cf-accent-rgb), 0.35);
+  background: var(--cf-accent-soft);
+}
+
+.cf-session-row {
+  display: flex;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--cf-border);
+  padding: 0.875rem 1.25rem;
+}
+
+.cf-session-row:last-child {
+  border-bottom: none;
+}
+
+.cf-data-panel {
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid var(--cf-border);
+  background: var(--cf-bg-elev);
+}
+
+.cf-data-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+  border-bottom: 1px solid var(--cf-border);
+  padding: 0.875rem 1rem;
+}
+
+.cf-data-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.cf-task-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.875rem;
+  align-items: start;
+  border-bottom: 1px solid var(--cf-border);
+  padding: 0.875rem 1.25rem;
+  transition: background-color 140ms ease;
+}
+
+.cf-task-row:last-child {
+  border-bottom: none;
+}
+
+.cf-task-row:hover {
+  background: var(--cf-bg-soft);
+}
+
+.cf-task-row.is-done {
+  opacity: 0.65;
+}
+
+.cf-task-check {
+  display: flex;
+  height: 1.25rem;
+  width: 1.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--cf-border-strong);
+  margin-top: 0.125rem;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.cf-task-check.is-done {
+  border-color: rgba(var(--cf-accent-rgb), 0.5);
+  background: rgba(var(--cf-accent-rgb), 0.15);
+  color: rgba(var(--cf-accent-rgb), 1);
+}
+
+.cf-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.cf-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--cf-border);
+  background: var(--cf-bg-soft);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--cf-text-muted);
+}
+
+.cf-quick-add {
+  border-bottom: 1px solid var(--cf-border);
+  background: var(--cf-bg-soft);
+  padding: 1rem 1.25rem;
+}
+
+.cf-ai-avatar-assistant {
+  background: rgba(var(--cf-accent-rgb), 0.14);
+  border: 1px solid rgba(var(--cf-accent-rgb), 0.3);
+  color: rgba(var(--cf-accent-rgb), 1);
+}

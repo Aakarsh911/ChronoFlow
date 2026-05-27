@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { PageHeader } from "@/components/page-header"
 import { cn } from "@/lib/utils"
 
 // No dummy data — we render real Microsoft Teams members only
@@ -450,28 +451,18 @@ export function TeamScheduling() {
   const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17]
 
   return (
-    <div className="relative min-h-screen">
-      {/* Teal/Green Background */}
-      <div className="team-blob-bg">
-        <div className="team-blob team-blob-1"></div>
-        <div className="team-blob team-blob-2"></div>
-        <div className="team-blob team-blob-3"></div>
-      </div>
-
-      <div className="relative z-10 p-6 space-y-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-400 dark:to-emerald-400 bg-clip-text text-transparent mb-2">
-            Team Collaboration
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400">Schedule meetings and view team availability</p>
-        </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        eyebrow="Team"
+        title="Team scheduling"
+        subtitle="Find common availability and schedule meetings across your team"
+      />
 
       {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Left Panel - Team Members (Narrower) */}
         <div className="lg:col-span-4">
-          <Card className="glass-card !bg-transparent border-0 shadow-xl h-full">
+          <Card className="cf-surface-card h-full border-0">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -650,7 +641,7 @@ export function TeamScheduling() {
 
         {/* Right Panel - Team Availability Heat Map */}
         <div className="lg:col-span-8">
-          <Card className="glass-card !bg-transparent border-0 shadow-xl">
+          <Card className="cf-surface-card border-0">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -1035,7 +1026,6 @@ export function TeamScheduling() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
     </div>
   )
 }

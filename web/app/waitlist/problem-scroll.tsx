@@ -108,6 +108,16 @@ export function ProblemScroll() {
               </span>
             </h2>
           </ScrollReveal>
+          <ScrollReveal delay={100}>
+            <blockquote className="cf-personal-note mt-8 text-left">
+              <p className="text-[15px] leading-relaxed text-[var(--cf-text-muted)]">
+                I kept missing tasks — not because I wasn&apos;t trying. A review request
+                would land in Teams, a deadline would hide in email, a ticket would get
+                assigned in Jira. Each lived in a different app, and nothing connected
+                them. I built ChronoFlow to fix that.
+              </p>
+            </blockquote>
+          </ScrollReveal>
           <ScrollReveal delay={140}>
             <GapBadge className="mt-8 hidden lg:inline-flex" />
           </ScrollReveal>

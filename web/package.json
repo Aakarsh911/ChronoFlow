@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "CF_DEV=1 next dev --turbopack",
+    "dev:clean": "rm -rf .next \"${TMPDIR:-/tmp}/chronoflow-next-dev\" && CF_DEV=1 next dev --turbopack",
     "build": "prisma generate && next build --turbopack",
     "start": "next start",
     "postinstall": "prisma generate"

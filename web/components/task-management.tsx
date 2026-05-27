@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useTransition } from "react"
 import {
   CheckCircle2,
-  Circle,
   Plus,
   Filter,
   Search,
@@ -16,18 +15,14 @@ import {
   Users,
   ListChecks,
   ListTodo,
-  TrendingUp,
   RefreshCw,
   Sparkles,
   Loader2,
   Zap,
-  Target,
   Clock,
-  Flame,
   Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -53,6 +48,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { PageHeader } from "@/components/page-header"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { AIConsentDialog } from "./ai-consent-dialog"
@@ -686,15 +682,6 @@ export function TaskManagement() {
   const openCount = stats.todo
   const completionPct = React.useMemo(() => (stats.total ? Math.round((stats.completed / stats.total) * 100) : 0), [stats])
 
-  const STATUS_COLOR_CLASSES: Record<string, string> = {
-    "To Do": "bg-gray-500/10 text-gray-700 border-gray-200",
-    "Done": "bg-emerald-500/10 text-emerald-700 border-emerald-200",
-  }
-
-  function getStatusBadgeClass(status: string) {
-    return STATUS_COLOR_CLASSES[status] || STATUS_COLOR_CLASSES.todo
-  }
-
   const uniqueStatuses = React.useMemo(() => {
     const set = new Set<string>()
     tasks.forEach((t) => set.add(t.status))
@@ -714,290 +701,406 @@ export function TaskManagement() {
     return null
   }
 
-  return (
-    <div className="relative min-h-screen">
-      {/* Animated Mesh Background */}
-      <div className="mesh-gradient-bg">
-        <div className="floating-shape shape-1"></div>
-        <div className="floating-shape shape-2"></div>
-        <div className="floating-shape shape-3"></div>
-        <div className="floating-shape shape-4"></div>
+  // Split tasks into active and completed for grouped display
+  const activeTasks = filteredTasks.filter((t) => t.status !== "Done")
+  const completedTasks = filteredTasks.filter((t) => t.status === "Done")
+
+  const renderTaskRow = (task: UITask) => {
+    const isChecked = task.status === "Done"
+    const currentSourceConfig = sourceConfig[task.source] || sourceConfig.MANUAL
+    const currentPriorityConfig = task.priority ? priorityConfig[task.priority] : null
+    const projectName = getProjectFromSourceData(task)
+
+    // Status dot color
+    const statusDotColor =
+      task.status === "Done"
+        ? "bg-emerald-500"
+        : task.status === "In Progress"
+          ? "bg-blue-500"
+          : task.status === "In Review"
+            ? "bg-amber-500"
+            : "bg-[var(--cf-border-strong)]"
+
+    return (
+      <div key={task.id} className={cn("cf-task-row group", isChecked && "is-done")}>
+        {/* Checkbox */}
+        <button
+          type="button"
+          aria-pressed={isChecked}
+          aria-label={isChecked ? "Mark as not done" : "Mark as done"}
+          onClick={() => toggleTaskStatus(task.id, task.status)}
+          className={cn(
+            "cf-task-check mt-0.5 shrink-0 transition-all duration-150",
+            isChecked && "is-done",
+          )}
+        >
+          {isChecked && <CheckCircle2 className="h-3.5 w-3.5" />}
+        </button>
+
+        {/* Main content */}
+        <div className="min-w-0 flex-1">
+          {/* Title row */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              {task.url ? (
+                <a
+                  href={task.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group/link inline-flex items-center gap-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span
+                    className={cn(
+                      "text-sm font-medium leading-snug text-[var(--cf-text)] transition-colors",
+                      isChecked && "line-through text-[var(--cf-text-dim)]",
+                      !isChecked && "group-hover/link:text-[rgba(var(--cf-accent-rgb),1)]",
+                    )}
+                  >
+                    {task.title}
+                  </span>
+                  <ExternalLink className="h-3 w-3 shrink-0 text-[var(--cf-text-dim)] opacity-0 transition-opacity group-hover/link:opacity-100" />
+                </a>
+              ) : (
+                <span
+                  className={cn(
+                    "text-sm font-medium leading-snug text-[var(--cf-text)]",
+                    isChecked && "line-through text-[var(--cf-text-dim)]",
+                  )}
+                >
+                  {task.title}
+                </span>
+              )}
+              {task.description && (
+                <p className="mt-0.5 line-clamp-1 text-xs leading-relaxed text-[var(--cf-text-dim)]">
+                  {task.description}
+                </p>
+              )}
+            </div>
+
+            {/* Right-side badges + menu */}
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Priority badge */}
+              {currentPriorityConfig && !isChecked && (
+                <span
+                  className={cn(
+                    "hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                    currentPriorityConfig.color,
+                  )}
+                >
+                  {currentPriorityConfig.label}
+                </span>
+              )}
+              {/* Due date */}
+              {task.dueDate && !isChecked && (
+                <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-medium text-[var(--cf-text-muted)]">
+                  <Clock className="h-3 w-3" />
+                  {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+              )}
+
+              {/* More menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 shrink-0 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {task.url && (
+                    <DropdownMenuItem asChild>
+                      <a href={task.url} target="_blank" rel="noreferrer" className="flex cursor-pointer items-center">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open in {currentSourceConfig.name}
+                      </a>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setTaskToSchedule(task)
+                      const now = new Date()
+                      const nextHour = new Date(now.getTime() + 60 * 60 * 1000)
+                      nextHour.setMinutes(0, 0, 0)
+                      setFocusDate(now.toISOString().split("T")[0])
+                      setFocusHour(nextHour.getHours().toString().padStart(2, "0"))
+                      setFocusMinute("00")
+                      setFocusTimeDialogOpen(true)
+                    }}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Schedule focus time
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-red-600 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950/30"
+                    onClick={() => {
+                      setTaskToDelete(task.id)
+                      setDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete task
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {/* Meta row */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {/* Source badge */}
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                currentSourceConfig.color,
+              )}
+            >
+              <currentSourceConfig.icon className="h-2.5 w-2.5" />
+              {task.source === "EMAIL_AI" ? "Mail AI" : currentSourceConfig.name}
+            </span>
+
+            {/* Status pill */}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--cf-border)] bg-[var(--cf-bg-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--cf-text-muted)]">
+              <span className={cn("h-1.5 w-1.5 rounded-full", statusDotColor)} />
+              {task.status}
+            </span>
+
+            {/* Project tag */}
+            {projectName && (
+              <span className="cf-tag">{projectName}</span>
+            )}
+
+            {/* Mobile: priority + due date */}
+            {currentPriorityConfig && !isChecked && (
+              <span
+                className={cn(
+                  "sm:hidden inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                  currentPriorityConfig.color,
+                )}
+              >
+                {currentPriorityConfig.label}
+              </span>
+            )}
+            {task.dueDate && !isChecked && (
+              <span className="md:hidden inline-flex items-center gap-1 cf-tag">
+                <Clock className="h-2.5 w-2.5" />
+                {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
+    )
+  }
 
-      {/* Content */}
-      <div className="relative z-10 space-y-6">
-        {/* Task Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm">
-                <Target className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+  return (
+    <div className="cf-page-shell">
+      <div className="cf-page-inner space-y-6">
+        {/* ── Header ── */}
+        <PageHeader
+          eyebrow="Tasks"
+          title="Task board"
+          subtitle="Unified view from Jira, email AI, Teams, and more"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
+                <RefreshCw className={cn("mr-1.5 h-4 w-4", isSyncing && "animate-spin")} />
+                Sync Jira
+              </Button>
+              <Button size="sm" className="cf-btn-primary gap-1.5" onClick={() => setShowQuickAdd(true)}>
+                <Plus className="h-4 w-4" />
+                Add task
+              </Button>
+            </div>
+          }
+        />
+
+        {/* ── Stat cards ── */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {/* Total */}
+          <div className="cf-stat-card flex items-start justify-between gap-2">
+            <div>
+              <p className="cf-stat-card-label">Total tasks</p>
+              <p className="cf-stat-card-value">{stats.total}</p>
+            </div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--cf-bg-soft)] text-[var(--cf-text-muted)]">
+              <ListChecks className="h-4 w-4" />
+            </div>
+          </div>
+          {/* To do */}
+          <div className="cf-stat-card flex items-start justify-between gap-2">
+            <div>
+              <p className="cf-stat-card-label">To do</p>
+              <p className="cf-stat-card-value">{openCount}</p>
+            </div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600">
+              <ListTodo className="h-4 w-4" />
+            </div>
+          </div>
+          {/* Completed */}
+          <div className="cf-stat-card flex items-start justify-between gap-2">
+            <div>
+              <p className="cf-stat-card-label">Completed</p>
+              <p className="cf-stat-card-value">{stats.completed}</p>
+            </div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+          </div>
+          {/* Progress */}
+          <div className="cf-stat-card">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="cf-stat-card-label">Progress</p>
+                <p className="cf-stat-card-value">{completionPct}%</p>
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-                  {stats.total}
-                </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Total Tasks</div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[rgba(var(--cf-accent-rgb),0.12)] text-[rgba(var(--cf-accent-rgb),1)]">
+                <Zap className="h-4 w-4" />
               </div>
             </div>
-            <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" />
+            <Progress value={completionPct} className="mt-3 h-1.5" />
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 backdrop-blur-sm">
-                <Flame className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-400 dark:to-red-400 bg-clip-text text-transparent">
-                  {openCount}
-                </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">To Do</div>
-              </div>
-            </div>
-            <div className="h-1 bg-gradient-to-r from-orange-500 to-red-500 rounded-full" />
-          </div>
-        </div>
-
-        <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 backdrop-blur-sm">
-                <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
-                  {stats.completed}
-                </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Completed</div>
-              </div>
-            </div>
-            <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full" />
-          </div>
-        </div>
-
-        <div className="glass-card p-6 rounded-2xl relative group hover:scale-[1.02] transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-yellow-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-500/20 backdrop-blur-sm">
-                <TrendingUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-yellow-600 dark:from-amber-400 dark:to-yellow-400 bg-clip-text text-transparent">
-                  {completionPct}%
-                </div>
-                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-1">Progress</div>
-              </div>
-            </div>
-            <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full transition-all duration-500"
-                style={{ width: `${completionPct}%` }}
+        {/* ── Main task panel ── */}
+        <div className="cf-data-panel">
+          {/* Toolbar */}
+          <div className="flex flex-col gap-3 border-b border-[var(--cf-border)] px-4 py-3 sm:flex-row sm:items-center">
+            {/* Search */}
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--cf-text-dim)]" />
+              <Input
+                placeholder="Search tasks…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 pl-9 text-sm"
               />
             </div>
-          </div>
-        </div>
-      </div>
 
-        {/* Filters and Actions */}
-        <div className="glass-card p-6 rounded-2xl">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
-            <div className="flex flex-col">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent">
-                Task Management
-              </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Unified view from Jira, Email AI, Teams, and more
-              </p>
-            </div>
+            {/* Filters + actions row */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                <SelectTrigger className="h-9 w-[140px] text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-[var(--cf-text-muted)]" />
+                    <SelectValue placeholder="All sources" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sources</SelectItem>
+                  {uniqueSources.map((s) => {
+                    const cfg = sourceConfig[s] || sourceConfig.MANUAL
+                    return (
+                      <SelectItem key={s} value={s}>
+                        <div className="flex items-center gap-2">
+                          <cfg.icon className="h-3.5 w-3.5" />
+                          <span>{cfg.name}</span>
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleSync} 
-                disabled={isSyncing}
-                className="bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-200"
-              >
-                <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
-                Sync
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExtractFromEmails} 
-                disabled={isExtractingTasks}
-                className="bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-200"
-              >
+              <Select value={filter} onValueChange={setFilter}>
+                <SelectTrigger className="h-9 w-[140px] text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <ListChecks className="h-3.5 w-3.5 text-[var(--cf-text-muted)]" />
+                    <SelectValue placeholder="All statuses" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {uniqueStatuses.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Divider */}
+              <div className="hidden h-5 w-px bg-[var(--cf-border)] sm:block" />
+
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs" onClick={handleExtractFromEmails} disabled={isExtractingTasks}>
                 {isExtractingTasks ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="w-4 h-4 mr-2" />
+                  <Sparkles className="h-3.5 w-3.5" />
                 )}
-                Extract
+                Extract from email
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExtractFromTeams} 
-                disabled={isExtractingFromTeams}
-                className="bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md transition-all duration-200"
-              >
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs" onClick={handleExtractFromTeams} disabled={isExtractingFromTeams}>
                 {isExtractingFromTeams ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Zap className="w-4 h-4 mr-2" />
+                  <Zap className="h-3.5 w-3.5" />
                 )}
-                Teams
-              </Button>
-              <Button 
-                size="sm"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
-                onClick={() => setShowQuickAdd(true)}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Task
+                Teams AI
               </Button>
             </div>
           </div>
 
-          {/* Search and Filters */}
-          <div className="flex flex-col lg:flex-row gap-3 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-[200px] bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-slate-500" />
-                  <SelectValue placeholder="All sources" />
-                </div>
-              </SelectTrigger>
-              <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700">
-                <SelectItem value="all">All Sources</SelectItem>
-                {uniqueSources.map((s) => {
-                  const config = sourceConfig[s] || sourceConfig.MANUAL
-                  return (
-                    <SelectItem key={s} value={s}>
-                      <div className="flex items-center gap-2">
-                        <config.icon className="w-3.5 h-3.5" />
-                        <span>{config.name}</span>
-                      </div>
-                    </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
-
-            <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-[180px] bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-2">
-                  <ListChecks className="w-4 h-4 text-slate-500" />
-                  <SelectValue placeholder="All statuses" />
-                </div>
-              </SelectTrigger>
-              <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700">
-                <SelectItem value="all">All Statuses</SelectItem>
-                {uniqueStatuses.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Quick Add Task Form (Todoist-style with NLP) */}
+          {/* Quick-add input */}
           {showQuickAdd && (
-            <div className="mb-4 p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-2 border-blue-200 dark:border-blue-800 rounded-xl shadow-lg">
+            <div className="border-b border-[var(--cf-border)] bg-[var(--cf-bg-soft)] px-4 py-4">
               <div className="space-y-3">
                 <div>
                   <Input
-                    placeholder="e.g., Review design mockups tomorrow #high"
+                    placeholder='e.g., "Review design mockups tomorrow #high"'
                     value={quickTaskTitle}
                     onChange={(e) => setQuickTaskTitle(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault()
                         handleQuickAddTask()
-                      } else if (e.key === 'Escape') {
+                      } else if (e.key === "Escape") {
                         setShowQuickAdd(false)
                         setQuickTaskTitle("")
                         setQuickTaskDescription("")
                         setParsedTaskPreview(null)
                       }
                     }}
-                    className="font-medium border-slate-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-500"
+                    className="text-sm font-medium"
                     autoFocus
                   />
-                  
-                  {/* Real-time NLP Preview */}
+
                   {parsedTaskPreview && parsedTaskPreview.title !== quickTaskTitle && (
-                    <div className="mt-2 p-2 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-blue-200 dark:border-blue-700">
-                      <div className="flex items-start gap-2">
-                        <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Smart Parse:</p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                              {parsedTaskPreview.title}
-                            </span>
-                            {parsedTaskPreview.dueDateText && (
-                              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700">
-                                <Calendar className="w-3 h-3 mr-1" />
-                                {parsedTaskPreview.dueDateText}
-                              </Badge>
-                            )}
-                            {parsedTaskPreview.priority !== "Medium" && (
-                              <Badge 
-                                variant="outline" 
-                                className={cn(
-                                  "text-xs",
-                                  parsedTaskPreview.priority === "High" && "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700 text-red-700 dark:text-red-400",
-                                  parsedTaskPreview.priority === "Low" && "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400"
-                                )}
-                              >
-                                {parsedTaskPreview.priority}
-                              </Badge>
-                            )}
-                          </div>
+                    <div className="mt-2 flex items-start gap-2 rounded-lg border border-[rgba(var(--cf-accent-rgb),0.25)] bg-[rgba(var(--cf-accent-rgb),0.06)] p-2.5">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[rgba(var(--cf-accent-rgb),1)]" />
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[rgba(var(--cf-accent-rgb),0.8)]">Smart parse</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium text-[var(--cf-text)]">{parsedTaskPreview.title}</span>
+                          {parsedTaskPreview.dueDateText && (
+                            <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[11px]">
+                              <Calendar className="h-2.5 w-2.5" />
+                              {parsedTaskPreview.dueDateText}
+                            </Badge>
+                          )}
+                          {parsedTaskPreview.priority !== "Medium" && (
+                            <Badge variant="outline" className="h-5 px-1.5 text-[11px]">
+                              {parsedTaskPreview.priority}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-                
+
                 <Input
                   placeholder="Description (optional)"
                   value={quickTaskDescription}
                   onChange={(e) => setQuickTaskDescription(e.target.value)}
-                  className="text-sm border-slate-300 dark:border-slate-600 focus:border-blue-500 dark:focus:border-blue-500"
+                  className="text-sm"
                 />
-                
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 text-xs text-slate-600 dark:text-slate-400 space-y-1">
-                    <p className="font-medium">Try:</p>
-                    <p>• "Buy groceries tomorrow" → Sets due date</p>
-                    <p>• "Review PR #high" → Sets high priority</p>
-                    <p>• "Team meeting friday #p1" → Date + priority</p>
-                  </div>
-                  
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-[var(--cf-text-dim)]">
+                    Tip: type &quot;tomorrow&quot;, &quot;monday&quot;, or &quot;#high&quot; to auto-parse
+                  </p>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
@@ -1010,235 +1113,94 @@ export function TaskManagement() {
                         setParsedTaskPreview(null)
                       }}
                       disabled={isCreatingTask}
+                      className="h-8 text-xs"
                     >
                       Cancel
                     </Button>
                     <Button
                       size="sm"
+                      className="cf-btn-primary h-8 gap-1.5 text-xs"
                       onClick={handleQuickAddTask}
                       disabled={isCreatingTask || !quickTaskTitle.trim()}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
                       {isCreatingTask ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Creating...
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Creating…
                         </>
                       ) : (
                         <>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Task
+                          <Plus className="h-3.5 w-3.5" />
+                          Add task
                         </>
                       )}
                     </Button>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    <kbd className="px-1.5 py-0.5 text-xs bg-slate-200 dark:bg-slate-700 rounded">Enter</kbd> to add • <kbd className="px-1.5 py-0.5 text-xs bg-slate-200 dark:bg-slate-700 rounded">Esc</kbd> to cancel
-                  </p>
-                  <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                    <Sparkles className="w-3 h-3" />
-                    <span className="font-medium">Smart parsing enabled</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Task List */}
-          <div className="space-y-3">
+          {/* Task list */}
+          <div className="cf-panel-body-flush">
             {loading && (
-              <div className="text-center py-12">
-                <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-slate-400" />
-                <p className="text-slate-600 dark:text-slate-400">Loading tasks...</p>
+              <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="mb-3 h-7 w-7 animate-spin text-[var(--cf-text-dim)]" />
+                <p className="text-sm text-[var(--cf-text-muted)]">Loading tasks…</p>
               </div>
             )}
-            
-            {!loading &&
-              filteredTasks.map((task) => {
-                const isChecked = task.status === "Done"
-                const currentSourceConfig = sourceConfig[task.source] || sourceConfig.MANUAL
-                const currentPriorityConfig = task.priority ? priorityConfig[task.priority] : null
-                const projectName = getProjectFromSourceData(task)
-
-                return (
-                  <div 
-                    key={task.id} 
-                    className={cn(
-                      "relative bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200 dark:border-slate-700",
-                      "rounded-xl p-5 group transition-all duration-200",
-                      "hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50",
-                      "hover:border-slate-300 dark:hover:border-slate-600",
-                      isChecked && "opacity-75"
-                    )}
-                  >
-                    <div className="flex items-start gap-4">
-                      <button
-                        aria-pressed={isChecked}
-                        aria-label={isChecked ? "Mark as not done" : "Mark as done"}
-                        onClick={() => toggleTaskStatus(task.id, task.status)}
-                        className={cn(
-                          "flex-shrink-0 mt-0.5 p-1.5 rounded-lg transition-all duration-200",
-                          "hover:scale-110 active:scale-95",
-                          isChecked 
-                            ? "bg-gradient-to-br from-green-500 to-emerald-500 shadow-sm" 
-                            : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
-                        )}
-                      >
-                        {isChecked ? (
-                          <CheckCircle2 className="w-5 h-5 text-white" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-slate-400" />
-                        )}
-                      </button>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="flex-1 min-w-0">
-                            {task.url ? (
-                              <a 
-                                href={task.url} 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="group/link inline-flex items-center gap-2"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <h3 className={cn(
-                                  "font-semibold text-base leading-tight",
-                                  isChecked 
-                                    ? "line-through text-slate-400 dark:text-slate-500" 
-                                    : "text-slate-900 dark:text-slate-100 group-hover/link:text-blue-600 dark:group-hover/link:text-blue-400"
-                                )}>
-                                  {task.title}
-                                </h3>
-                                <ExternalLink className="w-4 h-4 text-slate-400 opacity-0 group-hover/link:opacity-100 transition-opacity flex-shrink-0" />
-                              </a>
-                            ) : (
-                              <h3 className={cn(
-                                "font-semibold text-base leading-tight",
-                                isChecked 
-                                  ? "line-through text-slate-400 dark:text-slate-500" 
-                                  : "text-slate-900 dark:text-slate-100"
-                              )}>
-                                {task.title}
-                              </h3>
-                            )}
-                            {task.description && (
-                              <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mt-1.5 leading-relaxed">
-                                {task.description}
-                              </p>
-                            )}
-                          </div>
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                className="flex-shrink-0 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
-                              >
-                                <MoreHorizontal className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-slate-200 dark:border-slate-700">
-                              {task.url && (
-                                <DropdownMenuItem asChild>
-                                  <a href={task.url} target="_blank" rel="noreferrer" className="flex items-center cursor-pointer">
-                                    <ExternalLink className="w-4 h-4 mr-2" />
-                                    Open in {currentSourceConfig.name}
-                                  </a>
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setTaskToSchedule(task)
-                                  // Set default date to today and time to next hour
-                                  const now = new Date()
-                                  const nextHour = new Date(now.getTime() + 60 * 60 * 1000)
-                                  nextHour.setMinutes(0, 0, 0)
-                                  setFocusDate(now.toISOString().split('T')[0])
-                                  setFocusHour(nextHour.getHours().toString().padStart(2, '0'))
-                                  setFocusMinute('00')
-                                  setFocusTimeDialogOpen(true)
-                                }}
-                              >
-                                <Calendar className="w-4 h-4 mr-2" />
-                                Schedule Focus Time
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-950/30"
-                                onClick={() => {
-                                  setTaskToDelete(task.id)
-                                  setDeleteDialogOpen(true)
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Task
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
-                            currentSourceConfig.color
-                          )}>
-                            <currentSourceConfig.icon className="w-3.5 h-3.5" />
-                            <span>{task.source === 'EMAIL_AI' ? 'Mail' : task.sourceId}</span>
-                          </div>
-                          
-                          {currentPriorityConfig && (
-                            <div className={cn(
-                              "px-2.5 py-1 rounded-lg text-xs font-medium",
-                              currentPriorityConfig.color
-                            )}>
-                              {currentPriorityConfig.label}
-                            </div>
-                          )}
-                          
-                          <div className={cn(
-                            "px-2.5 py-1 rounded-lg text-xs font-medium",
-                            getStatusBadgeClass(task.status)
-                          )}>
-                            {task.status}
-                          </div>
-                          
-                          {projectName && (
-                            <div className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                              {projectName}
-                            </div>
-                          )}
-                          
-                          {task.dueDate && (
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400">
-                              <Clock className="w-3.5 h-3.5" />
-                              {new Date(task.dueDate).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
 
             {!loading && filteredTasks.length === 0 && (
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 mb-4">
-                  <ListTodo className="w-8 h-8 text-slate-500" />
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--cf-border)] bg-[var(--cf-bg-soft)]">
+                  <ListTodo className="h-6 w-6 text-[var(--cf-text-dim)]" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">No tasks found</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Try syncing with Jira or adjusting your filters.
+                <h3 className="text-sm font-semibold text-[var(--cf-text)]">No tasks found</h3>
+                <p className="mt-1 max-w-xs text-center text-xs text-[var(--cf-text-muted)]">
+                  {tasks.length === 0
+                    ? "Sync with Jira, extract from emails, or add a task manually to get started."
+                    : "Try adjusting your search or filters."}
                 </p>
+                {tasks.length === 0 && (
+                  <Button size="sm" className="cf-btn-primary mt-4 gap-1.5" onClick={() => setShowQuickAdd(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                    Add your first task
+                  </Button>
+                )}
               </div>
+            )}
+
+            {!loading && activeTasks.length > 0 && (
+              <>
+                {/* Section header: active */}
+                <div className="flex items-center gap-2 border-b border-[var(--cf-border)] bg-[var(--cf-bg-soft)] px-4 py-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--cf-text-muted)]">
+                    Open
+                  </span>
+                  <span className="flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-[var(--cf-border-strong)] px-1 text-[10px] font-bold text-[var(--cf-text-muted)]">
+                    {activeTasks.length}
+                  </span>
+                </div>
+                {activeTasks.map(renderTaskRow)}
+              </>
+            )}
+
+            {!loading && completedTasks.length > 0 && (
+              <>
+                {/* Section header: completed */}
+                <div className="flex items-center gap-2 border-b border-[var(--cf-border)] bg-[var(--cf-bg-soft)] px-4 py-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--cf-text-muted)]">
+                    Completed
+                  </span>
+                  <span className="flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-emerald-500/15 px-1 text-[10px] font-bold text-emerald-600">
+                    {completedTasks.length}
+                  </span>
+                </div>
+                {completedTasks.map(renderTaskRow)}
+              </>
             )}
           </div>
         </div>
-      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -1451,6 +1413,7 @@ export function TaskManagement() {
           setPendingAction(null)
         }}
       />
+      </div>
     </div>
   )
 }

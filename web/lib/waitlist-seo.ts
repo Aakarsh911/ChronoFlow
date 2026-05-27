@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
 
 export const WAITLIST_TITLE =
-  "ChronoFlow — Where engineering tasks stop falling through the cracks."
+  "ChronoFlow — Turn Teams, email, and Jira into one actionable plan."
 
 export const WAITLIST_DESCRIPTION =
-  "The unified workspace for software engineers buried in Slack, Gmail, Jira, and Calendar. AI extracts action items from your inbox automatically. Team scheduling, focus blocks, and a chat drawer that runs actions across your tools."
+  "Unified workspace for software engineers. AI extracts action items from Gmail, Outlook, and Teams. Calendar, Jira, focus blocks, and team scheduling in one place. Free beta for waitlist members."
 
 export function getSiteUrl(): string {
   const raw =
