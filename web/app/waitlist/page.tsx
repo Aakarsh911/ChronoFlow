@@ -41,7 +41,6 @@ import { ProblemScroll } from "./problem-scroll"
 import { ScrollParallax } from "./scroll-parallax"
 import { ScrollReveal } from "./scroll-reveal"
 import { ThemeToggle } from "./theme-toggle"
-import { TrackPageView } from "./track-pageview"
 import { WaitlistCountLine } from "./waitlist-count-line"
 import { WaitlistForm } from "./waitlist-form"
 import { TAGLINE_ACCENT, TAGLINE_LEAD } from "@/lib/waitlist-seo"
@@ -71,7 +70,6 @@ export default function WaitlistPage() {
       </div>
 
       <ScrollParallax />
-      <TrackPageView path="/waitlist" />
       <SiteHeader />
       <Hero />
       <ProductPreview />
