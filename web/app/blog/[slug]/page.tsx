@@ -2,9 +2,9 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getAllPosts, getAllSlugs, getPost } from "@/lib/blog"
+import { blogPostMetadata } from "@/lib/blog-seo"
 import { getSiteUrl } from "@/lib/waitlist-seo"
 import { ArrowLeft, ArrowRight, Clock, Tag } from "lucide-react"
-import "@/app/waitlist/waitlist.css"
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -19,28 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await getPost(slug)
   if (!post) return {}
 
-  const siteUrl = getSiteUrl()
-  const url = `${siteUrl}/blog/${slug}`
-
-  return {
-    title: `${post.title} — ChronoFlow Blog`,
-    description: post.description,
-    alternates: { canonical: `/blog/${slug}` },
-    openGraph: {
-      title: post.title,
-      description: post.description,
-      type: "article",
-      url,
-      publishedTime: post.date,
-      authors: [post.author],
-      tags: post.tags,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: post.title,
-      description: post.description,
-    },
-  }
+  return blogPostMetadata(post)
 }
 
 function Logo() {
@@ -229,17 +208,22 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
 
           {/* Sidebar (desktop only) */}
+          {post.sections && post.sections.length > 0 && (
           <aside className="hidden lg:block">
             <div className="sticky top-8">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--cf-text-dim)]">
                 Contents
               </p>
               <nav className="flex flex-col gap-1 text-sm">
-                <a href="#oauth" className="text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] transition-colors py-0.5">The OAuth Challenge</a>
-                <a href="#google-sync" className="text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] transition-colors py-0.5">Incremental Sync — Google</a>
-                <a href="#microsoft-sync" className="text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] transition-colors py-0.5">Incremental Sync — Microsoft</a>
-                <a href="#normalizing" className="text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] transition-colors py-0.5">Normalizing Events</a>
-                <a href="#lessons" className="text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] transition-colors py-0.5">What We Learned</a>
+                {(post.sections ?? []).map((section) => (
+                  <a
+                    key={section.id}
+                    href={`#${section.id}`}
+                    className="text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] transition-colors py-0.5"
+                  >
+                    {section.title}
+                  </a>
+                ))}
               </nav>
 
               <div className="mt-8 rounded-lg border border-[var(--cf-border)] bg-[var(--cf-bg-soft)] p-4">
@@ -256,6 +240,7 @@ export default async function BlogPostPage({ params }: Props) {
               </div>
             </div>
           </aside>
+          )}
         </div>
       </main>
 

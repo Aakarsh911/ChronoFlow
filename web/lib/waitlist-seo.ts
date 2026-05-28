@@ -80,14 +80,19 @@ export function waitlistJsonLd(siteUrl: string) {
   }
 }
 
-export function waitlistLlmsTxt(siteUrl: string): string {
+export function waitlistLlmsTxt(siteUrl: string, blogPosts: { title: string; slug: string }[] = []): string {
+  const blogSection =
+    blogPosts.length > 0
+      ? `\n## Blog\n${siteUrl}/blog\n${blogPosts.map((p) => `- ${p.title}: ${siteUrl}/blog/${p.slug}`).join("\n")}\n`
+      : ""
+
   return `# ChronoFlow
 
 > ${WAITLIST_DESCRIPTION}
 
 ## Waitlist
 ${siteUrl}/waitlist
-
+${blogSection}
 ## Product summary
 ChronoFlow is a unified productivity workspace for software engineers. Work shows up in Slack, Gmail, Jira, and Calendar, but the action often needs to happen somewhere else — tasks fall through those gaps.
 

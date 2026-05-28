@@ -1,5 +1,10 @@
 import type { ReactNode } from "react"
 
+export interface BlogSection {
+  id: string
+  title: string
+}
+
 export interface BlogPost {
   slug: string
   title: string
@@ -8,6 +13,7 @@ export interface BlogPost {
   tags: string[]
   author: string
   readTime: string    // e.g. "8 min"
+  sections?: BlogSection[]
   content: () => ReactNode
 }
 
@@ -15,6 +21,10 @@ export interface BlogPost {
 const postModules: Record<string, () => Promise<{ default: BlogPost }>> = {
   "syncing-google-and-microsoft-calendars-programmatically": () =>
     import("@/content/blog/syncing-google-and-microsoft-calendars-programmatically"),
+  "stop-losing-action-items-in-your-inbox": () =>
+    import("@/content/blog/stop-losing-action-items-in-your-inbox"),
+  "scheduling-across-google-and-microsoft-teams": () =>
+    import("@/content/blog/scheduling-across-google-and-microsoft-teams"),
 }
 
 export async function getAllPosts(): Promise<Omit<BlogPost, "content">[]> {

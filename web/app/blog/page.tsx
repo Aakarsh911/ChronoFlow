@@ -1,23 +1,6 @@
-import type { Metadata } from "next"
 import Link from "next/link"
 import { getAllPosts } from "@/lib/blog"
-import { getSiteUrl } from "@/lib/waitlist-seo"
 import { ArrowRight, Clock, Tag } from "lucide-react"
-import "@/app/waitlist/waitlist.css"
-
-export const metadata: Metadata = {
-  title: "Blog — ChronoFlow",
-  description:
-    "Technical writing from the ChronoFlow team. Deep dives on calendar sync, multi-provider OAuth, AI task extraction, and building for engineering teams.",
-  alternates: { canonical: "/blog" },
-  openGraph: {
-    title: "Blog — ChronoFlow",
-    description:
-      "Technical writing from the ChronoFlow team. Deep dives on calendar sync, AI task extraction, and building for engineering teams.",
-    type: "website",
-    url: "/blog",
-  },
-}
 
 function Logo() {
   return (
@@ -78,8 +61,8 @@ export default async function BlogIndexPage() {
             Blog
           </h1>
           <p className="max-w-xl text-[var(--cf-text-muted)] leading-relaxed">
-            Technical writing from the ChronoFlow team — calendar sync, AI task extraction,
-            multi-provider OAuth, and building productivity tools for engineering teams.
+            Practical guides for software engineers — unified calendar and email, AI task extraction,
+            and scheduling when your team spans Google and Microsoft.
           </p>
         </div>
 

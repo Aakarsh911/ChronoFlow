@@ -1,62 +1,61 @@
 import type { MetadataRoute } from "next"
 
-import { getSiteUrl } from "@/lib/waitlist-seo"
-import { getAllSlugs } from "@/lib/blog"
+import { getAllPosts } from "@/lib/blog"
 import { getAllAlternativeSlugs } from "@/lib/alternatives"
+import { getSiteUrl } from "@/lib/waitlist-seo"
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl()
-  const lastModified = new Date()
-
-  const blogSlugs = getAllSlugs()
+  const posts = await getAllPosts()
   const altSlugs = getAllAlternativeSlugs()
+  const now = new Date()
 
   return [
     {
       url: siteUrl,
-      lastModified,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 1,
     },
     {
       url: `${siteUrl}/waitlist`,
-      lastModified,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 1,
     },
     {
       url: `${siteUrl}/blog`,
-      lastModified,
+      lastModified: posts[0] ? new Date(posts[0].date) : now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
-    ...blogSlugs.map((slug) => ({
-      url: `${siteUrl}/blog/${slug}`,
-      lastModified,
+    ...posts.map((post) => ({
+      url: `${siteUrl}/blog/${post.slug}`,
+      lastModified: new Date(post.date),
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
     {
       url: `${siteUrl}/alternatives`,
-      lastModified,
+      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     ...altSlugs.map((slug) => ({
       url: `${siteUrl}/alternatives/${slug}`,
-      lastModified,
+      lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
     {
       url: `${siteUrl}/privacy`,
-      lastModified,
+      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${siteUrl}/terms`,
-      lastModified,
+      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
     },

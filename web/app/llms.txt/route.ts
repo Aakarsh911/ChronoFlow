@@ -1,9 +1,15 @@
+import { getAllPosts } from "@/lib/blog"
 import { getSiteUrl, waitlistLlmsTxt } from "@/lib/waitlist-seo"
 
 export const revalidate = 86400
 
 export async function GET() {
-  const body = waitlistLlmsTxt(getSiteUrl())
+  const siteUrl = getSiteUrl()
+  const posts = await getAllPosts()
+  const body = waitlistLlmsTxt(
+    siteUrl,
+    posts.map((p) => ({ title: p.title, slug: p.slug })),
+  )
 
   return new Response(body, {
     headers: {
