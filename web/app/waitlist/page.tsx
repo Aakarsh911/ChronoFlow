@@ -103,7 +103,9 @@ function SiteHeader() {
           </span>
         </Link>
 
-        <nav aria-label="Primary" className="flex items-center gap-2 text-sm">
+        <nav aria-label="Primary" className="flex items-center gap-3 text-sm">
+          <Link href="/blog" className="hidden sm:block text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] transition-colors font-mono text-[12px]">Blog</Link>
+          <Link href="/alternatives" className="hidden sm:block text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] transition-colors font-mono text-[12px]">Compare</Link>
           <ThemeToggle />
           <a
             href="#join"
@@ -816,6 +818,8 @@ function SiteFooter() {
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <FooterLink href="/privacy">Privacy</FooterLink>
           <FooterLink href="/terms">Terms</FooterLink>
+          <FooterLink href="/blog">Blog</FooterLink>
+          <FooterLink href="/alternatives">Compare</FooterLink>
         </nav>
       </div>
     </footer>

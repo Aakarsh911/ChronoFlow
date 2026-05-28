@@ -23,10 +23,23 @@ export function waitlistJsonLd(siteUrl: string) {
     "@context": "https://schema.org",
     "@graph": [
       {
+        "@type": "Organization",
+        "@id": `${siteUrl}/#organization`,
+        name: "ChronoFlow",
+        url: siteUrl,
+        logo: {
+          "@type": "ImageObject",
+          url: `${siteUrl}/favicon.png`,
+        },
+        description: WAITLIST_DESCRIPTION,
+        sameAs: [],
+      },
+      {
         "@type": "WebSite",
         "@id": `${siteUrl}/#website`,
         name: "ChronoFlow",
         url: siteUrl,
+        publisher: { "@id": `${siteUrl}/#organization` },
       },
       {
         "@type": "WebPage",
