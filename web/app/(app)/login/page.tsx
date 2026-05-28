@@ -1,6 +1,7 @@
 import { AuthForm } from "@/components/auth-form"
 import { AppLogo } from "@/components/app-logo"
 import { ThemeToggle } from "@/app/waitlist/theme-toggle"
+import { TAGLINE_ACCENT, TAGLINE_LEAD } from "@/lib/waitlist-seo"
 
 export default function LoginPage() {
   return (
@@ -35,8 +36,8 @@ export default function LoginPage() {
 
           <div className="space-y-4">
             <h1 className="text-balance text-4xl font-semibold leading-tight tracking-tight text-[var(--cf-text)]">
-              Turn Teams, email, and Jira into{" "}
-              <span className="text-[rgba(var(--cf-accent-rgb),1)]">one actionable plan.</span>
+              {TAGLINE_LEAD}{" "}
+              <span className="text-[rgba(var(--cf-accent-rgb),1)]">{TAGLINE_ACCENT}</span>
             </h1>
             <p className="max-w-md text-[16px] leading-relaxed text-[var(--cf-text-muted)]">
               Sign in to your unified workspace — calendar, inbox, tasks, and team

@@ -44,6 +44,7 @@ import { ThemeToggle } from "./theme-toggle"
 import { TrackPageView } from "./track-pageview"
 import { WaitlistCountLine } from "./waitlist-count-line"
 import { WaitlistForm } from "./waitlist-form"
+import { TAGLINE_ACCENT, TAGLINE_LEAD } from "@/lib/waitlist-seo"
 
 export default function WaitlistPage() {
   return (
@@ -132,9 +133,9 @@ function Hero() {
 
       <ScrollReveal delay={60}>
         <h1 className="mt-6 text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-[var(--cf-text)] sm:text-5xl lg:text-[60px]">
-          Turn Teams, email, and Jira into{" "}
+          {TAGLINE_LEAD}{" "}
           <span className="text-[rgba(var(--cf-accent-rgb),1)]">
-            one actionable plan.
+            {TAGLINE_ACCENT}
           </span>
         </h1>
       </ScrollReveal>

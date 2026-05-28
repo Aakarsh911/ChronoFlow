@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 
-export const WAITLIST_TITLE =
-  "ChronoFlow — Turn Teams, email, and Jira into one actionable plan."
+export const TAGLINE_LEAD = "Your calendar, email, and tasks"
+export const TAGLINE_ACCENT = "finally talk to each other."
+
+export const WAITLIST_TITLE = `ChronoFlow — ${TAGLINE_LEAD} ${TAGLINE_ACCENT}`
 
 export const WAITLIST_DESCRIPTION =
   "Unified workspace for software engineers. AI extracts action items from Gmail, Outlook, and Teams. Calendar, Jira, focus blocks, and team scheduling in one place. Free beta for waitlist members."
