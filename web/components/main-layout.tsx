@@ -210,9 +210,9 @@ export function MainLayout({ children }: MainLayoutProps) {
           </div>
         </aside>
 
-        <div className="relative lg:pl-20">
+        <div className="relative min-w-0 lg:pl-20">
           <header className="cf-app-header">
-            <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+            <div className="flex h-[65px] items-center justify-between px-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"
@@ -249,7 +249,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             </div>
           </header>
 
-          <main className="cf-app-content min-h-[calc(100vh-57px)] overflow-x-hidden">{children}</main>
+          <main className="cf-app-content min-h-[calc(100vh-65px)] overflow-x-hidden">{children}</main>
         </div>
 
         {sidebarOpen && (

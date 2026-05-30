@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { Users, RefreshCw, Calendar, Clock, MapPin, ChevronLeft, ChevronRight, Video, MapPinned, Bell, Repeat } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,51 +13,18 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { PageHeader } from "@/components/page-header"
+import type { MemberCalendar, TeamsMember } from "@/components/team-scheduling-types"
+import { getDemoMemberCalendars, getDemoTeamMembers } from "@/lib/team-scheduling-mock"
 import { cn } from "@/lib/utils"
 
-// No dummy data — we render real Microsoft Teams members only
-
-type TeamsMember = {
-  id: string
-  displayName: string
-  email?: string
-  jobTitle?: string
-  teamIds: string[]
-}
-
-type Availability = {
-  status: 'available' | 'busy'
-  nextAvailable: string
-  currentEventEnd?: string
-  busyUntil?: string | null
-  nextBusyAt?: string | null
-}
-
-type CalendarEvent = {
-  subject: string
-  start: { dateTime: string; timeZone: string }
-  end: { dateTime: string; timeZone: string }
-  isAllDay: boolean
-  showAs: string
-}
-
-type MemberCalendar = {
-  memberId: string
-  userName?: string
-  userEmail?: string
-  timezone?: string
-  error?: string
-  availability?: Availability
-  eventsCount?: number
-  events?: CalendarEvent[]
-}
-
-export function TeamScheduling() {
-  const [loadingTeams, setLoadingTeams] = useState(false)
+export function TeamScheduling({ demo = false }: { demo?: boolean }) {
+  const [loadingTeams, setLoadingTeams] = useState(!demo)
   const [teamsError, setTeamsError] = useState<string | null>(null)
-  const [msTeamsMembers, setMsTeamsMembers] = useState<TeamsMember[]>([])
+  const [msTeamsMembers, setMsTeamsMembers] = useState<TeamsMember[]>(demo ? getDemoTeamMembers() : [])
   const [loadingCalendars, setLoadingCalendars] = useState(false)
-  const [memberCalendars, setMemberCalendars] = useState<MemberCalendar[]>([])
+  const [memberCalendars, setMemberCalendars] = useState<MemberCalendar[]>(
+    demo ? getDemoMemberCalendars(0) : [],
+  )
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set())
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0) // 0 = current week, 1 = next week, etc.
   const [userTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone)
@@ -82,8 +49,9 @@ export function TeamScheduling() {
     isReminderOn: true,
   })
 
-  // Fetch team members
+  // Fetch team members (production only)
   useEffect(() => {
+    if (demo) return
     let mounted = true
     setLoadingTeams(true)
     // Force refresh to bypass cache and get fresh data with new logging
@@ -113,7 +81,15 @@ export function TeamScheduling() {
       })
       .finally(() => mounted && setLoadingTeams(false))
     return () => { mounted = false }
-  }, [])
+  }, [demo])
+
+  const loadDemoCalendars = (weekOffset: number) => {
+    setLoadingCalendars(true)
+    window.setTimeout(() => {
+      setMemberCalendars(getDemoMemberCalendars(weekOffset))
+      setLoadingCalendars(false)
+    }, 350)
+  }
 
   // Get week dates based on offset
   const getWeekDates = () => {
@@ -133,6 +109,11 @@ export function TeamScheduling() {
   // Fetch calendars for specific week
   const fetchMemberCalendarsForWeek = async (weekOffset: number) => {
     if (msTeamsMembers.length === 0) return
+
+    if (demo) {
+      loadDemoCalendars(weekOffset)
+      return
+    }
 
     setLoadingCalendars(true)
     try {
@@ -182,7 +163,8 @@ export function TeamScheduling() {
     if (msTeamsMembers.length > 0) {
       fetchMemberCalendarsForWeek(currentWeekOffset)
     }
-  }, [msTeamsMembers.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [msTeamsMembers.length, demo])
 
   const fetchMemberCalendars = async () => {
     if (msTeamsMembers.length === 0) {
@@ -247,8 +229,8 @@ export function TeamScheduling() {
 
       // Check if member is free during this hour
       const isBusy = memberCal.events.some(event => {
-        const eventStart = new Date(event.start.dateTime + 'Z') // Ensure UTC
-        const eventEnd = new Date(event.end.dateTime + 'Z')
+        const eventStart = new Date(event.start.dateTime)
+        const eventEnd = new Date(event.end.dateTime)
         
         // Check if event overlaps with our time slot
         return (eventStart < slotEnd && eventEnd > slotStart) && 
@@ -327,6 +309,30 @@ export function TeamScheduling() {
 
     if (selectedMembers.size === 0) {
       alert('Please select at least one team member to invite')
+      return
+    }
+
+    if (demo) {
+      setCreatingMeeting(true)
+      await new Promise((r) => setTimeout(r, 600))
+      setShowMeetingDialog(false)
+      setCreatingMeeting(false)
+      setMeetingForm({
+        subject: '',
+        body: '',
+        startTime: '',
+        endTime: '',
+        location: '',
+        isOnlineMeeting: true,
+        meetingType: 'online',
+        allowNewTimeProposals: true,
+        isAllDay: false,
+        showAs: 'busy',
+        importance: 'normal',
+        sensitivity: 'normal',
+        reminderMinutesBeforeStart: 15,
+        isReminderOn: true,
+      })
       return
     }
 
@@ -451,7 +457,15 @@ export function TeamScheduling() {
   const timeSlots = [9, 10, 11, 12, 13, 14, 15, 16, 17]
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="cf-page-shell">
+      <div className="cf-page-inner space-y-6">
+      {demo && (
+        <div className="rounded-lg border border-[rgba(var(--cf-accent-rgb),0.35)] bg-[rgba(var(--cf-accent-rgb),0.06)] px-4 py-3 text-sm text-[var(--cf-text-muted)]">
+          <span className="font-medium text-[var(--cf-text)]">Interactive demo</span> — sample
+          teammates and free/busy data. Scheduling simulates the real Teams flow.
+        </div>
+      )}
+
       <PageHeader
         eyebrow="Team"
         title="Team scheduling"
@@ -473,7 +487,7 @@ export function TeamScheduling() {
                   <CardDescription className="mt-1">Click to select for meeting</CardDescription>
                 </div>
                 {selectedMembers.size > 0 && (
-                  <Badge variant="default" className="bg-blue-600">
+                  <Badge variant="default" className="bg-[rgba(var(--cf-accent-rgb),1)]">
                     {selectedMembers.size} selected
                   </Badge>
                 )}
@@ -500,7 +514,7 @@ export function TeamScheduling() {
               {!teamsError && msTeamsMembers.length > 0 && (
                 <div className="space-y-3 pb-3 border-b">
                   {/* Timezone Display */}
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-gray-50 rounded p-2">
+                  <div className="flex items-center gap-2 text-xs text-[var(--cf-text-muted)] rounded border border-[var(--cf-border)] bg-[var(--cf-bg-soft)] p-2">
                     <MapPin className="w-3 h-3" />
                     <span className="font-medium">{userTimezone}</span>
                   </div>
@@ -543,22 +557,31 @@ export function TeamScheduling() {
                       key={m.id} 
                       onClick={() => toggleMemberSelection(m.id)}
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md",
-                        isSelected && "border-blue-500 bg-blue-50 shadow-sm"
+                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:border-[rgba(var(--cf-accent-rgb),0.35)] hover:bg-[var(--cf-bg-soft)]",
+                        isSelected &&
+                          "border-[rgba(var(--cf-accent-rgb),0.5)] bg-[rgba(var(--cf-accent-rgb),0.08)] shadow-sm",
                       )}
                     >
-                      <div className={cn(
-                        "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0",
-                        isSelected ? "border-blue-600 bg-blue-600" : "border-gray-300"
-                      )}>
+                      <div
+                        className={cn(
+                          "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0",
+                          isSelected
+                            ? "border-[rgba(var(--cf-accent-rgb),1)] bg-[rgba(var(--cf-accent-rgb),1)]"
+                            : "border-[var(--cf-border-strong)]",
+                        )}
+                      >
                         {isSelected && (
                           <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" viewBox="0 0 24 24" stroke="currentColor">
                             <path d="M5 13l4 4L19 7"></path>
                           </svg>
                         )}
                       </div>
-                      <Avatar className="w-10 h-10">
-                        <AvatarFallback className={cn(isSelected && "bg-blue-100 text-blue-700")}>
+                      <Avatar className="w-10 h-10 border border-[var(--cf-border)]">
+                        <AvatarFallback
+                          className={cn(
+                            isSelected && "bg-[var(--cf-accent-soft)] text-[rgba(var(--cf-accent-rgb),1)]",
+                          )}
+                        >
                           {(m.displayName || '?')
                             .split(' ')
                             .map((n) => n[0])
@@ -571,12 +594,15 @@ export function TeamScheduling() {
                           {hasAvailabilityData && (
                             <>
                               {isAvailable && (
-                                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs border-[rgba(var(--cf-accent-rgb),0.35)] bg-[rgba(var(--cf-accent-rgb),0.08)] text-[rgba(var(--cf-accent-rgb),1)]"
+                                >
                                   Available
                                 </Badge>
                               )}
                               {isBusy && (
-                                <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/25">
                                   Busy
                                 </Badge>
                               )}
@@ -588,8 +614,8 @@ export function TeamScheduling() {
                         {/* Timezone Display */}
                         {memberCal?.timezone && (
                           <div className="flex items-center gap-1 mt-1">
-                            <MapPin className="w-3 h-3 text-gray-400" />
-                            <span className="text-xs text-gray-500 font-medium" title={memberCal.timezone}>
+                            <MapPin className="w-3 h-3 text-[var(--cf-text-dim)]" />
+                            <span className="text-xs text-[var(--cf-text-muted)] font-medium" title={memberCal.timezone}>
                               {formatTimezone(memberCal.timezone)}
                             </span>
                           </div>
@@ -597,7 +623,7 @@ export function TeamScheduling() {
                         
                         {/* Loading state */}
                         {!memberCal && loadingCalendars && (
-                          <p className="text-xs text-blue-500 mt-1 animate-pulse">Loading availability...</p>
+                          <p className="text-xs text-[rgba(var(--cf-primary-rgb),1)] mt-1 animate-pulse">Loading availability...</p>
                         )}
 
                         {/* Availability Information */}
@@ -731,10 +757,10 @@ export function TeamScheduling() {
                         {timeSlots.map((hour) => {
                           const displayHour = hour > 12 ? hour - 12 : hour
                           const ampm = hour >= 12 ? 'PM' : 'AM'
-                          
+
                           return (
-                            <>
-                              <div key={`time-${hour}`} className="p-2 text-xs text-muted-foreground text-right flex items-center justify-end">
+                            <Fragment key={`time-${hour}`}>
+                              <div className="p-2 text-xs text-muted-foreground text-right flex items-center justify-end">
                                 {displayHour}:00 {ampm}
                               </div>
                               {getWeekDates().map((date, dayIdx) => {
@@ -744,11 +770,15 @@ export function TeamScheduling() {
                                     key={`${dayIdx}-${hour}`}
                                     onClick={() => total > 0 && handleTimeSlotClick(date, hour)}
                                     className={cn(
-                                      "p-3 rounded cursor-pointer hover:opacity-80 transition-all hover:scale-105",
+                                      "p-3 rounded cursor-pointer hover:opacity-90 transition-all hover:scale-[1.02]",
                                       getAvailabilityColor(available, total),
-                                      total === 0 && "bg-gray-100 cursor-not-allowed"
+                                      total === 0 && "bg-muted/40 cursor-not-allowed",
                                     )}
-                                    title={total > 0 ? `Click to schedule meeting at ${displayHour}:00 ${ampm}` : 'No data'}
+                                    title={
+                                      total > 0
+                                        ? `Click to schedule meeting at ${displayHour}:00 ${ampm}`
+                                        : "No data"
+                                    }
                                   >
                                     {total > 0 && (
                                       <div className="text-xs text-white font-bold text-center">
@@ -758,7 +788,7 @@ export function TeamScheduling() {
                                   </div>
                                 )
                               })}
-                            </>
+                            </Fragment>
                           )
                         })}
                       </div>
@@ -1026,6 +1056,7 @@ export function TeamScheduling() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { Eye, TrendingUp } from "lucide-react"
 import {
   getVisitStats,
   type DailyBucket,
+  type PathBreakdown,
   type SourceBreakdown,
   type VisitTotals,
 } from "@/lib/visit-tracking"
@@ -23,7 +24,7 @@ export async function VisitsPanel() {
     <div className="mt-10">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--cf-text-muted)]">
-          Visits (UTM-tagged)
+          Page visits
         </h2>
         <span className="font-mono text-[11px] text-[var(--cf-text-dim)]">
           PageVisit · last 30 days
@@ -40,17 +41,15 @@ export async function VisitsPanel() {
       {stats && (
         <>
           <TotalsRow totals={stats.totals} />
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-start">
             <DailyChart daily={stats.daily} />
+            <TopPathsTable paths={stats.topPaths} />
             <TopSourcesTable sources={stats.topSources} />
           </div>
           <p className="mt-3 text-[11px] text-[var(--cf-text-dim)]">
-            Only visits with a <code className="font-mono">utm_source</code>,{" "}
-            <code className="font-mono">utm_medium</code>, or{" "}
-            <code className="font-mono">utm_campaign</code> param are recorded.
-            Untagged direct browsing (including yours) is skipped. Unique
-            visitors are estimated from a daily-rotating IP hash, so the same
-            person counts as different uniques on different days.
+            All public page visits are recorded (UTM-tagged or direct). Set a{" "}
+            <code className="font-mono">cf_no_track=1</code> cookie in your browser to
+            exclude your own browsing. Unique visitors use a daily-rotating IP hash.
           </p>
         </>
       )}
@@ -100,6 +99,55 @@ function TotalsRow({ totals }: { totals: VisitTotals }) {
   )
 }
 
+function TopPathsTable({ paths }: { paths: PathBreakdown[] }) {
+  if (paths.length === 0) {
+    return (
+      <div className="w-full min-w-[240px] rounded-xl border border-[var(--cf-border-strong)] bg-[var(--cf-bg-elev)] p-4 lg:w-auto">
+        <h3 className="font-mono text-[11px] uppercase tracking-wider text-[var(--cf-text-dim)]">
+          Top pages
+        </h3>
+        <p className="mt-3 text-sm text-[var(--cf-text-muted)]">No visits yet.</p>
+      </div>
+    )
+  }
+
+  const max = Math.max(...paths.map((p) => p.count), 1)
+
+  return (
+    <div className="w-full min-w-[240px] overflow-hidden rounded-xl border border-[var(--cf-border-strong)] bg-[var(--cf-bg-elev)] lg:w-[280px]">
+      <div className="flex items-center gap-2 border-b border-[var(--cf-border)] bg-[var(--cf-bg-soft)] px-4 py-2.5">
+        <Eye className="size-3.5 text-[rgba(var(--cf-accent-rgb),1)]" />
+        <h3 className="font-mono text-[11px] uppercase tracking-wider text-[var(--cf-text-muted)]">
+          Top pages · 30d
+        </h3>
+      </div>
+      <ul className="divide-y divide-[var(--cf-border)]">
+        {paths.map((p) => {
+          const widthPct = Math.max(4, Math.round((p.count / max) * 100))
+          return (
+            <li key={p.path} className="px-4 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="truncate font-mono text-[12px] text-[var(--cf-text)]">
+                  {p.path}
+                </span>
+                <span className="shrink-0 font-mono text-[12px] text-[var(--cf-text-muted)] tabular-nums">
+                  {p.count}
+                </span>
+              </div>
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--cf-bg-soft)]">
+                <div
+                  className="h-full rounded-full bg-[rgba(var(--cf-primary-rgb),0.55)]"
+                  style={{ width: `${widthPct}%` }}
+                />
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 function TopSourcesTable({ sources }: { sources: SourceBreakdown[] }) {
   if (sources.length === 0) {
     return (
@@ -107,10 +155,7 @@ function TopSourcesTable({ sources }: { sources: SourceBreakdown[] }) {
         <h3 className="font-mono text-[11px] uppercase tracking-wider text-[var(--cf-text-dim)]">
           Top sources
         </h3>
-        <p className="mt-3 text-sm text-[var(--cf-text-muted)]">
-          No tagged visits yet. Share a link with{" "}
-          <code className="font-mono">?utm_source=…</code> attached and refresh.
-        </p>
+        <p className="mt-3 text-sm text-[var(--cf-text-muted)]">No visits yet.</p>
       </div>
     )
   }
@@ -175,7 +220,7 @@ function DailyChart({ daily }: { daily: DailyBucket[] }) {
       <div
         className="mt-4 flex h-32 items-end gap-[3px]"
         role="img"
-        aria-label={`Daily UTM-tagged visits over the last 30 days, peak ${max} visits`}
+        aria-label={`Daily visits over the last 30 days, peak ${max} visits`}
       >
         {daily.map((d) => {
           const heightPct = Math.max(2, Math.round((d.count / max) * 100))

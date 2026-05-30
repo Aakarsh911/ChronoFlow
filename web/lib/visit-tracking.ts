@@ -3,21 +3,11 @@ import { createHash } from "crypto"
 import { prisma } from "@/lib/prisma"
 
 /**
- * First-party visit tracking for the public marketing pages.
+ * First-party visit tracking for public marketing pages and the sandbox.
  *
- * Design choices:
- *   • Only writes a row when at least one UTM param is present. Untagged
- *     traffic (direct, internal browsing, crawlers that strip params, etc.)
- *     is ignored on purpose — keeps the table noise-free and means the
- *     site owner doesn't need a separate self-exclusion mechanism.
- *   • IPs are never stored raw. We hash with SHA-256 + a daily-rotating
- *     salt so we can do rough unique-visitor counts within a 24h window
- *     without persisting PII beyond that.
- *   • A small in-process rate cap prevents accidental loops or trivial
- *     spam from blowing up the table on serverless cold starts.
- *
- * If you want to also count untagged visits later, just relax the
- * `hasUtm` check in `recordVisit`.
+ * All visits are recorded (UTM-tagged or direct). Untagged traffic is stored
+ * with source "direct". Set the `cf_no_track=1` cookie to opt out (e.g. for
+ * admin browsing). IPs are hashed with a daily salt for rough unique counts.
  */
 
 const VISIT_TRACKING_SECRET =
@@ -102,18 +92,17 @@ export type RecordVisitInput = {
 
 export type RecordVisitResult =
   | { recorded: true }
-  | { recorded: false; reason: "no_utm" | "bot" | "rate_limited" | "error" }
+  | { recorded: false; reason: "bot" | "rate_limited" | "error" }
 
 export async function recordVisit(
   input: RecordVisitInput,
 ): Promise<RecordVisitResult> {
-  const source = clean(input.source)
+  let source = clean(input.source)
   const medium = clean(input.medium)
   const campaign = clean(input.campaign)
 
-  const hasUtm = Boolean(source || medium || campaign)
-  if (!hasUtm) {
-    return { recorded: false, reason: "no_utm" }
+  if (!source && !medium && !campaign) {
+    source = "direct"
   }
 
   if (isBotUserAgent(input.userAgent)) {
@@ -180,9 +169,16 @@ function daysAgo(n: number): Date {
   return d
 }
 
+export type PathBreakdown = {
+  path: string
+  count: number
+  uniqueVisitors: number
+}
+
 export async function getVisitStats(): Promise<{
   totals: VisitTotals
   topSources: SourceBreakdown[]
+  topPaths: PathBreakdown[]
   daily: DailyBucket[]
 }> {
   const since7 = daysAgo(7)
@@ -196,11 +192,11 @@ export async function getVisitStats(): Promise<{
     prisma.pageVisit.count(),
     prisma.pageVisit.findMany({
       where: { createdAt: { gte: since7 } },
-      select: { ipHash: true, source: true, createdAt: true },
+      select: { ipHash: true, source: true, path: true, createdAt: true },
     }),
     prisma.pageVisit.findMany({
       where: { createdAt: { gte: since30 } },
-      select: { ipHash: true, source: true, createdAt: true },
+      select: { ipHash: true, source: true, path: true, createdAt: true },
     }),
   ])
 
@@ -228,6 +224,26 @@ export async function getVisitStats(): Promise<{
   const topSources: SourceBreakdown[] = Array.from(sourceCounts.entries())
     .map(([source, b]) => ({
       source,
+      count: b.count,
+      uniqueVisitors: b.uniques.size,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+
+  const pathCounts = new Map<string, { count: number; uniques: Set<string> }>()
+  for (const r of last30Rows) {
+    const p = r.path ?? "/"
+    let bucket = pathCounts.get(p)
+    if (!bucket) {
+      bucket = { count: 0, uniques: new Set() }
+      pathCounts.set(p, bucket)
+    }
+    bucket.count += 1
+    if (r.ipHash) bucket.uniques.add(r.ipHash)
+  }
+  const topPaths: PathBreakdown[] = Array.from(pathCounts.entries())
+    .map(([path, b]) => ({
+      path,
       count: b.count,
       uniqueVisitors: b.uniques.size,
     }))
@@ -264,6 +280,7 @@ export async function getVisitStats(): Promise<{
       uniqueVisitors30d: unique30.size,
     },
     topSources,
+    topPaths,
     daily,
   }
 }

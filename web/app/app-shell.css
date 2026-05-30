@@ -115,6 +115,36 @@
   backdrop-filter: blur(10px);
 }
 
+/* Sandbox shell — main column sits beside fixed sidebar, never underneath */
+.cf-sandbox-main {
+  display: flex;
+  min-height: 100vh;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  margin-left: 0;
+}
+
+@media (min-width: 1024px) {
+  .cf-sandbox-main {
+    margin-left: 5rem;
+  }
+}
+
+.cf-sandbox-header {
+  display: flex;
+  height: 65px;
+  flex-shrink: 0;
+  align-items: center;
+  border-bottom: 1px solid var(--cf-border);
+}
+
+.cf-sandbox-demo-banner {
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(var(--cf-accent-rgb), 0.35);
+  background: color-mix(in oklch, var(--cf-bg) 88%, rgba(var(--cf-accent-rgb), 0.08));
+}
+
 .cf-app-sidebar {
   position: fixed;
   inset-block: 0;

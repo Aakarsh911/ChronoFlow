@@ -12,6 +12,7 @@ import {
   Link2,
   Lock,
   MessageSquare,
+  MonitorPlay,
   Server,
   Shield,
   Sparkles,
@@ -149,8 +150,60 @@ function Hero() {
         </p>
       </ScrollReveal>
 
-      <ScrollReveal delay={180}>
-        <div id="join" className="mx-auto mt-8 max-w-lg">
+      <ScrollReveal delay={150}>
+        <div className="mx-auto mt-8 max-w-xl">
+          <Link
+            href="/sandbox"
+            className="group block overflow-hidden rounded-2xl border border-[var(--cf-border-strong)] bg-[var(--cf-bg-elev)] text-left shadow-[0_24px_80px_-40px_rgba(var(--cf-accent-rgb),0.45)] transition hover:border-[rgba(var(--cf-accent-rgb),0.45)]"
+          >
+            <div
+              className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(var(--cf-accent-rgb), 0.12) 0%, transparent 60%)",
+              }}
+            >
+              <div className="flex items-start gap-4 text-left">
+                <span
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[rgba(var(--cf-accent-rgb),0.35)] bg-[var(--cf-accent-soft)]"
+                  style={{ color: "rgba(var(--cf-accent-rgb), 1)" }}
+                >
+                  <MonitorPlay className="h-6 w-6" />
+                </span>
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-wider text-[rgba(var(--cf-accent-rgb),1)]">
+                    Start here
+                  </p>
+                  <p className="mt-1 text-lg font-semibold tracking-tight text-[var(--cf-text)] sm:text-xl">
+                    Try it in the sandbox
+                  </p>
+                  <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--cf-text-muted)]">
+                    Walk through mail, tasks, and calendar with sample data — no signup.
+                  </p>
+                </div>
+              </div>
+              <span
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold text-white transition group-hover:brightness-110 sm:min-w-[180px]"
+                style={{
+                  background:
+                    "linear-gradient(110deg, rgba(var(--cf-accent-rgb), 1) 0%, rgba(var(--cf-primary-rgb), 1) 100%)",
+                  boxShadow:
+                    "0 8px 28px -10px rgba(var(--cf-accent-rgb), 0.55), inset 0 1px 0 rgba(255,255,255,0.15)",
+                }}
+              >
+                Open demo
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </div>
+          </Link>
+        </div>
+      </ScrollReveal>
+
+      <ScrollReveal delay={210}>
+        <div id="join" className="mx-auto mt-10 max-w-lg">
+          <p className="mb-4 font-mono text-[11px] uppercase tracking-wider text-[var(--cf-text-dim)]">
+            Or join the waitlist for early access
+          </p>
           <WaitlistForm variant="hero" source="hero" />
           <WaitlistPerks className="mt-4" />
         </div>

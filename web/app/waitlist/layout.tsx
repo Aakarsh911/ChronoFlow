@@ -6,6 +6,7 @@ import {
   waitlistJsonLd,
   waitlistPageMetadata,
 } from "@/lib/waitlist-seo"
+import { TrackPageView } from "./track-pageview"
 
 export const metadata = waitlistPageMetadata(getSiteUrl())
 
@@ -33,6 +34,7 @@ export default function WaitlistLayout({ children }: { children: React.ReactNode
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="cf-waitlist" suppressHydrationWarning>
+        <TrackPageView path="/waitlist" />
         {children}
       </div>
     </>

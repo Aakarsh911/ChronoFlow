@@ -1,350 +1,425 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import {
-  BarChart3,
-  TrendingUp,
+  ArrowDown,
+  ArrowUp,
+  CheckCircle2,
   Clock,
+  Filter,
+  GitPullRequest,
+  Mail,
+  RefreshCw,
   Target,
+  TrendingUp,
   Users,
   Zap,
   AlertTriangle,
-  CheckCircle2,
-  ArrowUp,
-  ArrowDown,
-  Filter,
 } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PageHeader } from "@/components/page-header"
 import {
-  LineChart,
-  Line,
-  AreaChart,
+  analyticsInsights,
+  analyticsKpis,
+  contextSwitchBreakdown,
+  focusSessionStats,
+  hourlyFocusIntensity,
+  integrationStats,
+  meetingPatterns,
+  taskSources,
+  weeklyProductivity,
+  weeklyWorkMix,
+  whatIfScenarios,
+} from "@/lib/analytics-mock-data"
+import { cn } from "@/lib/utils"
+import {
   Area,
-  BarChart,
+  AreaChart,
   Bar,
-  PieChart,
-  Pie,
+  BarChart,
+  CartesianGrid,
   Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
 } from "recharts"
-import { PageHeader } from "@/components/page-header"
-import { cn } from "@/lib/utils"
 
-// Mock analytics data
-const weeklyProductivity = [
-  { day: "Mon", focusTime: 4.5, meetings: 2, tasks: 8, productivity: 85 },
-  { day: "Tue", focusTime: 3.2, meetings: 4, tasks: 6, productivity: 72 },
-  { day: "Wed", focusTime: 5.1, meetings: 1, tasks: 9, productivity: 92 },
-  { day: "Thu", focusTime: 2.8, meetings: 5, tasks: 5, productivity: 68 },
-  { day: "Fri", focusTime: 4.0, meetings: 3, tasks: 7, productivity: 78 },
-]
+const tooltipStyle = {
+  backgroundColor: "var(--cf-bg-elev, var(--card))",
+  border: "1px solid var(--cf-border, var(--border))",
+  borderRadius: "8px",
+  fontSize: "12px",
+}
 
-const monthlyTrends = [
-  { month: "Jan", focusTime: 85, meetings: 45, tasks: 156, productivity: 82 },
-  { month: "Feb", focusTime: 92, meetings: 38, tasks: 168, productivity: 87 },
-  { month: "Mar", focusTime: 78, meetings: 52, tasks: 142, productivity: 79 },
-  { month: "Apr", focusTime: 95, meetings: 41, tasks: 174, productivity: 89 },
-  { month: "May", focusTime: 88, meetings: 47, tasks: 161, productivity: 85 },
-  { month: "Jun", focusTime: 102, meetings: 35, tasks: 189, productivity: 93 },
-]
+type TimeRange = "week" | "month"
 
-const timeAllocation = [
-  { name: "Focus Time", value: 45, color: "var(--primary)" },
-  { name: "Meetings", value: 25, color: "var(--chart-4)" },
-  { name: "Email & Slack", value: 15, color: "var(--chart-2)" },
-  { name: "Admin Tasks", value: 10, color: "var(--chart-3)" },
-  { name: "Breaks", value: 5, color: "var(--muted-foreground)" },
-]
+function TrendBadge({
+  delta,
+  trend,
+  label,
+  invert = false,
+}: {
+  delta: string
+  trend: "up" | "down"
+  label: string
+  invert?: boolean
+}) {
+  const isPositive = invert ? trend === "down" : trend === "up"
+  const Icon = isPositive ? ArrowUp : ArrowDown
+  return (
+    <div className="mt-1 flex items-center gap-1">
+      <Icon className={cn("h-3 w-3", isPositive ? "text-[rgba(var(--cf-accent-rgb),1)]" : "text-red-500")} />
+      <span className={cn("text-xs", isPositive ? "text-[rgba(var(--cf-accent-rgb),1)]" : "text-red-500")}>
+        {delta} {label}
+      </span>
+    </div>
+  )
+}
 
-const meetingPatterns = [
-  { time: "9:00", count: 12, efficiency: 85 },
-  { time: "10:00", count: 18, efficiency: 78 },
-  { time: "11:00", count: 15, efficiency: 82 },
-  { time: "14:00", count: 22, efficiency: 71 },
-  { time: "15:00", count: 19, efficiency: 76 },
-  { time: "16:00", count: 14, efficiency: 88 },
-]
+function getInsightIcon(type: string) {
+  switch (type) {
+    case "success":
+      return <CheckCircle2 className="h-5 w-5 text-[rgba(var(--cf-accent-rgb),1)]" />
+    case "warning":
+      return <AlertTriangle className="h-5 w-5 text-amber-500" />
+    default:
+      return <Zap className="h-5 w-5 text-[rgba(var(--cf-primary-rgb),1)]" />
+  }
+}
 
-const insights = [
-  {
-    type: "success",
-    title: "Peak Performance Window",
-    description: "You're most productive between 9-11 AM with 92% efficiency",
-    action: "Schedule important tasks during this time",
-    impact: "+15% productivity",
-  },
-  {
-    type: "warning",
-    title: "Meeting Overload",
-    description: "Thursday has 5 meetings, reducing focus time by 60%",
-    action: "Consider rescheduling 2 non-critical meetings",
-    impact: "+2.5h focus time",
-  },
-  {
-    type: "info",
-    title: "Task Completion Pattern",
-    description: "You complete 40% more tasks on days with <3 meetings",
-    action: "Block calendar for focus days",
-    impact: "+3 tasks/day",
-  },
-  {
-    type: "success",
-    title: "Focus Block Effectiveness",
-    description: "90-minute focus blocks show 25% higher completion rates",
-    action: "Standardize on 90-minute sessions",
-    impact: "+25% completion",
-  },
-]
+function getInsightColor(type: string) {
+  switch (type) {
+    case "success":
+      return "border-[rgba(var(--cf-accent-rgb),0.25)] bg-[rgba(var(--cf-accent-rgb),0.06)]"
+    case "warning":
+      return "border-amber-500/25 bg-amber-500/5"
+    default:
+      return "border-[rgba(var(--cf-primary-rgb),0.25)] bg-[rgba(var(--cf-primary-rgb),0.06)]"
+  }
+}
 
 export function AnalyticsDashboard() {
-  const [timeRange, setTimeRange] = useState("week")
-  const [selectedTab, setSelectedTab] = useState("overview")
+  const [timeRange, setTimeRange] = useState<TimeRange>("week")
+  const [tab, setTab] = useState("overview")
 
-  const getInsightIcon = (type: string) => {
-    switch (type) {
-      case "success":
-        return <CheckCircle2 className="w-5 h-5 text-accent" />
-      case "warning":
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />
-      case "info":
-        return <Zap className="w-5 h-5 text-primary" />
-      default:
-        return <BarChart3 className="w-5 h-5 text-muted-foreground" />
-    }
-  }
-
-  const getInsightColor = (type: string) => {
-    switch (type) {
-      case "success":
-        return "border-accent/20 bg-accent/5"
-      case "warning":
-        return "border-yellow-200 bg-yellow-50"
-      case "info":
-        return "border-primary/20 bg-primary/5"
-      default:
-        return "border-border bg-muted/30"
-    }
-  }
+  const kpis = analyticsKpis[timeRange]
+  const avgFocusScore = useMemo(
+    () => Math.round(weeklyProductivity.reduce((s, d) => s + d.focusScore, 0) / weeklyProductivity.length),
+    [],
+  )
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="space-y-6">
       <PageHeader
         eyebrow="Analytics"
-        title="Productivity insights"
-        subtitle="Patterns in focus time, meetings, and task completion"
+        title="How your week actually went"
+        subtitle="Deep work, context switching, and email-to-task flow — synced from calendar, mail, and tasks."
         actions={
-          <div className="flex flex-wrap items-center gap-3">
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-[140px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
+              <SelectTrigger className="w-[140px] border-[var(--cf-border)] bg-[var(--cf-bg-soft)]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="quarter">This Quarter</SelectItem>
-                <SelectItem value="year">This Year</SelectItem>
+                <SelectItem value="week">This week</SelectItem>
+                <SelectItem value="month">This month</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">Export Report</Button>
+            <Button variant="outline" size="sm" className="border-[var(--cf-border)]" disabled>
+              Export
+            </Button>
           </div>
         }
       />
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="cf-surface-card border-0">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Productivity Score</p>
-                <p className="text-2xl font-bold text-accent">87%</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowUp className="w-3 h-3 text-accent" />
-                  <span className="text-xs text-accent">+5% from last week</span>
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">Deep work</p>
+                <p className="text-2xl font-bold text-[rgba(var(--cf-primary-rgb),1)]">{kpis.deepWorkHours.value}</p>
+                <TrendBadge {...kpis.deepWorkHours} label={kpis.deepWorkHours.label} />
               </div>
-              <TrendingUp className="w-8 h-8 text-accent" />
+              <div className="rounded-lg bg-[rgba(var(--cf-primary-rgb),0.12)] p-2">
+                <Clock className="h-5 w-5 text-[rgba(var(--cf-primary-rgb),1)]" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cf-surface-card border-0">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Focus Time</p>
-                <p className="text-2xl font-bold text-primary">19.6h</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowUp className="w-3 h-3 text-primary" />
-                  <span className="text-xs text-primary">+2.3h from last week</span>
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">Context switches</p>
+                <p className="text-2xl font-bold">{kpis.contextSwitches.value}</p>
+                <TrendBadge {...kpis.contextSwitches} label={kpis.contextSwitches.label} invert />
               </div>
-              <Clock className="w-8 h-8 text-primary" />
+              <div className="rounded-lg bg-muted/50 p-2">
+                <RefreshCw className="h-5 w-5 text-muted-foreground" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cf-surface-card border-0">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Tasks Completed</p>
-                <p className="text-2xl font-bold">35</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowDown className="w-3 h-3 text-red-500" />
-                  <span className="text-xs text-red-500">-3 from last week</span>
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">Email → task</p>
+                <p className="text-2xl font-bold text-[rgba(var(--cf-accent-rgb),1)]">
+                  {kpis.emailToTaskRate.value}
+                </p>
+                <TrendBadge {...kpis.emailToTaskRate} label={kpis.emailToTaskRate.label} />
               </div>
-              <Target className="w-8 h-8 text-muted-foreground" />
+              <div className="rounded-lg bg-[rgba(var(--cf-accent-rgb),0.12)] p-2">
+                <Mail className="h-5 w-5 text-[rgba(var(--cf-accent-rgb),1)]" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cf-surface-card border-0">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Meeting Hours</p>
-                <p className="text-2xl font-bold text-chart-4">12.5h</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowDown className="w-3 h-3 text-accent" />
-                  <span className="text-xs text-accent">-1.2h from last week</span>
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">Meeting hours</p>
+                <p className="text-2xl font-bold">{kpis.meetingHours.value}</p>
+                <TrendBadge {...kpis.meetingHours} label={kpis.meetingHours.label} invert />
               </div>
-              <Users className="w-8 h-8 text-chart-4" />
+              <div className="rounded-lg bg-muted/50 p-2">
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--cf-border)] bg-[var(--cf-bg-soft)] px-4 py-3">
+        <TrendingUp className="h-4 w-4 text-[rgba(var(--cf-accent-rgb),1)]" />
+        <span className="text-sm text-[var(--cf-text-muted)]">
+          Weekly focus score:{" "}
+          <span className="font-semibold text-[var(--cf-text)]">{avgFocusScore}/100</span>
+          {" · "}
+          Best day: <span className="font-medium text-[var(--cf-text)]">Wednesday</span>
+          {" · "}
+          Biggest drag: <span className="font-medium text-[var(--cf-text)]">Thursday meetings</span>
+        </span>
+      </div>
+
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-[var(--cf-bg-soft)] p-1 lg:grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="focus">Focus Analysis</TabsTrigger>
-          <TabsTrigger value="meetings">Meeting Patterns</TabsTrigger>
-          <TabsTrigger value="insights">AI Insights</TabsTrigger>
+          <TabsTrigger value="patterns">Work patterns</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Weekly Productivity Trend */}
-            <Card>
+        <TabsContent value="overview" className="mt-6 space-y-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <Card className="cf-surface-card border-0">
               <CardHeader>
-                <CardTitle>Weekly Productivity Trend</CardTitle>
-                <CardDescription>Your productivity score and focus time over the week</CardDescription>
+                <CardTitle className="text-base">Daily work mix</CardTitle>
+                <CardDescription>Hours spent in deep work, meetings, email, and admin</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={weeklyProductivity}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="day" className="text-muted-foreground" />
-                    <YAxis className="text-muted-foreground" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="productivity"
-                      stroke="var(--accent)"
-                      strokeWidth={3}
-                      dot={{ fill: "var(--accent)", strokeWidth: 2, r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="focusTime"
-                      stroke="var(--primary)"
-                      strokeWidth={2}
-                      dot={{ fill: "var(--primary)", strokeWidth: 2, r: 3 }}
-                    />
-                  </LineChart>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={weeklyWorkMix}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
+                    <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} unit="h" />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend />
+                    <Bar dataKey="deepWork" name="Deep work" stackId="a" fill="rgba(var(--cf-primary-rgb), 0.85)" />
+                    <Bar dataKey="meetings" name="Meetings" stackId="a" fill="#9333ea" />
+                    <Bar dataKey="email" name="Email" stackId="a" fill="rgba(var(--cf-accent-rgb), 0.75)" />
+                    <Bar dataKey="admin" name="Admin" stackId="a" fill="var(--muted-foreground)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Time Allocation */}
-            <Card>
+            <Card className="cf-surface-card border-0">
               <CardHeader>
-                <CardTitle>Time Allocation</CardTitle>
-                <CardDescription>How you spend your working hours</CardDescription>
+                <CardTitle className="text-base">Task sources</CardTitle>
+                <CardDescription>Where completed tasks originated this week</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie
-                      data={timeAllocation}
+                      data={taskSources}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={120}
-                      paddingAngle={2}
+                      innerRadius={55}
+                      outerRadius={95}
+                      paddingAngle={3}
                       dataKey="value"
                     >
-                      {timeAllocation.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      {taskSources.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                      }}
-                    />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v}%`, "Share"]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Monthly Trends */}
-            <Card className="lg:col-span-2">
+            <Card className="cf-surface-card border-0 lg:col-span-2">
               <CardHeader>
-                <CardTitle>6-Month Trends</CardTitle>
-                <CardDescription>Long-term productivity and focus time patterns</CardDescription>
+                <CardTitle className="text-base">Focus score & throughput</CardTitle>
+                <CardDescription>Daily focus score vs tasks completed and emails triaged</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={monthlyTrends}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" className="text-muted-foreground" />
-                    <YAxis className="text-muted-foreground" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                      }}
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={weeklyProductivity}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
+                    <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 12 }} domain={[0, 100]} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend />
+                    <Line
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="focusScore"
+                      name="Focus score"
+                      stroke="rgba(var(--cf-accent-rgb), 1)"
+                      strokeWidth={2.5}
+                      dot={{ r: 4 }}
                     />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="tasksDone"
+                      name="Tasks done"
+                      stroke="rgba(var(--cf-primary-rgb), 1)"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="emailsTriaged"
+                      name="Emails triaged"
+                      stroke="#ea580c"
+                      strokeWidth={2}
+                      strokeDasharray="4 4"
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="patterns" className="mt-6 space-y-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <Card className="cf-surface-card border-0">
+              <CardHeader>
+                <CardTitle className="text-base">Focus by hour</CardTitle>
+                <CardDescription>Average intensity 9 AM – 8 PM (Mon–Fri)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-12">
+                  {hourlyFocusIntensity.map((intensity, hour) => (
+                    <div key={hour} className="flex flex-col items-center gap-1">
+                      <div
+                        className={cn(
+                          "flex aspect-square w-full items-center justify-center rounded-md text-[10px] font-medium",
+                          intensity >= 80 && "bg-[rgba(var(--cf-accent-rgb),0.85)] text-white",
+                          intensity >= 60 && intensity < 80 && "bg-[rgba(var(--cf-primary-rgb),0.7)] text-white",
+                          intensity >= 40 && intensity < 60 && "bg-muted text-muted-foreground",
+                          intensity < 40 && "bg-muted/40 text-muted-foreground",
+                        )}
+                        title={`${intensity}% focus`}
+                      >
+                        {hour + 9}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  Peak: 10–11 AM · Low: lunch block 12–1 PM
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="cf-surface-card border-0">
+              <CardHeader>
+                <CardTitle className="text-base">Context switches</CardTitle>
+                <CardDescription>Top transitions between tools</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {contextSwitchBreakdown.map((row) => (
+                  <div key={row.tool} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>{row.tool}</span>
+                      <span className="font-medium tabular-nums">{row.count}</span>
+                    </div>
+                    <Progress value={row.pct} className="h-1.5" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="cf-surface-card border-0">
+              <CardHeader>
+                <CardTitle className="text-base">Focus session length</CardTitle>
+                <CardDescription>Completion rate by block duration</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {focusSessionStats.map((row) => (
+                  <div key={row.duration} className="flex items-center justify-between gap-3">
+                    <div className="min-w-[72px] text-sm font-medium">{row.duration}</div>
+                    <Progress value={row.completion} className="h-2 flex-1" />
+                    <span className="w-10 text-right text-sm tabular-nums text-muted-foreground">
+                      {row.completion}%
+                    </span>
+                  </div>
+                ))}
+                <div className="rounded-lg border border-[rgba(var(--cf-accent-rgb),0.25)] bg-[rgba(var(--cf-accent-rgb),0.06)] p-3">
+                  <p className="text-sm font-medium text-[rgba(var(--cf-accent-rgb),1)]">Sweet spot: 90 minutes</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Best for PR reviews and implementation work</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="cf-surface-card border-0">
+              <CardHeader>
+                <CardTitle className="text-base">Meeting efficiency</CardTitle>
+                <CardDescription>Score by time slot (action items captured / hour)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={meetingPatterns}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/40" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
+                    <Tooltip contentStyle={tooltipStyle} />
                     <Area
                       type="monotone"
-                      dataKey="focusTime"
-                      stackId="1"
-                      stroke="var(--primary)"
-                      fill="var(--primary)"
-                      fillOpacity={0.6}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="meetings"
-                      stackId="2"
-                      stroke="var(--chart-4)"
-                      fill="var(--chart-4)"
-                      fillOpacity={0.6}
+                      dataKey="efficiency"
+                      name="Efficiency %"
+                      stroke="rgba(var(--cf-accent-rgb), 1)"
+                      fill="rgba(var(--cf-accent-rgb), 0.2)"
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -353,265 +428,145 @@ export function AnalyticsDashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="focus" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Focus Time Analysis */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Focus Session Effectiveness</CardTitle>
-                <CardDescription>Completion rates by session duration</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
+        <TabsContent value="integrations" className="mt-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {integrationStats.map((item) => (
+              <Card key={item.name} className="cf-surface-card border-0">
+                <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">25-minute sessions</span>
-                    <div className="flex items-center gap-2">
-                      <Progress value={68} className="w-20 h-2" />
-                      <span className="text-sm text-muted-foreground">68%</span>
+                    <CardTitle className="text-base">{item.name}</CardTitle>
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      synced
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums">{item.synced}</p>
+                      <p className="text-xs text-muted-foreground">items synced</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold tabular-nums text-[rgba(var(--cf-accent-rgb),1)]">
+                        {item.extracted}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{item.label}</p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">45-minute sessions</span>
-                    <div className="flex items-center gap-2">
-                      <Progress value={82} className="w-20 h-2" />
-                      <span className="text-sm text-muted-foreground">82%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">90-minute sessions</span>
-                    <div className="flex items-center gap-2">
-                      <Progress value={94} className="w-20 h-2" />
-                      <span className="text-sm text-muted-foreground">94%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">120-minute sessions</span>
-                    <div className="flex items-center gap-2">
-                      <Progress value={76} className="w-20 h-2" />
-                      <span className="text-sm text-muted-foreground">76%</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-accent/5 border border-accent/20">
-                  <p className="text-sm font-medium text-accent">Optimal Duration: 90 minutes</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Your highest completion rate with sustained focus
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Interruption Analysis */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Interruption Patterns</CardTitle>
-                <CardDescription>When and how often you get interrupted</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={weeklyProductivity}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="day" className="text-muted-foreground" />
-                    <YAxis className="text-muted-foreground" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar dataKey="meetings" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-                <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                  <p className="text-sm font-medium text-primary">Best Focus Days: Monday & Wednesday</p>
-                  <p className="text-xs text-muted-foreground mt-1">Fewer meetings = higher productivity</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Focus Time Heatmap */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Daily Focus Patterns</CardTitle>
-                <CardDescription>Your most productive hours throughout the day</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-12 gap-1">
-                  {Array.from({ length: 12 }, (_, hour) => {
-                    const intensity = Math.random() * 100
-                    return (
-                      <div
-                        key={hour}
-                        className={cn(
-                          "aspect-square rounded flex items-center justify-center text-xs font-medium",
-                          intensity > 80 && "bg-accent text-accent-foreground",
-                          intensity > 60 && intensity <= 80 && "bg-primary text-primary-foreground",
-                          intensity > 40 && intensity <= 60 && "bg-secondary text-secondary-foreground",
-                          intensity <= 40 && "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {hour + 9}
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
-                  <span>9 AM</span>
-                  <span>Peak productivity: 10-11 AM</span>
-                  <span>8 PM</span>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </TabsContent>
 
-        <TabsContent value="meetings" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Meeting Efficiency by Time */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Meeting Efficiency by Time</CardTitle>
-                <CardDescription>How effective meetings are at different times</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={meetingPatterns}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="time" className="text-muted-foreground" />
-                    <YAxis className="text-muted-foreground" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar dataKey="efficiency" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Meeting Load Analysis */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Meeting Load Analysis</CardTitle>
-                <CardDescription>Meeting frequency and impact on productivity</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Average meetings/day</span>
-                    <span className="text-sm font-bold">3.2</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Average meeting duration</span>
-                    <span className="text-sm font-bold">42 min</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Meeting-free days</span>
-                    <span className="text-sm font-bold">1.2/week</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Back-to-back meetings</span>
-                    <span className="text-sm font-bold">28%</span>
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-                  <p className="text-sm font-medium text-yellow-600">Recommendation</p>
-                  <p className="text-xs text-yellow-600 mt-1">Consider blocking one full day per week for deep work</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="insights" className="mt-6">
-          <div className="space-y-6">
-            {/* AI Insights */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-accent" />
-                  AI-Powered Insights
-                </CardTitle>
-                <CardDescription>Personalized recommendations based on your patterns</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {insights.map((insight, index) => (
-                    <div key={index} className={cn("p-4 rounded-lg border", getInsightColor(insight.type))}>
-                      <div className="flex items-start gap-3">
-                        {getInsightIcon(insight.type)}
-                        <div className="flex-1">
-                          <h4 className="font-medium text-sm">{insight.title}</h4>
-                          <p className="text-xs text-muted-foreground mt-1">{insight.description}</p>
-                          <div className="mt-3 space-y-2">
-                            <p className="text-xs font-medium">Recommended Action:</p>
-                            <p className="text-xs text-muted-foreground">{insight.action}</p>
-                            <Badge variant="secondary" className="text-xs">
-                              {insight.impact}
-                            </Badge>
-                          </div>
-                        </div>
+          <Card className="cf-surface-card mt-6 border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <GitPullRequest className="h-4 w-4" />
+                Cross-tool flow this week
+              </CardTitle>
+              <CardDescription>Sample pipeline from connected sources</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {[
+                  { step: "Gmail", detail: "18 threads flagged", icon: Mail },
+                  { step: "→ Tasks", detail: "14 tasks created", icon: Target },
+                  { step: "→ Calendar", detail: "6 focus blocks", icon: Clock },
+                  { step: "→ Done", detail: "11 completed", icon: CheckCircle2 },
+                ].map((node, i) => {
+                  const Icon = node.icon
+                  return (
+                    <div
+                      key={node.step}
+                      className={cn(
+                        "flex flex-1 items-center gap-3 rounded-lg border border-[var(--cf-border)] bg-[var(--cf-bg-soft)] p-3",
+                        i < 3 && "sm:border-r-0 sm:rounded-r-none",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-[rgba(var(--cf-accent-rgb),1)]" />
+                      <div>
+                        <p className="text-sm font-medium">{node.step}</p>
+                        <p className="text-xs text-muted-foreground">{node.detail}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {/* What-If Scenarios */}
-            <Card>
-              <CardHeader>
-                <CardTitle>What-If Planning</CardTitle>
-                <CardDescription>See how schedule changes would impact your productivity</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 rounded-lg border bg-muted/30">
-                  <h4 className="font-medium text-sm mb-2">Scenario: Accept 2PM meeting on Wednesday</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Impact on focus time:</p>
-                      <p className="font-medium text-red-600">-1.5 hours</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Productivity score change:</p>
-                      <p className="font-medium text-red-600">-8%</p>
+        <TabsContent value="insights" className="mt-6 space-y-6">
+          <Card className="cf-surface-card border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Zap className="h-5 w-5 text-[rgba(var(--cf-accent-rgb),1)]" />
+                Recommendations
+              </CardTitle>
+              <CardDescription>Based on your calendar, mail, and task patterns</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {analyticsInsights.map((insight) => (
+                  <div
+                    key={insight.title}
+                    className={cn("rounded-lg border p-4", getInsightColor(insight.type))}
+                  >
+                    <div className="flex gap-3">
+                      {getInsightIcon(insight.type)}
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-semibold">{insight.title}</h4>
+                        <p className="mt-1 text-xs text-muted-foreground">{insight.description}</p>
+                        <p className="mt-3 text-xs">
+                          <span className="font-medium">Try: </span>
+                          {insight.action}
+                        </p>
+                        <Badge variant="secondary" className="mt-2 text-[10px]">
+                          {insight.impact}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-3 flex gap-2">
-                    <Button variant="outline" size="sm">
-                      Decline Meeting
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      Suggest Alternative
-                    </Button>
-                  </div>
-                </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-                <div className="p-4 rounded-lg border bg-accent/5 border-accent/20">
-                  <h4 className="font-medium text-sm mb-2">Scenario: Block Friday afternoon for deep work</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+          <Card className="cf-surface-card border-0">
+            <CardHeader>
+              <CardTitle className="text-base">What-if planning</CardTitle>
+              <CardDescription>Estimated impact before you accept a meeting or block time</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {whatIfScenarios.map((scenario) => (
+                <div
+                  key={scenario.title}
+                  className={cn(
+                    "rounded-lg border p-4",
+                    scenario.negative
+                      ? "border-red-500/20 bg-red-500/5"
+                      : "border-[rgba(var(--cf-accent-rgb),0.25)] bg-[rgba(var(--cf-accent-rgb),0.06)]",
+                  )}
+                >
+                  <h4 className="text-sm font-medium">{scenario.title}</h4>
+                  <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-muted-foreground">Additional focus time:</p>
-                      <p className="font-medium text-accent">+3 hours</p>
+                      <p className="text-muted-foreground">Deep work</p>
+                      <p className={cn("font-semibold", scenario.negative ? "text-red-600" : "text-[rgba(var(--cf-accent-rgb),1)]")}>
+                        {scenario.focusDelta}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Productivity score change:</p>
-                      <p className="font-medium text-accent">+12%</p>
+                      <p className="text-muted-foreground">Focus score</p>
+                      <p className={cn("font-semibold", scenario.negative ? "text-red-600" : "text-[rgba(var(--cf-accent-rgb),1)]")}>
+                        {scenario.scoreDelta}
+                      </p>
                     </div>
-                  </div>
-                  <div className="mt-3">
-                    <Button size="sm" className="bg-accent hover:bg-accent/90">
-                      Block Calendar
-                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              ))}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

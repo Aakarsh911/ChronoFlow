@@ -1,16 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-import { recordVisit } from "@/lib/visit-tracking"
+import { recordEvent } from "@/lib/event-tracking"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 type TrackBody = {
+  event?: string
   path?: string
+  props?: Record<string, unknown> | null
+  sessionId?: string
   source?: string
-  medium?: string
-  campaign?: string
-  referrer?: string
 }
 
 function clientIp(req: NextRequest): string | null {
@@ -36,19 +36,15 @@ export async function POST(request: NextRequest) {
     body = {}
   }
 
-  const result = await recordVisit({
-    path: body.path ?? "/waitlist",
-    source: body.source ?? null,
-    medium: body.medium ?? null,
-    campaign: body.campaign ?? null,
-    referrer: body.referrer ?? null,
+  const result = await recordEvent({
+    event: body.event ?? "",
+    path: body.path ?? "/sandbox",
+    props: body.props ?? null,
+    sessionId: body.sessionId ?? null,
+    source: body.source ?? "sandbox",
     userAgent: request.headers.get("user-agent"),
     ip: clientIp(request),
-    country: request.headers.get("x-vercel-ip-country"),
   })
 
-  // Always respond 200 — we never want client-side errors / retries leaking
-  // tracking failures into user-visible breakage. The body just signals what
-  // happened for debugging in the network tab.
   return NextResponse.json(result, { status: 200 })
 }

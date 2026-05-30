@@ -14,6 +14,7 @@ import { ThemeToggle } from "@/app/waitlist/theme-toggle"
 import SignOutButton from "@/app/(app)/access-pending/sign-out-button"
 import InviteForm from "./invite-form"
 import { VisitsPanel } from "./visits-panel"
+import { SandboxEventsPanel } from "./sandbox-events-panel"
 import { inviteFromWaitlistAction, revokeAction } from "./actions"
 
 export const dynamic = "force-dynamic"
@@ -166,6 +167,7 @@ export default async function AdminWaitlistPage() {
 
         {/* Visits */}
         <VisitsPanel />
+        <SandboxEventsPanel />
 
         {/* Manual invite */}
         <div className="mt-8 rounded-xl border border-[var(--cf-border-strong)] bg-[var(--cf-bg-elev)] p-5 sm:p-6">

@@ -74,6 +74,24 @@ model PageVisit {
   @@index([path, createdAt])
 }
 
+// Anonymous product analytics — sandbox interactions, feature exploration, etc.
+model ProductEvent {
+  id        String   @id @default(uuid())
+  event     String   // e.g. "sandbox_view_tasks", "sandbox_ai_prompt"
+  path      String   // e.g. "/sandbox"
+  props     Json?
+  sessionId String?  // anonymous sessionStorage UUID
+  source    String?  // "sandbox" | "marketing"
+  ipHash    String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([event, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([source, createdAt])
+}
+
 enum Provider {
   GOOGLE
   MICROSOFT
